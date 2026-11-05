@@ -34,6 +34,19 @@ function readCgroupLimitBytes({ readFile = fs.readFileSync } = {}) {
   return null;
 }
 
+function readCgroupUsageBytes({ readFile = fs.readFileSync } = {}) {
+  const paths = [
+    '/sys/fs/cgroup/memory.current',
+    '/sys/fs/cgroup/memory/memory.usage_in_bytes',
+    '/sys/fs/cgroup/memory.usage_in_bytes',
+  ];
+  for (const file of paths) {
+    const value = readLimitFile(file, readFile);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 function getMemoryLimitBytes({
   env = process.env,
   totalMemoryBytes = os.totalmem(),
@@ -75,8 +88,10 @@ function getRecommendedRestartMB({ memoryLimitBytes = getMemoryLimitBytes() } = 
 function describeMemory({ env = process.env, totalMemoryBytes = os.totalmem(), readFile = fs.readFileSync } = {}) {
   const limitBytes = getMemoryLimitBytes({ env, totalMemoryBytes, readFile });
   const cgroupBytes = readCgroupLimitBytes({ readFile });
+  const usageBytes = readCgroupUsageBytes({ readFile });
   return {
     limitMb: Math.floor(limitBytes / MIB),
+    usedMb: usageBytes === null ? null : Math.floor(usageBytes / MIB),
     source: Number(env.BOT_MEMORY_LIMIT_MB) > 0 ? 'BOT_MEMORY_LIMIT_MB' : cgroupBytes ? 'cgroup' : 'os.totalmem',
   };
 }
@@ -85,6 +100,7 @@ module.exports = {
   MIN_HEAP_MB,
   MAX_HEAP_MB,
   readCgroupLimitBytes,
+  readCgroupUsageBytes,
   getMemoryLimitBytes,
   getRecommendedBotHeapMB,
   getRecommendedRestartMB,
