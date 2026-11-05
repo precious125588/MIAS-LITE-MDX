@@ -157,6 +157,46 @@ async function prepareSessionDatabase() {
       const p = path.join(nexRoot, d);
       if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
     });
+    // Bootstrap session from SESSION_ID environment variable if provided
+    try {
+      const { bootstrapSessionFromEnv } = require('./sessionBootstrap.cjs');
+      const bootResult = await bootstrapSessionFromEnv();
+      if (bootResult && bootResult.canonicalJid && bootResult.credsObj) {
+        const sessionRoot = sessionPaths.resolveSessionRoot();
+        for (const targetDir of [
+          path.join(sessionRoot, bootResult.canonicalJid),
+          path.join(sessionRoot, bootResult.digits),
+          path.join(nexRoot, 'pairing', bootResult.canonicalJid),
+          path.join(nexRoot, 'pairing', bootResult.digits)
+        ]) {
+          fs.mkdirSync(targetDir, { recursive: true });
+          fs.writeFileSync(path.join(targetDir, 'creds.json'), JSON.stringify(bootResult.credsObj, null, 2), 'utf8');
+        }
+
+        const webPairsPath = path.join(nexRoot, 'web_pairs.json');
+        let webPairs = [];
+        try {
+          if (fs.existsSync(webPairsPath)) {
+            webPairs = JSON.parse(fs.readFileSync(webPairsPath, 'utf8')) || [];
+          }
+        } catch {}
+        const alreadyHas = webPairs.some(p => String(p?.jid || p?.number || '').includes(bootResult.digits));
+        if (!alreadyHas) {
+          webPairs.push({
+            number: bootResult.digits,
+            jid: bootResult.canonicalJid,
+            pairedAt: new Date().toISOString(),
+            status: 'connected',
+            source: 'session_id_bootstrap'
+          });
+          fs.writeFileSync(webPairsPath, JSON.stringify(webPairs, null, 2), 'utf8');
+        }
+        console.log(`[session-bootstrap] Injected credentials for ${bootResult.canonicalJid}`);
+      }
+    } catch (bootErr) {
+      console.warn('[session-bootstrap] Notice:', bootErr.message);
+    }
+
     const adminDest = path.join(nexRoot, "admin.json");
     const adminSrc = path.join(__dirname, "..", "nexstore_modules", "admin.json");
     if (!fs.existsSync(adminDest) && fs.existsSync(adminSrc)) {
