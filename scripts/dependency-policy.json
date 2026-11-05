@@ -1,0 +1,12 @@
+{
+  "_comment": "Read by scripts/update-dependencies.cjs. minAgeHours mirrors the 1-day release rule in pnpm-workspace.yaml (minimumReleaseAge: 1440). hold pins a package to its current major because the bot still calls it through require() or uses an API that changed in the next major. Every hold must say why. Remove an entry once its call sites are migrated.",
+  "minAgeHours": 24,
+  "hold": {
+    "jimp": "1.x replaced the whole API (Jimp.read / getBufferAsync / MIME_* constants). About 15 call sites in mias/ and root need a migration first.",
+    "chalk": "Root CommonJS files (bot.js, index.js, pair.js, mais_launcher.js) use require('chalk'), and chalk 5+ is ESM-only. mias is held to the same major so both workspaces move together.",
+    "node-fetch": "Root allfunc/myfunc.js and pair.js use require('node-fetch'). v3 is ESM-only.",
+    "node-telegram-bot-api": "2.x is a different API (exports Bot/Api, no default constructor). bot.js and notify.js need a rewrite first.",
+    "node-os-utils": "3.x removed the v1 netstat API. allfunc/myfunc3.js and myfunc4.js still call it, and nothing requires those files today."
+  },
+  "knownTestFailures": []
+}

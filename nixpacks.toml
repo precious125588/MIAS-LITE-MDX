@@ -1,0 +1,51 @@
+# nixpacks.toml — Railway build configuration
+#
+# NOTE: railway.toml / railway.json select the DOCKERFILE builder, so this file
+# is only used if you switch the service back to Nixpacks. It is kept in sync
+# with Dockerfile on purpose.
+#
+# Key points (same reasoning as Dockerfile):
+#  • each workspace has its own .npmrc with legacy-peer-deps=true — npm does not
+#    read a parent folder's .npmrc, and without it the jimp peer conflict from
+#    @itsliaaa/baileys kills `cd mias && npm install` with ERESOLVE.
+#  • installs run WITH scripts so sharp downloads its prebuilt linux-x64 binary.
+#  • package.json `overrides` pin wa-sticker-formatter -> sharp ^0.35.3, so
+#    there is a single sharp copy and no source build.
+#  • no gktw steps: @itsreimau/gktw does not exist on npm (404); MIAS falls
+#    back to raw Baileys.
+#  • the removed "new-page" workspace must never be referenced here again.
+
+[phases.setup]
+nixPkgs = [
+  "nodejs_22",
+  "pkg-config",
+  "cairo",
+  "pango",
+  "libpng",
+  "libjpeg",
+  "giflib",
+  "librsvg",
+  "pixman",
+  "vips",
+  "python3",
+  "gcc",
+  "gnumake"
+]
+
+[phases.install]
+cmds = [
+  "bash scripts/robust-install.sh ."
+]
+
+[phases.bots]
+dependsOn = ["install"]
+cmds = [
+  "bash scripts/robust-install.sh mias",
+  "cd mias && node -e \"const s=require('sharp');require('wa-sticker-formatter');console.log('[nixpacks] mias sticker engine OK, sharp '+s.versions.sharp)\""
+]
+
+[start]
+cmd = "npm start"
+
+[phases.setup]
+aptPkgs = ["ffmpeg", "fonts-noto", "fonts-noto-cjk", "fonts-noto-color-emoji", "fonts-noto-extra", "fonts-dejavu"]

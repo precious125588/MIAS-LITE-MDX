@@ -1,0 +1,19 @@
+node_modules/
+nexstore/pairing/
+nexstore/sessions/
+*.log
+.env
+.env.*
+!.env.example
+media-patch/dist/
+tmp/
+uploads/
+auth_info/
+sessions/
+
+# External plugins installed through .plugin (generated at runtime, like Levanter's eplugins/)
+mias/eplugins/
+
+# Creator video links saved at runtime (never commit the live file)
+nexstore/creator_video_links.json
+nexstore/creator_video_links.json.*

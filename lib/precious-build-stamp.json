@@ -1,0 +1,21 @@
+{
+  "buildId": "auto-20261027-135100",
+  "builtAt": "2026-10-27T13:51:00.722Z",
+  "files": {
+    "server.js": "4495152d2067b7eee60e8b650b5eea52ec069bc094bd10f8a7a0297c481f74f8",
+    "mias/index.js": "bee1dfba306efc51fb62bf0bab701a35d2f2f0cb6b41954f9439abc24e2ce05d",
+    "lib/precious-cache-clear.cjs": "f40cc625a9b807157d2227861632eaf51708d51dcbb50f963dbc3d47c4230284",
+    "lib/precious-stale-guard.cjs": "f885075a84864a8c80f5f9d903a51ecf329df907f14f0a164230c179e4bad3b1",
+    "mias/features/animeGcLibrary.cjs": "18f167a171acfa63936434b5d18cfd27c9d2cb931f77644b9a8e77aa9f6e2440"
+  },
+  "mustNotExist": [
+    "mias/lib/nsfwAdultPack.cjs",
+    "mias/lib/nsfwPrexzy.cjs",
+    "patch-nsfw.cjs",
+    "patches/patch-nsfw.cjs"
+  ],
+  "timestamp": 1792324803412,
+  "target": "precious-v2.1-fix-whois-target-detection",
+  "commit": "b8952f714b4e9eb5735a148e78e1fce9b3ec203e",
+  "sha": "b8952f714b4e9eb5735a148e78e1fce9b3ec203e"
+}

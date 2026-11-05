@@ -1,0 +1,38 @@
+{
+  "id": "new-page",
+  "name": "New Page",
+  "tagline": "Next Generation • 100 Commands • Fast",
+  "description": "New Page — a next-gen WhatsApp bot built from scratch. 100 real commands, always online by default, auto-view status, auto-like status, downloads, AI, groups, economy and more.",
+  "version": "1.0.0",
+  "status": "stable",
+  "entry": "new-page/index.js",
+  "cwd": "new-page",
+  "env": {
+    "BOT_NAME": "New Page",
+    "BOT_VERSION": "1.0.0",
+    "THEME": "nextgen",
+    "MENU_STYLE": "clean"
+  },
+  "deploySteps": [
+    "Initializing New Page...",
+    "Loading Baileys engine...",
+    "Setting up command handlers...",
+    "Mounting download modules...",
+    "Activating AI engines...",
+    "Loading group management...",
+    "Enabling WhatsApp features...",
+    "Starting fun & stalk modules...",
+    "Loading economy system...",
+    "Configuring owner controls...",
+    "Enabling auto-view status...",
+    "Enabling auto-like status...",
+    "Setting always-online mode...",
+    "Running self-diagnostics...",
+    "Verifying all 100 commands...",
+    "Connecting to WhatsApp...",
+    "Authenticating session...",
+    "Syncing contacts...",
+    "Loading group cache...",
+    "Final checks complete!"
+  ]
+}
