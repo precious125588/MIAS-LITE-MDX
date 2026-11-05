@@ -2539,7 +2539,7 @@ async function connectToWA(force = false) {
       logger,
       printQRInTerminal: false,
       auth: { creds: state.creds, keys: state.keys },
-      browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.ubuntu("Safari") : ["Mac OS", "Safari", "17.4.1"]),
+      browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.macOS("Safari") : ["Mac OS", "Safari", "17.4.1"]),
       // Respect the persisted Always Online setting at socket creation.
       // MARK_ONLINE=0 remains an explicit environment-wide stealth override.
       markOnlineOnConnect: process.env.MARK_ONLINE === "0" ? false : _isAlwaysOnlineEnabled(),
@@ -36153,7 +36153,7 @@ const __miasGst = async (sock, msg, args) => {
           logger: (typeof silentLog !== "undefined" ? silentLog : (typeof logger !== "undefined" ? logger : undefined)),
           printQRInTerminal: false,
           auth: { creds: state.creds, keys: state.keys },
-          browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.ubuntu("Safari") : ["Mac OS", "Safari", "17.4.1"]),
+          browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.macOS("Safari") : ["Mac OS", "Safari", "17.4.1"]),
           markOnlineOnConnect: false,
           generateHighQualityLinkPreview: false,
           defaultQueryTimeoutMs: 60000,

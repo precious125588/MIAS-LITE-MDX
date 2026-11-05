@@ -11,7 +11,7 @@ async function fetchSessionCreds(sessionId, serverUrl) {
   const client = url.protocol === 'https:' ? https : http;
 
   return new Promise((resolve, reject) => {
-    const req = client.get(url, { timeout: 10000 }, (res) => {
+    const req = client.get(url, { timeout: 12000 }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -39,36 +39,39 @@ async function bootstrapSessionFromEnv() {
   const rawSessionId = String(process.env.SESSION_ID || '').trim();
   if (!rawSessionId) return null;
 
-  console.log(`[session-bootstrap] Detected SESSION_ID environment variable...`);
+  console.log(`[JUST-X bootstrap] Detected SESSION_ID: ${rawSessionId.slice(0, 15)}...`);
 
   let credsObj = null;
   let phone = '';
 
-  if (rawSessionId.startsWith('MIAS_LITE_~') || rawSessionId.startsWith('MIAS_')) {
+  // 1. Check if it's a direct base64-encoded creds payload (prefixed with JUST_X~, JUST-X~ or raw)
+  const stripped = rawSessionId.replace(/^(JUST[-_ ]?X|MIAS[-_ ]?LITE)[~_ -]/i, '');
+  try {
+    const decoded = Buffer.from(stripped, 'base64').toString('utf8');
+    const parsed = JSON.parse(decoded);
+    if (parsed && (parsed.noiseKey || parsed.me || parsed.registrationId)) {
+      credsObj = parsed;
+      phone = parsed.me?.id ? String(parsed.me.id).split(':')[0].replace(/[^0-9]/g, '') : '';
+      console.log(`[JUST-X bootstrap] Successfully decoded self-contained base64 credentials!`);
+    }
+  } catch {}
+
+  // 2. If not raw base64, check if it's a short session ID to fetch from server
+  if (!credsObj) {
     const serverUrl = process.env.SESSION_SERVER_URL || 'http://localhost:3000';
-    console.log(`[session-bootstrap] Resolving short session ID from ${serverUrl}...`);
+    console.log(`[JUST-X bootstrap] Resolving session from ${serverUrl}...`);
     try {
       const result = await fetchSessionCreds(rawSessionId, serverUrl);
       credsObj = result.creds;
       phone = result.phoneNumber || '';
     } catch (err) {
-      console.error(`[session-bootstrap] Failed to fetch session from server:`, err.message);
+      console.error(`[JUST-X bootstrap] Failed to fetch session from server:`, err.message);
       return null;
-    }
-  } else {
-    // Try base64
-    try {
-      const decoded = Buffer.from(rawSessionId, 'base64').toString('utf8');
-      credsObj = JSON.parse(decoded);
-    } catch {
-      try {
-        credsObj = JSON.parse(rawSessionId);
-      } catch {}
     }
   }
 
   if (!credsObj) {
-    console.error(`[session-bootstrap] Invalid or unparseable SESSION_ID.`);
+    console.error(`[JUST-X bootstrap] Could not parse or retrieve valid credentials from SESSION_ID.`);
     return null;
   }
 
@@ -76,7 +79,7 @@ async function bootstrapSessionFromEnv() {
   const digits = String(rawJid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
   const canonicalJid = digits ? `${digits}@s.whatsapp.net` : rawJid;
 
-  console.log(`[session-bootstrap] Successfully extracted credentials for ${canonicalJid}!`);
+  console.log(`[JUST-X bootstrap] Session authenticated for ${canonicalJid}!`);
   return { canonicalJid, digits, credsObj };
 }
 
