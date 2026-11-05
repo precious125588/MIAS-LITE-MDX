@@ -191,6 +191,24 @@ async function prepareSessionDatabase() {
           });
           fs.writeFileSync(webPairsPath, JSON.stringify(webPairs, null, 2), 'utf8');
         }
+
+        // Record active bot session info so web UI shows: "BOT LIVE for <username>"
+        const activeBotPath = path.join(nexRoot, 'active_bot.json');
+        try {
+          fs.writeFileSync(activeBotPath, JSON.stringify({
+            live: true,
+            username: bootResult.sessionUserName || 'User',
+            jid: bootResult.canonicalJid,
+            digits: bootResult.digits,
+            mode: 'SESSION_ID',
+            updatedAt: new Date().toISOString()
+          }, null, 2), 'utf8');
+        } catch {}
+
+        process.env.BOT_ACTIVE_USER = bootResult.sessionUserName || 'User';
+        process.env.BOT_ACTIVE_JID = bootResult.canonicalJid;
+        process.env.BOT_IS_LIVE = 'true';
+
         console.log(`[session-bootstrap] Injected credentials for ${bootResult.canonicalJid}`);
       }
     } catch (bootErr) {
