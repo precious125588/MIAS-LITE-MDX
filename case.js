@@ -7709,7 +7709,7 @@ break;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // KEVDRA STABILITY ADDITIONS — Sticker SetCmd, Force Private, Settings 19.x
-// Added by MAIS MDX × TelexWA enhanced package
+// Added for MIAS LITE MDX stability
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ─── Sticker SetCmd System ─────────────────────────────────────────────────

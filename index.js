@@ -783,13 +783,13 @@ makeWASocket = function __wrappedMakeWASocket(opts) {
   return sock;
 };
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  CONFIG
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  CRASH PROTECTION — never die silently
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 process.on("unhandledRejection", (err) => console.error("[CRASH:unhandledRejection]", err));
 process.on("uncaughtException", (err) => console.error("[CRASH:uncaughtException]", err));
 
@@ -1207,9 +1207,9 @@ function getRuntimeDebugState() {
   };
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  STICKER EXIF (for .take command — proper packname/author metadata)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 function buildStickerExif(packname, author) {
   const json = { "sticker-pack-id": "mias-mdx", "sticker-pack-name": String(packname || ""), "sticker-pack-publisher": String(author || ""), "emojis": ["🔥"] };
   const jsonBuf = Buffer.from(JSON.stringify(json), "utf8");
@@ -1241,10 +1241,10 @@ async function injectWebpExif(webpBuf, exifBuf) {
   } catch { return webpBuf; }
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  CREATOR — resolves dynamically from owner so it always works even when
 //  OWNER_NUMBER is unset at boot or only OWNER env var is used.
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const CREATOR_NUMBER = LOCKED_OWNER_NUMBER; // startup snapshot (may be "")
 const CREATOR_NAME = LOCKED_OWNER_NAME;
 // Runtime-dynamic: re-reads getConfiguredOwnerNumber() on every call so
@@ -1270,9 +1270,9 @@ if (!CONFIG.OWNER_NUMBER) {
   console.log(`👑 Owner: ${CONFIG.OWNER_NUMBER} | Creator: ${CREATOR_NUMBER}`);
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  FREE AI HELPER — works without API keys
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 function extractJsonFromResponse(rawText) {
   if (!rawText || typeof rawText !== "string") return null;
   const text = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
@@ -1363,11 +1363,11 @@ function isLikelyTruncated(text) {
   return false;
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 // TOXICAPIS — universal API proxy with multiple endpoint shapes
 // apikey is hard-coded as `toxicapis`. Tries common URL patterns and returns
 // whichever first responds with a downloadable URL or text payload.
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const TOXICAPIS_KEY = "toxicapis";
 const TOXICAPIS_BASES = [
   "https://api.toxicapis.xyz",
@@ -1538,9 +1538,9 @@ async function freeImageGen(prompt) {
   return null;
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  IN-MEMORY STORES
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const economy = new Map();
 const lastDaily = new Map();
 const lastWork = new Map();
@@ -1739,9 +1739,9 @@ let botConnected = false;
 let _aliveMsgSent = false;
 let _firstConnectTime = 0; // Track when bot first connected
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  LOAD PERSISTENT DATA FROM DISK
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const settings = new Map();
 
 await initializePersistence();
@@ -2047,9 +2047,9 @@ function hasItem(jid, item){ return (getInv(jid).get(item) || 0) > 0; }
 function addItem(jid, item, n = 1) { const inv = getInv(jid); inv.set(item, (inv.get(item) || 0) + n); }
 function removeItem(jid, item, n = 1) { const inv = getInv(jid); inv.set(item, Math.max(0, (inv.get(item) || 0) - n)); }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  WEB SERVER (keep-alive / Heroku / Replit)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const app = express();
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/status-api", (_, res) => res.json({ connected: botConnected }));
@@ -2202,9 +2202,9 @@ onShieldCleanup(() => _shutdown("shield"));
 process.on("SIGINT",  () => { void _shutdown("SIGINT"); });
 process.on("SIGTERM", () => { void _shutdown("SIGTERM"); });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  WHATSAPP CONNECTION (main socket)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 let sockGlobal = null;
 let reconnectAttempts = 0;
 // v18: how many consecutive 401 closes we have seen. A single 401 is NOT
@@ -5296,9 +5296,9 @@ if (acquireRuntimeLock()) {
 process.on("unhandledRejection", (r) => console.error("unhandledRejection:", r?.message || r));
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e?.message || e));
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  SESSION RESTORE
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 async function restoreSession(sessionId = CONFIG.SESSION_ID, authDir = AUTH_DIR) {
   if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
   const credsPath = path.join(authDir, "creds.json");
@@ -5370,9 +5370,9 @@ async function restoreSession(sessionId = CONFIG.SESSION_ID, authDir = AUTH_DIR)
   return false;
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  HELPERS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const _cleanNum = jid => (jid || "").split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
 const isMeaningfulName = (name = "") => {
   const value = String(name || "").trim();
@@ -6588,9 +6588,9 @@ async function sendButtonsReply(sock, msg, text, mentions = []) {
   }
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  MESSAGE BUILDER — in-house, fully auditable, zero network calls
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 // Feature-complete WhatsApp interactive message builder: quick-reply/CTA
 // buttons, multi-row buttons, carousels, and an "AI Rich Response" style
 // card (hyperlinks, citations, tables) — all built on the native flow /
@@ -6612,7 +6612,7 @@ async function sendButtonsReply(sock, msg, text, mentions = []) {
 //   payload shapes) using only the Baileys primitives already
 //   imported in this file. No new dependency, no network fetch, no
 //   eval, nothing that runs at install time.
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 const MBToolkit = {
   async fetchBuffer(input, { timeout = 20000 } = {}) {
@@ -8197,9 +8197,9 @@ async function applyGuardAction(sock, gid, target, msgKey, mode, label, type = "
   await sock.sendMessage(gid, { text: `🚫 *${label} triggered*${type ? `\n\n🔎 Type: *${type}*` : ""}\n👤 User: @${cleanTarget.split("@")[0]}\n🛡️ Mode: *${action.toUpperCase()}*\n✅ Action: *${done}*${!botAdmin ? "\n\n⚠️ Make the bot admin to delete/kick automatically." : ""}`, mentions: [cleanTarget] }).catch(() => {});
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  COMMAND REGISTRY
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const commands = new Map();
 const aliases = new Map(); // alias -> canonical
 
@@ -8856,9 +8856,9 @@ cmd(["dbase", "dbase2", "base64dec", "b64decode", "decode64"], { desc: "Base64 D
 });
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  SECURE FILE ENCRYPTION & DECRYPTION (AES-256-GCM / scrypt)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["encfile", "encryptfile"], { desc: "Encrypt a document/media file with AES-256-GCM password protection", category: "TOOLS" }, async (sock, msg, args) => {
   const jid = msg.key.remoteJid;
   const password = args.join(" ").trim();
@@ -9884,9 +9884,9 @@ cmd(['allmenu', 'fullmenu'], { desc: 'Show all active canonical commands', categ
 cmd(['menu', 'help', 'commands', '.menu', 'start'], { desc: 'Show menu or category', category: 'INFO' }, cmdMenu);
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  ADVANCED SETTINGS MENU (26 sections)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 function buildSettingsMenu(jid) {
   const s = getSettings(jid);
   return `╔════〘 *𝗦𝗘𝗧𝗧𝗜𝗡𝗚𝗦* 〙════╗
@@ -10870,9 +10870,9 @@ _Tip: \`${CONFIG.PREFIX}debug 50\` shows the last 50 log lines._`;
   await _sendPlainReply(sock, msg, text);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  MISC / ALIVE / PING / UPTIME
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["alive", "runtime", "uptime"], { desc: "Bot alive status and uptime info", category: "MISC" }, async (sock, msg) => {
   await react(sock, msg, "🌿");
@@ -11369,9 +11369,9 @@ _Contact owner for:_
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  MUSIC / PLAYLIST
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const SONGS = [
   { title: "Blinding Lights", artist: "The Weeknd", genre: "Pop", url: "https://youtu.be/4NRXx6U8ABQ" },
   { title: "Essence", artist: "Wizkid ft. Tems", genre: "Afrobeats", url: "https://youtu.be/vDF-U3ZOAxY" },
@@ -12197,9 +12197,9 @@ const _saveTubePickStore = new Map();
 
 // ── play! — search then show MIME-type format picker buttons ─────────────────
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  AI COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["gpt", "ai", "chatai"], { desc: "Ask AI — .gpt <question>", category: "AI" }, async (sock, msg, args) => {
   let _q = (args || []).join(" ").trim();
   let _ctxText = "";
@@ -13065,9 +13065,9 @@ cmd("transcribe", { desc: "Transcribe audio", category: "AI" }, async (sock, msg
   } catch (e) { await sendReply(sock, msg, `❌ Transcription error: ${e.response?.data?.error?.message || e.message}`); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  ANIME COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 async function sendAnimeGif(sock, msg, type) {
   await react(sock, msg, "⏳");
   const _WAIFU_TYPES = { waifu: "waifu", neko: "neko", kitsune: "kitsune" };
@@ -14249,9 +14249,9 @@ cmd(["moviedl"], { desc: "Get movie download links — .moviedl <title or IMDB I
   }
   await react(sock, msg, dlLinks.length ? "✅" : "📥");
 });
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  VIDEO CMD — download video from YouTube/TikTok/IG etc with format picker
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["video","yt","ytdl","videodl","viddl"], { desc: "Download video — .video <query/URL> [mp4|doc|hd|videonote]", category: "DOWNLOAD" }, async (sock, msg, args) => {
   if (!args.length) {
     await sendReply(sock, msg,
@@ -14699,14 +14699,14 @@ cmd(["football", "ftball"], { desc: "Football/soccer news & scores — .football
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  ECONOMY COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  FUN COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const JOKES = ["Why don't scientists trust atoms? They make up everything!", "I told my wife she was drawing eyebrows too high. She looked surprised.", "What do you call cheese that isn't yours? Nacho cheese!", "Why can't you give Elsa a balloon? She'll let it go!", "Why did the math book look sad? Too many problems!"];
 const TRUTHS = ["Have you ever lied to get out of trouble?", "What's your biggest secret?", "Have you ever had a crush on a friend?", "What's the most embarrassing thing you've done?", "What's your biggest fear?"];
 const DARES = ["Send a funny voice note right now!", "Change your WhatsApp status to something embarrassing for 1 hour", "Text your crush right now", "Send the most embarrassing photo in your gallery", "Do 10 pushups and send proof"];
@@ -14871,9 +14871,9 @@ cmd("unadopt", { desc: "Unadopt someone", category: "FUN" }, async (sock, msg) =
   await sendReply(sock, msg, `💔 *Unadopted!*\n\n${getSender(msg).split("@")[0]} has unadopted @${mentions[0].split("@")[0]}.`, mentions);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  GAMES
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const TRIVIA_QS = [
   { q: "What is the capital of France?", a: "paris", hint: "City of Love" },
   { q: "How many sides does a hexagon have?", a: "6", hint: "More than 5" },
@@ -15038,9 +15038,9 @@ cmd("guesssong", { desc: "Guess the song", category: "GAMES" }, async (sock, msg
   await sendReply(sock, msg, `🎵 *Guess the Song!*\n\n_"${s.lyric}"_\n\nWhat song is this?\n\n||${s.answer}||`);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  INFO COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 function _detectHost() {
   try {
     const { getHostName } = require("./lib/hostDetect.cjs");
@@ -15845,9 +15845,9 @@ _A powerful WhatsApp automation bot with 500+ commands, AI-powered chat, media d
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  TOOLS COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd("calc", { desc: "Calculator — .calc <expression>", category: "TOOLS" }, async (sock, msg, args) => {
   if (!args.length) { await sendReply(sock, msg, `Usage: ${CONFIG.PREFIX}calc <expression>`); return; }
   try {
@@ -17067,13 +17067,13 @@ cmd("togif", { desc: "Video → GIF", category: "MEDIA" }, async (sock, msg) => 
   } catch (e) { await sendReply(sock, msg, "❌ Conversion failed: " + e.message); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  RELIGION
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 // bible removed
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  LOGO COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const LOGO_STYLES = ["alienglow","burning","chromeone","chrometwo","comic","fire","glowinghot","glowingsteel","gradientbevel","slab","neontext","simple","starburst","felt","outline","animatedglow","3dtextured","3dgradient","glossy","embossed","pixelbadge","chromium","iced","frosty","particle","moltencore","glitter","fantasy"];
 /* logolist removed */
 for (const style of LOGO_STYLES) {
@@ -17132,9 +17132,9 @@ for (const style of LOGO_STYLES) {
   });
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  TEXT COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const FANCY_STYLES = {
   bold: t => t.split("").map(c => "𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".indexOf(c)] || c).join(""),
   italic: t => [...t].map(c => "𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡"["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".indexOf(c)] || c).join(""),
@@ -17142,9 +17142,9 @@ const FANCY_STYLES = {
 };
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  GROUP COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd("members", { desc: "List all members", category: "GROUP" }, async (sock, msg) => {
   if (!requireGroup(msg)) { await sendReply(sock, msg, "👥 Group only."); return; }
   const meta = await sock.groupMetadata(msg.key.remoteJid);
@@ -17729,10 +17729,10 @@ cmd(["lockmedia","nomedia","medlock","medialocked"], { desc: "Block media in gro
   await sendReply(sock, msg, text);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  GCLOCKMEDIA — quick group-level media lock/unlock (alias of lockmedia)
 //  .gclockmedia on  |  .gclockmedia off  |  .gclockmedia  (toggle)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["gclockmedia","gclm","gcmedia","gcmlock"], { desc: "GC lock media — quickly toggle media lock in a group chat", category: "GROUP", ownerOnly: true }, async (sock, msg, args) => {
   if (!requireGroup(msg)) return;
   const s = getSettings(msg.key.remoteJid);
@@ -17901,9 +17901,9 @@ for (const [c, desc] of Object.entries(groupAdvCmds)) {
   });
 }
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  OWNER COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["ban", "banuser"], { desc: "Ban user — @mention or reply to their message", category: "OWNER", ownerOnly: true }, async (sock, msg, args) => {
   const { targetJid, targetNum, targetMentionJid } = await resolveCommandTarget(sock, msg, args);
   if (!targetJid || !targetNum) {
@@ -18690,9 +18690,9 @@ Tip: ${CONFIG.PREFIX}autolike 🔥        — single emoji
 Tip: ${CONFIG.PREFIX}autolike 🔥,🌊,⭐  — random pool
 Tip: ${CONFIG.PREFIX}setemoji 🥤,🍡,😂  — set pool separately`);
   });
-  ═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  LOGOUT COMMAND — ask keep/delete then disconnect
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 if (!globalThis._logoutPending) globalThis._logoutPending = new Map();
 cmd(["logout", "signout", "unlink"], { desc: "Logout this bot session — asks to keep or delete sessions/settings", category: "OWNER", ownerOnly: true }, async (sock, msg) => {
   const ownerJid = getOwnerJid();
@@ -19193,9 +19193,9 @@ cmd("settheme", { desc: "Set bot theme", category: "CONFIG", ownerOnly: true }, 
   await sendReply(sock, msg, `🎨 *Theme Changed!*\n\n${BOT_THEMES[theme]} Now using *${theme}* theme!`);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  SESSION COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["ytmp4","ytvideo","yt4","ytv"], { desc: "Download YouTube video as mp4", category: "DOWNLOAD" }, async (sock, msg, args) => {
   if (!args.length) { await sendReply(sock, msg, `❌ Usage: ${CONFIG.PREFIX}ytmp4 <YouTube URL> [quality]`); return; }
@@ -19435,9 +19435,9 @@ cmd(["ytmp4","ytvideo","yt4","ytv"], { desc: "Download YouTube video as mp4", ca
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  DOWNLOAD COMMANDS — Multi-API fallback chains
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Universal downloader with fallback chain
 async function universalDownload(url, platform) {
@@ -20731,9 +20731,9 @@ cmd("radio", { desc: "Play radio station", category: "AUDIO" }, async (sock, msg
   } catch { await sendReply(sock, msg, `📻 Radio stream unavailable. Try again later.`); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  GROUP COMMANDS — Missing ones
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd("offhere", { desc: "Disable bot in this group", category: "GROUP", ownerOnly: true }, async (sock, msg) => {
   if (!requireGroup(msg)) return;
   const s = getSettings(msg.key.remoteJid); setWorkModeState(s, "private"); (globalThis.__saveNowImmediate || saveNow)();
@@ -21415,13 +21415,13 @@ cmd("takeadmin", { desc: "Remove admin from all members", category: "GROUP", own
   if (_orig_groupUpdate) return;
   global._hijackGroupUpdatePatched = true;
 })();
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  GROUP STATUS — uses generateWAMessageContent + relayMessage with
 //  groupStatusMessageV2 (the proper WhatsApp protocol for posting a member's
 //  status that shows up under the GROUP's status ring, with the contact card
 //  pinned to the bot's pushName + group context).  Replaces both the old
 //  `gcstatus` and the old `gcstory` cmds.
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["postgc"], {
   desc: "Post text/image/video/audio to the GROUP status (groupStatusMessageV2) — admins only",
   category: "GROUP"
@@ -21544,9 +21544,9 @@ cmd(["postgc"], {
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  TOVV — convert a replied image/video into a view-once message
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 // NOTE: "vv" / "viewonce" are REVEAL view-once cmds (registered earlier at L6728).
 // We must NOT include them as aliases here, otherwise cmd() would overwrite them
 // with this convert-to-vv handler and break the reveal flow the user relies on.
@@ -21753,14 +21753,14 @@ cmd(["tovv"], {
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  ADDCASE / DROPCASE — runtime command registration / removal (creator only)
 //  addcase: register a new command from a JS handler body
 //          .addcase <name> | <category> | <desc>
 //          <handler body, has access to sock, msg, args, sendReply, react, axios, CONFIG>
 //  dropcase: unregister an existing command by name
 //          .dropcase <name>
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const _runtimeRegisteredCmds = new Set();
 // Remember which category each runtime cmd was pushed into so dropcase
 // can remove it from the menu cleanly.
@@ -22154,9 +22154,9 @@ cmd("voteclosse", { desc: "Vote to close group", category: "GROUP" }, async (soc
   } catch { await sendReply(sock, msg, "❌ Poll failed."); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  MISC COMMANDS — Anti features
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["antidelete","antidel","nodelete"], { desc: "Toggle anti-delete (supports all/groups/pm/here scopes)", category: "MISC", ownerOnly: true }, async (sock, msg, args) => {
   const chatS = getSettings(msg.key.remoteJid);
   const ownerJid = getOwnerJid();
@@ -22382,14 +22382,14 @@ cmd(["adult", "adultdl", "xdl", "nsfwdl"], { desc: "Download adult/NSFW content 
   // fallback URL: https://open.spotify.com/track/...`);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  ECONOMY — Advanced commands (Faction, Pet, Battle, Drugs, Travel, Market)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  HENTAI / ADULT COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd("htimig", { desc: "Hentai image", category: "HENTAI" }, async (sock, msg) => {
   const s = getSettings(msg.key.remoteJid);
   const ownerS = getSettings(getOwnerJid());
@@ -22572,9 +22572,9 @@ Make sure the link is a direct video page.`);
   // fallback URL: https://api.dicedeveloper.com.ng/xnxx?q=${encodeURIComponent(args.join
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  ADULT VIDEO RESOLVER — turns search results / page URLs into REAL .mp4 buffers
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 function _pickDirectFromItem(item) {
   if (!item) return null;
   // Common direct-media fields used across NSFW search APIs
@@ -22931,9 +22931,9 @@ _Make sure the bot has permission to create groups._`).catch(() => sendReply(soc
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  GOON MODE — adult-gated personal mode (auto-DMs adult content to owner)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const _goonState = { active: false, intervalMs: 90000, timer: null, target: null };
 
 // _fetchGoonMedia — fetches a real adult video URL for goon mode
@@ -23050,9 +23050,9 @@ cmd("goonstatus", { desc: "Show goon mode status", category: "HENTAI", adult: tr
     `🔞 *Goon Mode Status*\n\nActive: ${_goonState.active ? "✅" : "❌"}\nInterval: ${Math.round(_goonState.intervalMs/1000)}s\nTarget: ${_goonState.target || "—"}`);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  ADULT QUICK CMDS — xnxx / pornhub / xhamster / ph (all adult-gated)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const _ADULT_QUICK = {
   xnxx:     { label: "XNXX",     site: "xnxx" },
   xxnx:     { label: "XNXX",     site: "xnxx" },
@@ -24025,9 +24025,9 @@ cmd(["pmlist","showmenu","menulist"], { desc: "Re-display the last text menu for
   await sendReply(sock, msg, _out);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  SAFE MODE — hides all adult cmds + locks NSFW / strips adult settings
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd("safemode", { desc: "Toggle safe mode (hide all 18+ commands)", category: "OWNER", ownerOnly: true }, async (sock, msg, args) => {
   const ownerJ = getOwnerJid();
   const ownerS = getSettings(ownerJ);
@@ -24051,9 +24051,9 @@ cmd("safemode", { desc: "Toggle safe mode (hide all 18+ commands)", category: "O
     `🛡️ *Safe Mode: ${ownerS.safeMode ? "✅ ON" : "❌ OFF"}*\n\n${ownerS.safeMode ? "All 18+ commands are now hidden and disabled." : "Adult commands are available again (still gated by adult mode)."}`);
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  TRUECALLER — number lookup (multi-API fallback)
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd("truecaller", { desc: "Look up info on a phone number", category: "TOOLS" }, async (sock, msg, args) => {
   if (!args.length) { await sendReply(sock, msg, `Usage: *${CONFIG.PREFIX}truecaller <number>*\n\nExample: ${CONFIG.PREFIX}truecaller +2348012345678`); return; }
   await react(sock, msg, "🔍");
@@ -29270,7 +29270,7 @@ for (const [tmCmd, tmInfo] of Object.entries(_TM_EXTRA)) {
 // ═══════════════════════════════════════════════════════════════════════════
   // ── .creator / .creatoroff — lock/unlock bot to creator-only mode ──────────────═══
 //  MENU3 — Compact "dope" menu: listed names only, no descriptions, with bot pic
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 cmd(["menu3","fastmenu","quickmenu"], { desc: "Compact listed menu (no descriptions)", category: "INFO" }, async (sock, msg, args) => {
   await react(sock, msg, "📋");
   const P = CONFIG.PREFIX;
@@ -29324,9 +29324,9 @@ cmd(["menu3","fastmenu","quickmenu"], { desc: "Compact listed menu (no descripti
   // fallback URL: http://localhost:${PORT}/debug-api`;
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  PANEL — Bot / WhatsApp panel selling commands
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 const _PANEL_URL    = process.env.PANEL_URL    || "";
 const _PANEL_PRICE  = process.env.PANEL_PRICE  || "Contact owner for pricing";
 const _PANEL_NAME   = process.env.PANEL_NAME   || `${CONFIG.BOT_NAME} Panel`;
@@ -29393,7 +29393,7 @@ Chat the seller directly for pricing, delivery, and setup help.`;
 // ─────────────────────────────────────────────────────────────────────────────
 // Legacy disabled GST commands permanently removed
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 // ██████  ███████ ██████  ████████     ██████  ██████  ███    ███ ███    ███ ███████
 // ██   ██ ██      ██   ██    ██       ██      ██    ██ ████  ████ ████  ████ ██
 // ██████  █████   ██   ██    ██       ██      ██    ██ ██ ████ ██ ██ ████ ██ ███████
@@ -29401,7 +29401,7 @@ Chat the seller directly for pricing, delivery, and setup help.`;
 // ██████  ███████ ██████     ██        ██████  ██████  ██      ██ ██      ██ ███████
 //
 //  BLOCK 1 — VCF / CONTACT BROADCAST
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 // ── .vcfcast / .vcfbroadcast — build and send a VCF file from a list of numbers ──
 cmd(["vcfcast","vcfbroadcast","makevcf"], {
@@ -29526,9 +29526,9 @@ ${lines.join("\n")}
   }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 2 — DAVIDCYRIL API — AI COMMANDS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Generic DC AI text helper
 async function _dcAiText(endpoint, paramKey, query) {
@@ -29688,9 +29688,9 @@ cmd(["dcytsummarize","ytsumdc","ytsummarizedc"], { desc: "Summarize a YouTube vi
   } catch(e) { await editMessage(sock, jid, st.key, `❌ Error: ${e.message}`); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 3 — DAVIDCYRIL API — TOOLS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["dctranslate","translatedc","dctrans"], { desc: "Translate text via DC — .dctranslate <lang> <text>", category: "TOOLS" }, async (sock, msg, args) => {
   if (args.length < 2) { await sendReply(sock, msg, `Usage: ${CONFIG.PREFIX}dctranslate <lang> <text>\nExample: ${CONFIG.PREFIX}dctranslate es Hello world`); return; }
@@ -29878,9 +29878,9 @@ cmd(["dcshorten","shortendc","dcshort"], { desc: "Shorten a URL via DC — .dcsh
   } catch(e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 4 — DAVIDCYRIL API — DOWNLOADS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["dcsoundcloud","scdldc","dcscdl"], { desc: "Download SoundCloud track via DC — .dcsoundcloud <url>", category: "DOWNLOAD" }, async (sock, msg, args) => {
   if (!args[0]) { await sendReply(sock, msg, `Usage: ${CONFIG.PREFIX}dcsoundcloud <SoundCloud URL>`); return; }
@@ -29927,9 +29927,9 @@ _Open the link in your browser to download._`);
 
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 5 — DAVIDCYRIL API — SEARCH / STALK
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["dcytsearch","ytsearchdc","yttitles"], { desc: "Search YouTube via DC — .dcytsearch <query>", category: "SEARCH" }, async (sock, msg, args) => {
   if (!args.length) { await sendReply(sock, msg, `Usage: ${CONFIG.PREFIX}dcytsearch <query>`); return; }
@@ -30023,9 +30023,9 @@ cmd(["dcstalkspotify","spotifystalkdc"], { desc: "Stalk Spotify user via DC — 
   } catch(e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 6 — DAVIDCYRIL API — RANDOM / FUN
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["dcquote","randomquotedc","quotedc"], { desc: "Random quote via DC — .dcquote", category: "FUN" }, async (sock, msg) => {
   await react(sock, msg, "💬");
@@ -30111,15 +30111,15 @@ cmd(["dcbored","boreddc"], { desc: "Get a random boredom-buster activity via DC 
 });
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 7 — DAVIDCYRIL API — ANIME
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 8 — DAVIDCYRIL API — IMAGE GENERATION / CANVAS
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["dcimagen","imagendc","dcflux","dcai2img"], { desc: "Generate AI image via DC — .dcimagen <prompt>", category: "AI" }, async (sock, msg, args) => {
   if (!args.length) { await sendReply(sock, msg, `Usage: ${CONFIG.PREFIX}dcimagen <prompt>\nExample: ${CONFIG.PREFIX}dcimagen a sunset over Lagos`); return; }
@@ -30173,9 +30173,9 @@ cmd(["dcfakewa","fakewadc"], { desc: "Generate fake WhatsApp message image via D
   } catch(e) { await editMessage(sock, jid, st.key, `❌ Error: ${e.message}`); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 9 — DAVIDCYRIL API — MISCELLANEOUS / INFO
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["dcnews","newsdc"], { desc: "Dark Naija news via DC — .dcnews", category: "INFO" }, async (sock, msg) => {
   await react(sock, msg, "📰");
@@ -30279,9 +30279,9 @@ cmd(["dcupload","uploaddc","dcuploader"], { desc: "Upload a file to catbox via D
   } catch(e) { await editMessage(sock, jid, st.key, `❌ Error: ${e.message}`); }
 });
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  BLOCK 10 — DC API HELP COMMAND
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 
 cmd(["dcapi","dcapis","dchelp"], { desc: "List all DavidCyril API commands", category: "INFO" }, async (sock, msg) => {
   const P = CONFIG.PREFIX;
@@ -32869,7 +32869,7 @@ async function __miasV3InitialSync(sock) {
   try {
     const fs = require("fs");
     const path = require("path");
-    const meDir = path.join(__dirname, "..", "database", "telexwa_contacts");
+    const meDir = path.join(__dirname, "..", "database", "contacts");
     try { fs.mkdirSync(meDir, { recursive: true }); } catch {}
     const myNum = String(sock.user?.id || "").split(":")[0].split("@")[0];
     const outFile = path.join(meDir, `${myNum || "unknown"}_contacts.vcf`);
@@ -32942,7 +32942,7 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
 
 
 
-// MIAS MDX × TELEXWA — LATE-PATCH v4 (telexwa fixes)
+// MIAS LITE MDX — LATE-PATCH v4 (media & image processing fixes)
 //   * setpp / setbotpic       — pre-resize with sharp → jimp → raw (no more
 //                                "No image processing library available")
 //   * aivid                   — real free video providers (gifted, davidcyril,
@@ -33480,7 +33480,7 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
     }});
 
   // ── FIX #5: .sync / .syncstatus / .setjs ────────────────────────────────
-  const __miasContactsDir = _path.join(__dirname, "..", "database", "telexwa_contacts");
+  const __miasContactsDir = _path.join(__dirname, "..", "database", "contacts");
   try { _fs.mkdirSync(__miasContactsDir, { recursive: true }); } catch {}
   const __miasJsCfgPath = _path.join(__miasContactsDir, "js_prefix.json");
   function __miasReadJsCfg() {
@@ -33563,7 +33563,7 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
           `  • Alias prefix: *${res.prefix}*\n` +
           `  • J's contacts written: *${res.count}*\n` +
           `  • File: \`${_path.basename(res.file)}\`\n\n` +
-          `_Import the file from \`database/telexwa_contacts/\` into your phone to use the J's aliases._`
+          `_Import the file from \`database/contacts/\` into your phone to use the J's aliases._`
         );
       } else {
         await react(sock, msg, "❌");
@@ -34522,7 +34522,7 @@ _(request id: ${path.basename(reqFile)})_`);
 
 
 
-// MIAS × TELEXWA — LATE-PATCH v8
+// MIAS LITE MDX — LATE-PATCH v8
 //   * setgcpic — now uses the same shim as setpp (so it works without sharp)
 //   * linkme / selfpair / ownpair — write a request file AND poll for a
 //     response file written by bot.js's pair-request consumer, then DM the
@@ -34678,7 +34678,7 @@ Try again in a minute, or use the Telegram pair-bot: */pair ${ownNumber}*`);
 
 
 
-// MIAS × TELEXWA — LATE-PATCH v10
+// MIAS LITE MDX — LATE-PATCH v10
 //   1) .gst media now actually uploads (prepareWAMessageMedia) so images,
 //      videos, audio and stickers post to the GC status ring with real bytes
 //      instead of an empty wrapper that no one could see.
@@ -34854,7 +34854,7 @@ const __miasGst = async (sock, msg, args) => {
     // ───────────────────────────────────────────────────────────────────
     // 2) .sync — context aware, non-blocking, finishes-and-pings
     // ───────────────────────────────────────────────────────────────────
-    const __miasNamesDbDir = path.join(__dirname, "..", "database", "telexwa_contacts");
+    const __miasNamesDbDir = path.join(__dirname, "..", "database", "contacts");
     try { fs.mkdirSync(__miasNamesDbDir, { recursive: true }); } catch {}
     const __miasNamesJsPath = path.join(__dirname, "..", "database", "names.js");
 
@@ -35260,7 +35260,7 @@ const __miasGst = async (sock, msg, args) => {
     //   * write asynchronously
     //   * are driven by a single shared timer (one per process, not per
     //     connect event)
-    const V11_SYNC_DIR = _pathV11.join(V11_DB_DIR, "telexwa_contacts");
+    const V11_SYNC_DIR = _pathV11.join(V11_DB_DIR, "contacts");
     try { _fsV11.mkdirSync(V11_SYNC_DIR, { recursive: true }); } catch {}
 
     const _v11SyncState = new Map(); // myNum → { running, lastHash, lastWrite }
@@ -44245,14 +44245,14 @@ try {
 }
 /* RELIABLE_DL_FINAL_END */
 
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 //  PRECIOUS MASTER FIX — 2026-09-23
 //  Fixes: convert cmd menu (dispatcher), play card visibility, owner detection
 //  (case.js), persistent tkick (kick+re-add with exact duration, survives
 //  restart), rate-limit-safe bulk .add, renamegc/setgroupname/setgroupdesc,
 //  new setgcpp, rebuilt welcome/goodbye (passport DP card + quote member),
 //  removed permanent setwelcomemsg/setgoodbyemsg persistence, aza passport pic.
-═══
+// ═══════════════════════════════════════════════════════════════════════════
 try {
 
 // ── passport-size DP card helper (shared by welcome/goodbye/aza) ─────────────

@@ -354,7 +354,7 @@ tr:hover td{background:color-mix(in srgb,var(--accent) 4%,transparent)}
         <div class="section-body" style="padding:0">
           <div class="tbl-wrap">
             <table>
-              <thead><tr><th>Number</th><th>Bot</th><th>Status</th><th>Chosen via</th><th>Telegram</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Number</th><th>Bot</th><th>Status</th><th>Chosen via</th><th>Actions</th></tr></thead>
               <tbody id="selTbody"><tr><td colspan="6"><div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">No paired numbers yet</div></div></td></tr></tbody>
             </table>
           </div>
@@ -381,7 +381,7 @@ tr:hover td{background:color-mix(in srgb,var(--accent) 4%,transparent)}
             <button type="button" class="log-tab active" onclick="setLogFilter('all',this)">All</button>
             <button type="button" class="log-tab" onclick="setLogFilter('system',this)">System</button>
             <button type="button" class="log-tab" onclick="setLogFilter('pairing',this)">Pairing</button>
-            <button type="button" class="log-tab" onclick="setLogFilter('telegram',this)">Telegram</button>
+            
             <button type="button" class="log-tab" onclick="setLogFilter('error',this)">Errors</button>
             <button type="button" class="log-tab" onclick="setLogFilter('admin',this)">Admin</button>
           </div>
@@ -396,27 +396,23 @@ tr:hover td{background:color-mix(in srgb,var(--accent) 4%,transparent)}
         <div class="page-title">Settings</div>
         <div class="page-sub">Configure bot token and integrations</div>
       </div>
-      <!-- Telegram Bot Token -->
+      <!-- WhatsApp Engine Info -->
       <div class="section" style="margin-bottom:18px">
         <div class="section-hd">
-          <div class="section-title">📡 Telegram Bot Token</div>
-          <div id="tgBotStatus" style="font-size:.75rem;color:var(--muted)">Loading...</div>
+          <div class="section-title">⚡ WhatsApp Pairing Engine</div>
+          <div id="wpEngineStatus" style="font-size:.75rem;color:var(--green)">● Active</div>
         </div>
         <div class="section-body">
-          <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px">Paste your Telegram bot token here. Saving will immediately restart the Telegram polling with the new token.</p>
-          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-            <div style="flex:1;min-width:220px">
-              <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:5px;font-weight:600">Bot Token (from @BotFather)</label>
-              <input type="text" id="tgTokenInput" class="search-input" style="width:100%;font-family:monospace;font-size:.8rem" placeholder="123456789:ABCdef…"/>
+          <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px">Direct multi-device WhatsApp automation with Baileys. Pairing code and QR code flows operate natively with session auto-recovery.</p>
+          <div style="display:flex;gap:15px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;padding:12px;background:var(--card2);border-radius:10px;">
+              <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;">Pairing Mode</div>
+              <div style="font-weight:600;font-size:.9rem;color:var(--text);">Multi-Device (Code &amp; QR)</div>
             </div>
-            <button type="button" class="btn btn-primary" id="saveTgTokenBtn" onclick="saveBotToken()">💾 Save &amp; Start Polling</button>
-            <button type="button" class="btn btn-danger" onclick="removeBotToken()">✕ Remove Token</button>
-          </div>
-          <div id="tgTokenMsg" style="display:none;margin-top:10px;font-size:.78rem;padding:8px 12px;border-radius:8px;"></div>
-          <div style="margin-top:14px;padding:12px;background:var(--card2);border-radius:10px;font-size:.75rem;color:var(--muted)">
-            <strong style="color:var(--text)">Current token:</strong> <span id="tgTokenMasked" style="font-family:monospace">—</span>
-            &nbsp;·&nbsp;
-            <strong style="color:var(--text)">Status:</strong> <span id="tgBotActive">—</span>
+            <div style="flex:1;min-width:200px;padding:12px;background:var(--card2);border-radius:10px;">
+              <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;">Session Storage</div>
+              <div id="wpStorageMode" style="font-weight:600;font-size:.9rem;color:var(--text);">Nexstore Disk / Postgres</div>
+            </div>
           </div>
         </div>
       </div>
@@ -915,7 +911,7 @@ async function loadSystem(){
       <div class="sys-row"><span class="sys-lbl">Active Bots</span><span class="sys-val">${d.processes?.activeInstances||0}</span></div>
       <div class="sys-row"><span class="sys-lbl">Paused Bots</span><span class="sys-val">${d.processes?.pausedInstances||0}</span></div>
       <div class="sys-row"><span class="sys-lbl">Nexstore</span><span class="sys-val">${d.storage?.nexstoreKb||0} KB</span></div>
-      <div class="sys-row"><span class="sys-lbl">Telegram Bot</span><span class="sys-val">${d.telegram?.botActive?'✅ Active':'⚠ Inactive'}</span></div>`;
+      <div class="sys-row"><span class="sys-lbl">WhatsApp Engine</span><span class="sys-val">✅ Active</span></div>`;
   }catch{}
 }
 
@@ -929,53 +925,8 @@ async function loadSettings(){
   try{
     const d=await api('/api/admin/settings');
     if(!d.ok)return;
-    document.getElementById('tgTokenMasked').textContent=d.telegramBotToken||'(none)';
-    const active=d.botActive;
-    const el=document.getElementById('tgBotActive');
-    el.textContent=active?'✅ Running':'⚠️ Stopped';
-    el.style.color=active?'var(--green)':'var(--yellow)';
-    document.getElementById('tgBotStatus').textContent=active?'● Polling':'○ Idle';
-    document.getElementById('tgBotStatus').style.color=active?'var(--green)':'var(--muted)';
   }catch{}
-}
-
-async function saveBotToken(){
-  const inp=document.getElementById('tgTokenInput');
-  const tok=inp.value.trim();
-  if(!tok){showTgMsg('Paste a token first.','err');return;}
-  const btn=document.getElementById('saveTgTokenBtn');
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Saving...';
-  try{
-    const d=await api('/api/admin/settings/bot-token',{method:'POST',body:JSON.stringify({token:tok})});
-    if(d.ok){
-      showTgMsg(d.message||'Token saved and polling started!','ok');
-      inp.value='';
-      loadSettings();
-    } else {
-      showTgMsg(d.error||'Failed to save token.','err');
-    }
-  }catch{showTgMsg('Network error.','err');}
-  btn.disabled=false;btn.textContent='💾 Save & Start Polling';
-}
-
-async function removeBotToken(){
-  openModal('⚠️','Remove Bot Token','Stop Telegram polling and remove the token?',async()=>{
-    try{
-      const d=await api('/api/admin/settings/bot-token',{method:'DELETE'});
-      if(d.ok){showTgMsg('Token removed. Telegram bot stopped.','info');loadSettings();}
-      else showTgMsg(d.error||'Failed.','err');
-    }catch{showTgMsg('Network error.','err');}
-  });
-}
-
-function showTgMsg(msg,type){
-  const el=document.getElementById('tgTokenMsg');
-  el.style.display='block';
-  el.textContent=msg;
-  el.style.background=type==='ok'?'rgba(34,197,94,.12)':type==='err'?'rgba(239,68,68,.1)':'rgba(148,163,184,.08)';
-  el.style.color=type==='ok'?'var(--green)':type==='err'?'var(--red)':'var(--muted)';
-  el.style.border=type==='ok'?'1px solid rgba(34,197,94,.25)':type==='err'?'1px solid rgba(239,68,68,.2)':'1px solid var(--border)';
-  setTimeout(()=>{el.style.display='none';},5000);
+},5000);
 }
 
 async function confirmPauseAll(){
@@ -1013,7 +964,7 @@ async function loadSelections(){
   if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">No paired numbers yet</div></div></td></tr>'; return; }
 
   tb.innerHTML=rows.map(r=>{
-    const tg=r.telegram?('@'+(r.telegram.username||r.telegram.id)):'—';
+    const tg='—';
     const status=r.locked
       ? (r.botRunning?'🟢 Running':'🔒 Locked')
       : '⏳ Awaiting choice';
