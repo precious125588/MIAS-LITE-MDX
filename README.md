@@ -87,3 +87,7 @@ This repository is pre-configured for automated deployment:
 
 Built with ❤️ by **Precious** ([@precious125588](https://github.com/precious125588)) and the MAIS community.
 Licensed under the [MIT License](LICENSE).
+
+### Automatic host-memory sizing
+
+The bot reads the container's cgroup memory limit (cgroup v2 and v1) and uses it to choose a conservative V8 heap limit for each bot worker. Worker sizing decreases as more worker processes are active. If no container limit is exposed, it falls back to the host's available-memory report. `BOT_CHILD_HEAP_MB` remains available as an explicit per-worker override, and `BOT_MEMORY_LIMIT_MB` can be used when a platform hides its container limit. These settings affect memory allocation only; they do not guarantee a host's overall memory capacity or prevent platform-level OOM termination.
