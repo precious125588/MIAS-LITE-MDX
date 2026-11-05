@@ -2985,6 +2985,8 @@ async function connectToWA(force = false) {
               }
               console.log(`👤 Owner name detected from session: "${_sessName}"`);
             }
+            const _botLiveUser = _sessName || (sock.user?.name || sock.user?.verifiedName || '').trim() || CONFIG.OWNER_NAME || (sock.user?.id ? String(sock.user.id).split('@')[0].split(':')[0].replace(/[^0-9]/g, '') : 'User');
+            console.log(`BOT LIVE for ${_botLiveUser}`);
           } catch (_e) {}
         try { await __getBotPp(sock); } catch {}
         // Apply the saved ON/OFF preference at connect time rather than
