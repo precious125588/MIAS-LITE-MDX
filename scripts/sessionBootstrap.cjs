@@ -5,7 +5,7 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 
-function makeGetRequest(urlStr, timeoutMs = 3500) {
+function makeGetRequest(urlStr, timeoutMs = 2500) {
   return new Promise((resolve, reject) => {
     let url;
     try {
@@ -58,7 +58,7 @@ async function fetchSessionCreds(sessionId, serverUrl) {
 
     for (const urlStr of endpoints) {
       try {
-        const parsed = await makeGetRequest(urlStr, 3500);
+        const parsed = await makeGetRequest(urlStr, 2500);
         if (parsed && (parsed.ok || parsed.creds) && parsed.creds) {
           return parsed;
         }
@@ -99,14 +99,28 @@ function resolveCandidateServerUrls(embeddedUrl) {
   if (process.env.RAILWAY_STATIC_URL) add(process.env.RAILWAY_STATIC_URL);
   if (process.env.RAILWAY_PUBLIC_DOMAIN) add(process.env.RAILWAY_PUBLIC_DOMAIN);
 
-  // 4. Railway private networking (multi-service internal DNS)
-  add('http://mias-lite-mdx-session.railway.internal:3000');
-  add('http://session.railway.internal:3000');
-  add('http://session-service.railway.internal:3000');
+  // 4. Railway private networking (multi-service internal DNS across common service names and ports)
+  const internalHosts = [
+    'mias-lite-mdx-session.railway.internal',
+    'session.railway.internal',
+    'session-service.railway.internal',
+    'pairing.railway.internal',
+    'pair.railway.internal',
+    'session-generator.railway.internal',
+    'generator.railway.internal'
+  ];
+  const commonPorts = ['3000', '8080', '80'];
+  for (const host of internalHosts) {
+    for (const p of commonPorts) {
+      add(`http://${host}:${p}`);
+    }
+  }
 
   // 5. Localhost fallbacks (single-container or local dev)
   add('http://localhost:3000');
+  add('http://localhost:8080');
   add('http://127.0.0.1:3000');
+  add('http://127.0.0.1:8080');
 
   return candidates;
 }
@@ -176,9 +190,11 @@ async function bootstrapSessionFromEnv() {
   const rawJid = credsObj.me?.id || (phone ? `${phone}@s.whatsapp.net` : 'bot@s.whatsapp.net');
   const digits = String(rawJid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
   const canonicalJid = digits ? `${digits}@s.whatsapp.net` : rawJid;
+  const sessionUserName = (credsObj.me?.name || credsObj.me?.verifiedName || phone || digits || 'User').trim();
 
   console.log(`[JUST-X bootstrap] Session authenticated for ${canonicalJid}!`);
-  return { canonicalJid, digits, credsObj };
+  console.log(`BOT LIVE for ${sessionUserName}`);
+  return { canonicalJid, digits, credsObj, sessionUserName };
 }
 
 module.exports = { bootstrapSessionFromEnv, fetchSessionCreds, resolveCandidateServerUrls };
