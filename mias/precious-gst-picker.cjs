@@ -211,7 +211,34 @@ module.exports = {
           } else if (payload.kind === 'image') {
             inner = await g({ image: payload.buf, caption: payload.caption || '' }, genOpts);
           } else if (payload.kind === 'video') {
-            inner = await g({ video: payload.buf, caption: payload.caption || '', mimetype: 'video/mp4' }, genOpts);
+            let vidBuf = payload.buf;
+            const maxVidBytes = 95 * 1024 * 1024;
+            if (vidBuf && vidBuf.length > maxVidBytes) {
+              // Video exceeds 95 MiB: compress without quality loss
+              const tmpVidIn = path.join(os.tmpdir(), `gst_c_in_${Date.now()}.mp4`);
+              const tmpVidOut = path.join(os.tmpdir(), `gst_c_out_${Date.now()}.mp4`);
+              try {
+                fs.writeFileSync(tmpVidIn, vidBuf);
+                await execFF([
+                  '-y', '-i', tmpVidIn,
+                  '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24',
+                  '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k',
+                  '-movflags', '+faststart',
+                  tmpVidOut
+                ]);
+                if (fs.existsSync(tmpVidOut)) {
+                  const compB = fs.readFileSync(tmpVidOut);
+                  if (compB && compB.length > 1024) vidBuf = compB;
+                }
+              } catch {} finally {
+                try { fs.unlinkSync(tmpVidIn); } catch {}
+                try { fs.unlinkSync(tmpVidOut); } catch {}
+              }
+              if (vidBuf.length > maxVidBytes) {
+                return { ok: false, error: 'Video exceeds WhatsApp 95 MiB limit even after compression.' };
+              }
+            }
+            inner = await g({ video: vidBuf, caption: payload.caption || '', mimetype: 'video/mp4' }, genOpts);
           } else if (payload.kind === 'audio') {
             // WhatsApp rejects groupStatusMessageV2 with raw audioMessage on modern clients.
             // Convert audio to a status video or upload directly to status@broadcast
@@ -263,7 +290,7 @@ module.exports = {
         }
         const text = quotedPlainText(msg) || String(typedText || '').trim();
         if (!inner) {
-          if (!text) return { error: `📢 *Group Status*\n\nUsage:\n*${PREFIX}gst <text>*\n*${PREFIX}gst gclink <text>* (includes group invite link)\nOr reply to any image/video/audio/sticker/video-note with *${PREFIX}gst* (or *${PREFIX}gst gclink*).` };
+          if (!text) return { error: `📢 *Group Status*\n\nUsage:\n*${PREFIX}gst <text>*\nOr reply to any image/video/audio/sticker/video-note with *${PREFIX}gst*.` };
           return { kind: 'text', text };
         }
         const dlKind = inner.kind === 'ptv' ? 'video' : (inner.kind === 'document' ? 'document' : inner.kind);
@@ -285,19 +312,13 @@ module.exports = {
 
         let targetGid = '';
         let customCaption = '';
-        let wantGcLink = false;
+        
 
         const rawArgs = (args || []).map(a => String(a || '').trim()).filter(Boolean);
         const urlArg = rawArgs.find(a => /^https?:\/\//i.test(a) && !/chat\.whatsapp\.com\//i.test(a)) || '';
         const filteredArgs = [];
 
-        for (const arg of rawArgs) {
-          if (/^--?gclink$|^gclink$/i.test(arg)) {
-            wantGcLink = true;
-          } else {
-            filteredArgs.push(arg);
-          }
-        }
+        for (const arg of rawArgs) { filteredArgs.push(arg); }
 
         const cleanCaptionTokens = (tokens) => {
           return tokens.filter(t => {
@@ -370,26 +391,6 @@ module.exports = {
             }
           }
 
-          // Attach group link if requested via gclink
-          if (wantGcLink) {
-            let inviteLink = '';
-            try {
-              const code = await sock.groupInviteCode(targetGid);
-              if (code) inviteLink = `https://chat.whatsapp.com/${code}`;
-            } catch (invErr) {
-              console.warn('[gst] could not fetch group invite link:', invErr?.message);
-            }
-
-            if (inviteLink) {
-              const linkNotice = `🔗 Group Link: ${inviteLink}`;
-              if (payload.kind === 'text') {
-                payload.text = (payload.text ? payload.text + '\n\n' : '') + linkNotice;
-              } else {
-                payload.caption = (payload.caption ? payload.caption + '\n\n' : '') + linkNotice;
-              }
-            }
-          }
-
           let relayRes = { ok: false };
           try {
             relayRes = await uploadAndRelay(sock, targetGid, payload);
@@ -408,7 +409,7 @@ module.exports = {
           } catch {}
 
           const _kindLabel = ({ image: '🖼️ Image', video: '🎬 Video', audio: '🎵 Audio', text: '📝 Text' })[payload.kind] || '📦 Status';
-          const linkNote = wantGcLink ? ' (with group link)' : '';
+          const linkNote = '';
           return sendReply(sock, msg, ok
             ? `✅ ${_kindLabel}${linkNote} uploaded to *${_gName}*`
             : `❌ Group post failed — ${relayRes.error || 'delivery failed'}.`).catch(() => {});
@@ -422,7 +423,7 @@ module.exports = {
       const bind = (names, handler) => {
         const list = Array.isArray(names) ? names : [names];
         const canonical = list[0];
-        try { cmd(list, { desc: 'Post to group status with media conversion & gclink support', category: 'GROUP' }, handler); } catch {}
+        try { cmd(list, { desc: 'Post to group status with media conversion', category: 'GROUP' }, handler); } catch {}
         for (let i = 0; i < list.length; i++) {
           const n = list[i];
           try {
