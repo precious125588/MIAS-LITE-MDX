@@ -45031,10 +45031,25 @@ cmd(["tomp4", "tovideo", "converttomp4", "doc2mp4"], { desc: "Convert any video/
       await finish("The converted video is over 2 GB, which is WhatsApp's document limit.");
       return;
     }
-    if (outBuf.length > WA_VIDEO_MAX_BYTES) {
-      await sock.sendMessage(jid, { document: outBuf, mimetype: "video/mp4", fileName: "converted.mp4", caption: "Over 92 MB, so I sent it as a document. Quality is unchanged." }, { quoted: msg });
-    } else {
-      await sock.sendMessage(jid, { video: outBuf, mimetype: "video/mp4" }, { quoted: msg });
+    // Deliver through 4K delivery pipeline without quality loss
+    let sent4k = false;
+    try {
+      const disk = require("./lib/tiktokDiskDelivery.cjs");
+      if (disk && fs.existsSync(outPath) && typeof disk.sendVideoFromDisk === "function") {
+        if (outBuf.length > WA_VIDEO_MAX_BYTES) {
+          await disk.sendDocumentFromDisk(sock, jid, outPath, "converted.mp4", "Converted to MP4 (lossless).", msg);
+        } else {
+          await disk.sendVideoFromDisk(sock, jid, outPath, "", msg);
+        }
+        sent4k = true;
+      }
+    } catch {}
+    if (!sent4k) {
+      if (outBuf.length > WA_VIDEO_MAX_BYTES) {
+        await sock.sendMessage(jid, { document: outBuf, mimetype: "video/mp4", fileName: "converted.mp4", caption: "Over 92 MB, so I sent it as a document. Quality is unchanged." }, { quoted: msg });
+      } else {
+        await sock.sendMessage(jid, { video: outBuf, mimetype: "video/mp4" }, { quoted: msg });
+      }
     }
     await finish(null);
   } catch (e) {
