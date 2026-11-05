@@ -121,6 +121,22 @@ export function installSplitVideo(ctx) {
   }
 
   async function sendVideoFile(sock, jid, msg, file, caption) {
+    // Deliver through 4K delivery pipeline without re-encoding
+    try {
+      const disk = await import("../lib/tiktokDiskDelivery.cjs");
+      if (disk && typeof disk.sendVideoFromDisk === "function") {
+        const stats = fs.statSync(file);
+        if (stats.size > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
+        if (stats.size > WA_VIDEO_MAX_BYTES) {
+          await disk.sendDocumentFromDisk(sock, jid, file, path.basename(file), caption, msg);
+          return;
+        }
+        await disk.sendVideoFromDisk(sock, jid, file, caption, msg);
+        return;
+      }
+    } catch (deliveryErr) {
+      // Fallback to direct send if delivery helper fails
+    }
     const isStatus = msg?.key?.remoteJid === "status@broadcast";
     const sendOpts = isStatus ? {} : { quoted: msg };
     const buf = fs.readFileSync(file);
