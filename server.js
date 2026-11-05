@@ -1049,7 +1049,7 @@ app.get('/api/admin/logs/stream', (req,res) => {
     res.setHeader('Connection','keep-alive');
     res.setHeader('X-Accel-Buffering','no');
     res.flushHeaders();
-    ['system','pairing','telegram','error','admin'].forEach(type=>{
+    ['system','pairing','error','admin'].forEach(type=>{
         const lines=logger.readLog(type,30);
         if(lines.length) res.write(`event: bootstrap\ndata: ${JSON.stringify({type,lines})}\n\n`);
     });
@@ -1090,7 +1090,7 @@ app.get('/api/admin/stats', (req,res) => {
         uptime:process.uptime(),errors:errorLog.length,memory:mem,
         cpu:{load1:cpu[0],load5:cpu[1],load15:cpu[2],cores:os.cpus().length},
         os:{freemem:os.freemem(),totalmem:os.totalmem(),platform:os.platform()},
-        analytics,telegramActive:!!global._telegramBotLoaded,serverReady:_ready});
+        analytics,serverReady:_ready});
 });
 
 // ── Admin: users ──────────────────────────────────────────────────────────────
@@ -1277,10 +1277,10 @@ app.get('/api/admin/pairlog',   (req,res)=>{ if(!isAdmin(req))return res.status(
 app.get('/api/admin/sessions',  (req,res)=>{ if(!isAdmin(req))return res.status(403).json({ok:false,error:'Unauthorized'}); const{source}=req.query;res.json({ok:true,sessions:source?registry.getBySource(source):registry.getAll()}); });
 app.get('/api/admin/logs', (req,res)=>{
     if(!isAdmin(req))return res.status(403).json({ok:false,error:'Unauthorized'});
-    const type=['system','pairing','telegram','error','admin'].includes(req.query.type)?req.query.type:'system';
+    const type=['system','pairing','error','admin'].includes(req.query.type)?req.query.type:'system';
     res.json({ok:true,logs:logger.readLog(type,parseInt(req.query.limit)||100),type});
 });
-app.post('/api/admin/cache/clear-logs',(req,res)=>{ if(!isAdmin(req))return res.status(403).json({ok:false,error:'Unauthorized'}); ['system','pairing','telegram','error','admin'].forEach(t=>logger.clearLog(t));res.json({ok:true}); });
+app.post('/api/admin/cache/clear-logs',(req,res)=>{ if(!isAdmin(req))return res.status(403).json({ok:false,error:'Unauthorized'}); ['system','pairing','error','admin'].forEach(t=>logger.clearLog(t));res.json({ok:true}); });
 
 app.get('/api/admin/analytics', (req,res) => {
     if (!isAdmin(req)) return res.status(403).json({ok:false,error:'Unauthorized'});
@@ -1301,7 +1301,7 @@ app.get('/api/admin/system', async (req,res) => {
         processes:{activeInstances:running.filter(r=>r.alive).length,pausedInstances:running.filter(r=>r.paused).length,pids:running.filter(r=>r.alive).map(r=>r.pid)},
         database: dbStatus,
         volume: { mounted: dbStatus.volumeMounted, root: _sessionPaths ? _sessionPaths.nexstoreRoot() : '/app/nexstore' },
-        telegram:{botActive:!!global._telegramBotLoaded},serverReady:_ready});
+        serverReady:_ready});
 });
 
 app.post('/api/admin/reconnect-failed', async (req,res) => {
@@ -1321,71 +1321,17 @@ app.get('/api/admin/backup', (req,res) => {
     res.send(JSON.stringify(backup,null,2));
 });
 
-// ── Admin: settings (bot token, etc.) ────────────────────────────────────────
+// ── Admin: settings ────────────────────────────────────────────────────────
 app.get('/api/admin/settings', (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ok:false,error:'Unauthorized'});
-    const tok = configuredTelegramToken();
-    const masked = tok.length > 8 ? tok.slice(0,6) + '…' + tok.slice(-4) : tok ? '••••••••' : '';
-    const tg = global._telegramBotState || {};
     res.json({
-        ok:true,
-        telegramBotToken: masked,
-        hasTelegramBot: !!tok,
-        botActive: tg.polling === true,
-        botConfigured: tg.configured === true,
-        botError: tg.lastError || null,
-        tokenSource: process.env.TELEGRAM_BOT_TOKEN ? 'environment' : (process.env.BOT_TOKEN ? 'environment-alias' : 'admin-settings')
+        ok: true,
+        sessionDir: process.env.SESSION_DIR || '/app/nexstore',
+        creatorUsername: process.env.CREATOR_USERNAME || 'precious125588',
+        nodeVersion: process.version,
+        platform: process.platform,
+        uptime: process.uptime()
     });
-});
-
-app.post('/api/admin/settings/bot-token', async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ok:false,error:'Unauthorized'});
-    const {token} = req.body;
-    if (!token || typeof token !== 'string' || token.trim().length < 10)
-        return res.status(400).json({ok:false,error:'Invalid token — must be at least 10 characters.'});
-    const newToken = token.trim();
-    process.env.TELEGRAM_BOT_TOKEN = newToken;
-    adminSettings.telegramBotToken = newToken;
-    writeJson(ADMIN_SETTINGS_FILE, adminSettings);
-    try {
-        // Stop the currently-running poller BEFORE loading a new one, otherwise
-        // both poll the same token and Telegram answers every request with
-        // 409 Conflict. bot.js also guards this via global._miasTelegramBot.
-        if (global._miasTelegramBot) {
-            try { global._miasTelegramBot.stopPolling({ cancel: true }); } catch {}
-            global._miasTelegramBot = null;
-        }
-        try { try { delete require.cache[require.resolve('./nexstore_modules/token')]; } catch {} try { delete require.cache[require.resolve('./nexstore/token')]; } catch {} } catch {}
-        try { delete require.cache[require.resolve('./bot')]; } catch {}
-        global._telegramBotLoaded = false;
-        global._telegramBotState = null;
-        require('./bot');
-        global._telegramBotLoaded = true;
-        logger.log('admin', 'Telegram bot token updated and polling restarted');
-        res.json({ok:true, message:'Token saved. Bot polling restarted.'});
-    } catch(e) {
-        logger.error('admin', 'Bot token reload error: '+e.message);
-        res.status(500).json({ok:false, error:'Token saved but bot failed to start: '+e.message});
-    }
-});
-
-app.delete('/api/admin/settings/bot-token', (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ok:false,error:'Unauthorized'});
-    delete process.env.TELEGRAM_BOT_TOKEN;
-    delete adminSettings.telegramBotToken;
-    writeJson(ADMIN_SETTINGS_FILE, adminSettings);
-    // Actually stop polling — previously the token was only removed from the
-    // config file while the old poller kept holding the Telegram token.
-    if (global._miasTelegramBot) {
-        try { global._miasTelegramBot.stopPolling({ cancel: true }); } catch {}
-        global._miasTelegramBot = null;
-    }
-    try { delete require.cache[require.resolve('./bot')]; } catch {}
-    try { try { delete require.cache[require.resolve('./nexstore_modules/token')]; } catch {} try { delete require.cache[require.resolve('./nexstore/token')]; } catch {} } catch {}
-    global._telegramBotLoaded = false;
-    global._telegramBotState = null;
-    logger.log('admin', 'Telegram bot token removed');
-    res.json({ok:true, message:'Token removed. Telegram bot stopped.'});
 });
 
 app.get('/admin', (_,res) => {
@@ -1422,17 +1368,7 @@ const httpServer = app.listen(PORT, '0.0.0.0', () => {
             logger.log('system', `Settings DB: ${stgMsg} | Session DB: ${sessMsg}`);
         }).catch(() => {});
         console.log('✅ Server READY\n');
-        setTimeout(()=>{
-            try {
-                if(configuredTelegramToken()){
-                    require('./bot');
-                    global._telegramBotLoaded=true;
-                    logger.log('system','Telegram bot loaded from environment/persisted settings');
-                } else {
-                    logger.warn('system','Telegram bot not loaded: TELEGRAM_BOT_TOKEN/BOT_TOKEN is missing');
-                }
-            } catch(e){logger.error('system','Telegram bot error: '+e.message);}
-        },3000);
+        
         setTimeout(()=>_autoLoadPairs(),6000);
     });
 });

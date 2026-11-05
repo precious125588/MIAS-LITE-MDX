@@ -1,7 +1,7 @@
 
 module.exports = {
   apps: [{
-    name: "tg-bot",
+    name: "mias-lite-mdx",
     script: "./index.js",
     watch: true,
     ignore_watch: [
