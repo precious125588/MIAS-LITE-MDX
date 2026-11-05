@@ -1,0 +1,19 @@
+{
+  "name": "cox",
+  "version": "1.0.0",
+  "description": "Cox — local drop-in helper for the gktw adapter. Exposes the same function surface (@itsreimau/gktw compatible) implemented on top of Baileys. Lives inside the repo so installs always succeed even though the upstream package is 404.",
+  "main": "index.js",
+  "type": "commonjs",
+  "exports": {
+    ".": "./index.js",
+    "./hero":   "./hero.js",
+    "./carousel": "./carousel.js",
+    "./list":   "./list.js",
+    "./interactive": "./interactive.js",
+    "./package.json": "./package.json"
+  },
+  "keywords": ["baileys", "whatsapp", "gktw", "cox", "drop-in"],
+  "author": "precious125588",
+  "license": "MIT",
+  "dependencies": {}
+}

@@ -1,0 +1,13 @@
+# Discipline creators. One username per line (with or without @). Lines starting with # are ignored.
+rude_advice
+jesse.serna.02
+fam0us.mikeey
+marcushullaster
+breakuptoresilience
+aidenheaney
+risenexx
+churchill___._
+quietauthority.exe
+mindful_mo
+big.body485
+relentless__mentality

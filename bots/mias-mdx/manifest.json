@@ -1,0 +1,21 @@
+{
+  "id": "mias-mdx",
+  "name": "MIAS MDX",
+  "tagline": "Stable • Full Features",
+  "description": "The original MIAS MDX bot — battle-tested, full command set, all engines enabled.",
+  "version": "2.0.1",
+  "status": "stable",
+  "entry": "mias/index.js",
+  "env": {
+    "BOT_NAME": "MIAS MDX",
+    "BOT_VERSION": "2.0.1",
+    "THEME": "cyber",
+    "MENU_STYLE": "native-flow"
+  },
+  "deploySteps": [
+    "Session created",
+    "Plugins loaded",
+    "Database initialized",
+    "Deployment complete"
+  ]
+}

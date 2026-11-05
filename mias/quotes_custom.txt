@@ -1,0 +1,2 @@
+# Add your own quotes here, one per line. Blank lines and lines starting with # are ignored.
+# They join the .quote pool and the menu quotes after the next restart.

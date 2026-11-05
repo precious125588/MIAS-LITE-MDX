@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark-leon">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MAIS MDX — Admin Panel</title>
+<style>
+/* ── THEMES (same 7 as homepage) ── */
+[data-theme="dark-leon"]{--bg:#05070b;--card:#0b1018;--card2:#101824;--text:#e8eef6;--muted:#7d8a9c;--accent:#3ef2c4;--accent2:#25d366;--green:#22c55e;--red:#ff5c6c;--yellow:#ffc24d;--border:rgba(62,242,196,0.14);--glow:0 0 40px rgba(62,242,196,0.12);--shadow:0 30px 80px -30px rgba(0,0,0,0.9);--grad:radial-gradient(ellipse 60% 40% at 15% 0%,rgba(62,242,196,0.10),transparent 70%),radial-gradient(ellipse 50% 40% at 90% 100%,rgba(37,211,102,0.07),transparent 70%);--btn-text:#03150b;}
+[data-theme="cyber-neon"]{--bg:#0d0014;--card:#140020;--card2:#1e0030;--text:#ffe1ff;--muted:#b47ec8;--accent:#ff2dde;--accent2:#39ff14;--green:#39ff14;--red:#ff2d2d;--yellow:#fff200;--border:rgba(255,45,222,0.2);--glow:0 0 30px rgba(255,45,222,0.2);--shadow:0 20px 60px rgba(0,0,0,0.6);--grad:radial-gradient(ellipse at 20% 20%,rgba(255,45,222,0.08),transparent 60%);--btn-text:#000;}
+[data-theme="galaxy"]{--bg:#05030f;--card:#0d0828;--card2:#130f35;--text:#ddd6fe;--muted:#8b5cf6;--accent:#a78bfa;--accent2:#60a5fa;--green:#34d399;--red:#f87171;--yellow:#fbbf24;--border:rgba(167,139,250,0.2);--glow:0 0 40px rgba(167,139,250,0.15);--shadow:0 20px 60px rgba(0,0,0,0.7);--grad:radial-gradient(ellipse at 20% 20%,rgba(167,139,250,0.1),transparent 60%);--btn-text:#fff;}
+[data-theme="matrix"]{--bg:#000300;--card:#001200;--card2:#001a00;--text:#00ff41;--muted:#00aa2b;--accent:#00ff41;--accent2:#39ff14;--green:#00ff41;--red:#ff4444;--yellow:#ccff00;--border:rgba(0,255,65,0.15);--glow:0 0 30px rgba(0,255,65,0.2);--shadow:0 20px 60px rgba(0,0,0,0.8);--grad:radial-gradient(ellipse at 50% 50%,rgba(0,255,65,0.05),transparent 70%);--btn-text:#000;}
+[data-theme="sunset"]{--bg:#120508;--card:#1e0a0d;--card2:#2a0f12;--text:#fde8d0;--muted:#c08060;--accent:#ff6b35;--accent2:#f7c59f;--green:#4ade80;--red:#ff4444;--yellow:#fbbf24;--border:rgba(255,107,53,0.2);--glow:0 0 30px rgba(255,107,53,0.15);--shadow:0 20px 60px rgba(0,0,0,0.6);--grad:radial-gradient(ellipse at 20% 20%,rgba(255,107,53,0.1),transparent 60%);--btn-text:#000;}
+[data-theme="ocean"]{--bg:#020c14;--card:#031a2a;--card2:#042338;--text:#cce8f4;--muted:#5b9ab5;--accent:#00b4d8;--accent2:#48cae4;--green:#06d6a0;--red:#ef476f;--yellow:#ffd166;--border:rgba(0,180,216,0.18);--glow:0 0 30px rgba(0,180,216,0.15);--shadow:0 20px 60px rgba(0,0,0,0.6);--grad:radial-gradient(ellipse at 20% 20%,rgba(0,180,216,0.08),transparent 60%);--btn-text:#000;}
+[data-theme="arctic"]{--bg:#f0f5f9;--card:#ffffff;--card2:#e8f4f8;--text:#1a2332;--muted:#5a7a8a;--accent:#0077b6;--accent2:#00b4d8;--green:#2d9e5f;--red:#e63946;--yellow:#e9c46a;--border:rgba(0,119,182,0.2);--glow:0 0 20px rgba(0,119,182,0.1);--shadow:0 10px 40px rgba(0,0,0,0.08);--grad:radial-gradient(ellipse at 20% 20%,rgba(0,119,182,0.07),transparent 60%);--btn-text:#fff;}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;transition:background .4s,color .4s;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradient(circle at 70% 30%,rgba(255,0,40,.22),transparent 65%),radial-gradient(circle at 20% 75%,rgba(180,0,30,.18),transparent 55%),linear-gradient(180deg,rgba(7,2,4,.78) 0%,rgba(10,2,6,.92) 100%);pointer-events:none}
+body::before{content:'';position:fixed;inset:0;z-index:0;background:var(--grad);pointer-events:none}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:48px 48px;-webkit-mask-image:radial-gradient(ellipse at 60% 0%,#000,transparent 70%);mask-image:radial-gradient(ellipse at 60% 0%,#000,transparent 70%)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+.muted{color:var(--muted)}
+
+.shell{position:relative;z-index:1;display:flex;min-height:100vh}
+.sidebar{width:248px;background:color-mix(in srgb,var(--card) 80%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.sb-brand{font-size:1.05rem;font-weight:880;letter-spacing:.2px;background:linear-gradient(100deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.sb-sub{font-size:.62rem;color:var(--muted);letter-spacing:1.6px;text-transform:uppercase;font-weight:700;margin-top:3px}
+.sb-logo > div{display:flex;flex-direction:column}
+nav{flex:1;padding:14px 12px;display:grid;gap:4px;align-content:start}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:13px;cursor:pointer;font-size:.84rem;color:var(--muted);transition:all .2s;border:1px solid transparent;background:none;width:100%;text-align:left;font-weight:600}
+.nav-item:hover{background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--text)}
+.nav-item.active{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 18%,transparent),color-mix(in srgb,var(--accent) 2%,transparent));color:var(--text);border-color:color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
+.nav-icon{font-size:1rem;width:22px;height:22px;display:grid;place-items:center;flex:none}
+.sb-footer{padding:16px 18px;border-top:1px solid var(--border);display:grid;gap:9px}
+.sb-status{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted)}
+.sb-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);animation:blink 1.6s ease-in-out infinite;flex-shrink:0}
+.sb-credit{font-size:.66rem;color:var(--muted);letter-spacing:.5px}
+.sb-credit b{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:850}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.main{flex:1;padding:30px 34px 64px;overflow-x:hidden;min-width:0}
+.page-header{margin-bottom:24px;display:flex;flex-direction:column;gap:6px}
+.page-title{font-size:1.6rem;font-weight:850;letter-spacing:-.03em;line-height:1.1}
+.page-sub{font-size:.84rem;color:var(--muted);line-height:1.5;max-width:640px}
+.tab-pane{display:none}.tab-pane.active{display:block;animation:fadeUp .35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.topbar{position:fixed;top:14px;right:18px;z-index:300;display:flex;gap:8px;align-items:center}
+.tb-btn{height:36px;padding:0 14px;border-radius:999px;background:color-mix(in srgb,var(--card) 80%,transparent);backdrop-filter:blur(12px);border:1px solid var(--border);font-size:.76rem;font-weight:650;color:var(--muted);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+
+#tp{display:none;position:fixed;top:62px;right:18px;z-index:400;background:color-mix(in srgb,var(--card) 96%,transparent);backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:18px;padding:14px;width:296px;box-shadow:var(--shadow);animation:slideDown .2s ease}
+#tp.open{display:block}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.tp-hd{font-size:.66rem;color:var(--muted);margin-bottom:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px}
+.tp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.tp-card{border-radius:12px;padding:8px;cursor:pointer;border:2px solid transparent;transition:all .2s;position:relative}
+.tp-card:hover{border-color:var(--accent)}
+.tp-card.sel{border-color:var(--accent)}
+.tp-card.sel::after{content:'✓';position:absolute;top:3px;right:6px;font-size:.6rem;color:#fff;font-weight:900}
+.tp-preview{height:22px;border-radius:7px;margin-bottom:4px;position:relative}
+.tp-dot{position:absolute;width:6px;height:6px;border-radius:50%;top:50%;transform:translateY(-50%)}
+.tp-name{font-size:.68rem;font-weight:800;color:#fff}
+
+#loginScreen{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
+#loginScreen::before{content:'';position:absolute;inset:0;background:var(--grad);pointer-events:none}
+#loginScreen::after{content:'';position:absolute;width:620px;height:620px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 18%,transparent),transparent);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;filter:blur(20px)}
+.login-card{position:relative;z-index:1;background:linear-gradient(180deg,color-mix(in srgb,var(--card2) 70%,transparent),color-mix(in srgb,var(--card) 96%,transparent));backdrop-filter:blur(22px);border:1px solid var(--border);border-radius:26px;padding:44px 36px;width:384px;max-width:92vw;box-shadow:var(--shadow),var(--glow)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo .ring{width:70px;height:70px;border-radius:22px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.9rem;margin:0 auto 16px;box-shadow:0 16px 44px -10px color-mix(in srgb,var(--accent) 60%,transparent)}
+.login-logo .brand{font-size:1.4rem;font-weight:850;letter-spacing:-.01em}
+.login-logo .sub{font-size:.7rem;color:var(--muted);margin-top:6px;letter-spacing:1.6px;text-transform:uppercase;font-weight:700}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;font-size:.74rem;color:var(--muted);margin-bottom:7px;font-weight:650}
+.login-field input{width:100%;background:color-mix(in srgb,var(--bg) 70%,transparent);border:1px solid var(--border);border-radius:13px;padding:13px 15px;color:var(--text);font-size:.92rem;outline:none;transition:border-color .25s,box-shadow .25s}
+.login-field input:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 14%,transparent)}
+.login-field input::placeholder{color:var(--muted)}
+.login-err{display:none;font-size:.78rem;color:var(--red);margin-top:8px;padding:9px 12px;background:rgba(255,92,108,.08);border-radius:11px;border:1px solid rgba(255,92,108,.22)}
+.login-btn{width:100%;padding:14px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--btn-text);font-size:.92rem;font-weight:850;cursor:pointer;margin-top:8px;transition:all .2s;box-shadow:0 16px 36px -12px color-mix(in srgb,var(--accent) 65%,transparent)}
+.login-btn:hover{transform:translateY(-1px)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-bottom:22px}
+.stat-card{position:relative;overflow:hidden;background:linear-gradient(165deg,color-mix(in srgb,var(--card2) 85%,transparent),color-mix(in srgb,var(--card) 94%,transparent));border:1px solid var(--border);border-radius:20px;padding:18px;transition:transform .25s,border-color .25s,box-shadow .25s;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.stat-card::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--tint,var(--accent)),transparent);opacity:.8}
+.stat-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--tint,var(--accent)) 45%,transparent);box-shadow:0 20px 44px -26px var(--tint,var(--accent))}
+.stat-card.green{--tint:var(--green)}
+.stat-card.red{--tint:var(--red)}
+.stat-card.yellow{--tint:var(--yellow)}
+.stat-card.purple{--tint:var(--accent2)}
+.stat-icon{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:1rem;margin-bottom:14px;background:color-mix(in srgb,var(--tint,var(--accent)) 13%,transparent);border:1px solid color-mix(in srgb,var(--tint,var(--accent)) 25%,transparent)}
+.stat-val{font-size:1.75rem;font-weight:850;color:var(--tint,var(--accent));letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.stat-lbl{font-size:.68rem;color:var(--muted);margin-top:8px;text-transform:uppercase;letter-spacing:1px;font-weight:700}
+
+.section{background:linear-gradient(180deg,color-mix(in srgb,var(--card2) 58%,transparent),color-mix(in srgb,var(--card) 94%,transparent));border:1px solid var(--border);border-radius:22px;margin-bottom:16px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+.section-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:color-mix(in srgb,var(--bg) 35%,transparent)}
+.section-title{font-size:.88rem;font-weight:750;letter-spacing:-.01em}
+.section-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.section-body{padding:20px}
+
+.bot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.bot-card{position:relative;background:color-mix(in srgb,var(--bg) 60%,transparent);border:1px solid var(--border);border-radius:18px;padding:16px;display:grid;gap:12px;transition:all .25s}
+.bot-card:hover{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.bot-card.is-live{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 28%,transparent),0 18px 40px -22px rgba(34,197,94,.5)}
+.bot-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bot-num{font-family:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;font-weight:700;font-size:.86rem;letter-spacing:.3px}
+.bot-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.bot-actions{display:flex;gap:6px;flex-wrap:wrap}
+.close-line{font-size:.7rem;color:var(--yellow);background:rgba(255,194,77,.07);border:1px solid rgba(255,194,77,.2);border-radius:10px;padding:6px 10px;line-height:1.45}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;padding:12px 16px;color:var(--muted);font-weight:750;font-size:.64rem;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--bg) 45%,transparent)}
+td{padding:13px 16px;border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:color-mix(in srgb,var(--accent) 4%,transparent)}
+
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.7rem;font-weight:750;letter-spacing:.2px;white-space:nowrap}
+.badge-green{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.28)}
+.badge-red{background:rgba(255,92,108,.1);color:var(--red);border:1px solid rgba(255,92,108,.25)}
+.badge-yellow{background:rgba(255,194,77,.1);color:var(--yellow);border:1px solid rgba(255,194,77,.25)}
+.badge-muted{background:rgba(148,163,184,.08);color:var(--muted);border:1px solid rgba(148,163,184,.18)}
+.badge-blue{background:rgba(90,176,255,.1);color:#5ab0ff;border:1px solid rgba(90,176,255,.25)}
+.dot-live{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;animation:blink 1.5s ease-in-out infinite;display:inline-block}
+
+.act-btn{padding:6px 11px;border-radius:9px;font-size:.7rem;font-weight:750;cursor:pointer;border:1px solid;transition:all .2s;background:none}
+.act-btn:hover:not(:disabled){transform:translateY(-1px)}
+.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-green{background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.25)}
+.act-green:hover:not(:disabled){background:rgba(34,197,94,.2)}
+.act-yellow{background:rgba(255,194,77,.1);color:var(--yellow);border-color:rgba(255,194,77,.25)}
+.act-yellow:hover:not(:disabled){background:rgba(255,194,77,.2)}
+.act-red{background:rgba(255,92,108,.1);color:var(--red);border-color:rgba(255,92,108,.25)}
+.act-red:hover:not(:disabled){background:rgba(255,92,108,.2)}
+.act-blue{background:rgba(90,176,255,.1);color:#5ab0ff;border-color:rgba(90,176,255,.25)}
+.act-blue:hover:not(:disabled){background:rgba(90,176,255,.2)}
+
+.btn{padding:10px 17px;border:none;border-radius:12px;font-size:.8rem;font-weight:750;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--btn-text);box-shadow:0 12px 28px -12px color-mix(in srgb,var(--accent) 65%,transparent)}
+.btn-outline{background:color-mix(in srgb,var(--bg) 50%,transparent);border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(255,92,108,.1);border:1px solid rgba(255,92,108,.25);color:var(--red)}
+.btn-danger:hover{background:rgba(255,92,108,.2)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(128,128,128,.25);border-top-color:currentColor;border-radius:50%;animation:spinA .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spinA{to{transform:rotate(360deg)}}
+
+.log-box{background:#020305;border:1px solid var(--border);border-radius:16px;padding:14px 16px;font-family:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;height:380px;overflow-y:auto}
+.log-entry{line-height:1.85;padding:1px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.log-entry.INFO{color:rgba(62,242,196,.82)}
+.log-entry.WARN{color:rgba(255,194,77,.92)}
+.log-entry.ERROR{color:rgba(255,92,108,.95)}
+.log-entry.RAW{color:rgba(148,163,184,.6)}
+.log-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.log-tab{padding:6px 14px;border-radius:999px;font-size:.72rem;font-weight:650;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:transparent;transition:all .2s}
+.log-tab:hover{border-color:var(--accent);color:var(--accent)}
+.log-tab.active{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+
+.sys-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.sys-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.8rem}
+.sys-row:last-child{border-bottom:none}
+.sys-lbl{color:var(--muted)}
+.sys-val{font-weight:700;font-family:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;font-variant-numeric:tabular-nums}
+.prog-bar-bg{height:6px;border-radius:999px;background:var(--card2);overflow:hidden;margin:2px 0 6px}
+.prog-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s ease;box-shadow:0 0 12px color-mix(in srgb,var(--accent) 50%,transparent)}
+
+#toast{position:fixed;bottom:22px;right:22px;z-index:9000;display:flex;flex-direction:column;gap:8px}
+.toast{padding:11px 16px;border-radius:13px;font-size:.8rem;font-weight:650;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px;max-width:330px;box-shadow:var(--shadow);backdrop-filter:blur(12px)}
+.toast.ok{background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.toast.err{background:rgba(255,92,108,.12);border:1px solid rgba(255,92,108,.25);color:var(--red)}
+.toast.info{background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);color:var(--accent)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+#modal{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.66);backdrop-filter:blur(10px);align-items:center;justify-content:center}
+#modal.show{display:flex}
+.modal-card{background:linear-gradient(180deg,color-mix(in srgb,var(--card2) 60%,transparent),var(--card));border:1px solid var(--border);border-radius:24px;padding:30px;max-width:370px;width:90%;box-shadow:var(--shadow);animation:mPop .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes mPop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+.modal-icon{font-size:2.1rem;text-align:center;margin-bottom:12px}
+.modal-title{font-size:1.05rem;font-weight:800;text-align:center;margin-bottom:6px}
+.modal-sub{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:22px}
+.modal-actions{display:flex;gap:10px;justify-content:center}
+
+.search-input{background:color-mix(in srgb,var(--bg) 60%,transparent);border:1px solid var(--border);border-radius:12px;padding:9px 14px;color:var(--text);font-size:.8rem;outline:none;width:230px;transition:border-color .25s,box-shadow .25s}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent)}
+.search-input::placeholder{color:var(--muted)}
+
+.empty{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty-icon{font-size:2.4rem;margin-bottom:10px;opacity:.5}
+.empty-text{font-size:.84rem}
+
+.mob-nav{display:none}
+@media(max-width:900px){.sys-grid{grid-template-columns:1fr}}
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{padding:72px 14px 100px}
+  .page-title{font-size:1.35rem}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .topbar{top:10px;right:10px}
+  .tb-btn{height:32px;padding:0 11px;font-size:.7rem}
+  .mob-nav{display:flex;position:fixed;bottom:12px;left:12px;right:12px;z-index:500;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:20px;padding:6px;box-shadow:var(--shadow)}
+  .mob-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border:none;background:none;color:var(--muted);font-size:.58rem;font-weight:650;cursor:pointer;border-radius:14px;transition:all .2s}
+  .mob-nav button.active{color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
+  .mob-nav button .mn-icon{font-size:1.15rem;line-height:1}
+}
+
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="ring">⚡</div>
+      <div class="brand">MAIS MDX</div>
+      <div class="sub">Admin Panel</div>
+    </div>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••"/>
+    </div>
+    <button type="button" class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <button type="button" class="tb-btn" onclick="location.href='/'">🌐 Pair page</button>
+  <button type="button" class="tb-btn" onclick="toggleTP()">🎨 Theme</button>
+  <button type="button" class="tb-btn" onclick="doLogout()">Logout</button>
+</div>
+
+<!-- THEME PICKER -->
+<div id="tp">
+  <div class="tp-hd">🎨 Choose Theme</div>
+  <div class="tp-grid" id="tpGrid"></div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="modal">
+  <div class="modal-card">
+    <div class="modal-icon" id="modalIcon">⚠️</div>
+    <div class="modal-title" id="modalTitle">Confirm</div>
+    <div class="modal-sub" id="modalSub">Are you sure?</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn btn-danger" id="modalConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- MAIN SHELL -->
+<div class="shell">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#25d366,#128c7e);display:grid;place-items:center;font-size:18px;">⚡</div>
+        <div>
+          <div class="sb-brand">MAIS MDX</div>
+          <div class="sb-sub">Control Center</div>
+        </div>
+      </div>
+    </div>
+    <nav>
+      <button type="button" class="nav-item active" data-tab="dashboard" onclick="showTab('dashboard')"><span class="nav-icon">📊</span>Dashboard</button>
+      <button type="button" class="nav-item" data-tab="users" onclick="showTab('users')"><span class="nav-icon">👥</span>Users / Bots</button>
+      <button type="button" class="nav-item" data-tab="bots" onclick="showTab('bots')"><span class="nav-icon">🤖</span>Bot Choices</button>
+      <button type="button" class="nav-item" data-tab="logs" onclick="showTab('logs')"><span class="nav-icon">📋</span>Live Logs</button>
+      <button type="button" class="nav-item" data-tab="system" onclick="showTab('system')"><span class="nav-icon">⚙️</span>System</button>
+      <button type="button" class="nav-item" data-tab="settings" onclick="showTab('settings')"><span class="nav-icon">🔧</span>Settings</button>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-status"><div class="sb-dot" id="sbDot"></div><span id="sbStatusTxt">Connecting...</span></div>
+      <div class="sb-status" style="margin-top:4px"><div class="sb-dot" id="sbSettingsDbDot" style="background:var(--yellow)"></div><span id="sbSettingsDbTxt">Settings DB: Checking...</span></div>
+      <div class="sb-status" style="margin-top:4px"><div class="sb-dot" id="sbSessionDbDot" style="background:var(--yellow)"></div><span id="sbSessionDbTxt">Session DB: Checking...</span></div>
+      <div class="sb-credit">Made by <b>JUST X</b></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- ── DASHBOARD ── -->
+    <div id="tab-dashboard" class="tab-pane active">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Real-time overview</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">📱</div><div class="stat-val" id="st-paired">—</div><div class="stat-lbl">Paired Numbers</div></div>
+        <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-val" id="st-running">—</div><div class="stat-lbl">Active Bots</div></div>
+        <div class="stat-card yellow"><div class="stat-icon">⏸</div><div class="stat-val" id="st-paused">—</div><div class="stat-lbl">Paused Bots</div></div>
+        <div class="stat-card red"><div class="stat-icon">❌</div><div class="stat-val" id="st-failed">—</div><div class="stat-lbl">Failed Pairs</div></div>
+        <div class="stat-card purple"><div class="stat-icon">🌐</div><div class="stat-val" id="st-web">—</div><div class="stat-lbl">Web Paired</div></div>
+        <div class="stat-card"><div class="stat-icon">⏱</div><div class="stat-val" id="st-uptime">—</div><div class="stat-lbl">Uptime</div></div>
+      </div>
+      <div class="section">
+        <div class="section-hd">
+          <div class="section-title">🤖 Live Bot Status</div>
+          <div class="section-actions">
+            <button type="button" class="btn btn-outline" onclick="reconnectFailed()">↻ Reconnect Failed</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <div id="botStatusList"><div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">Loading bots...</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── USERS / BOTS ── -->
+    <div id="tab-users" class="tab-pane">
+      <div class="page-header">
+        <div class="page-title">Users &amp; Bots</div>
+        <div class="page-sub">Manage paired WhatsApp sessions. Pause stops the bot without deleting data.</div>
+      </div>
+      <div class="section">
+        <div class="section-hd">
+          <div class="section-title">📱 Paired Sessions</div>
+          <div class="section-actions">
+            <input type="text" class="search-input" id="userSearch" placeholder="Search number..." oninput="filterUsers()"/>
+            <button type="button" class="btn btn-outline" onclick="loadUsers()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="section-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Number</th><th>Status</th><th>Source</th><th>Paired At</th><th>Uptime</th><th>↺</th><th>Actions</th></tr></thead>
+              <tbody id="usersTbody"><tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No users yet</div></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BOT CHOICES ── -->
+    <div id="tab-bots" class="tab-pane">
+      <div class="page-header">
+        <div class="page-title">Bot Choices</div>
+        <div class="page-sub">Every paired number and the bot it is locked to. A choice is final until the number is unpaired.</div>
+      </div>
+      <div class="section">
+        <div class="section-hd">
+          <div class="section-title">🤖 Number → Bot</div>
+          <div class="section-actions">
+            <button type="button" class="btn btn-outline" onclick="loadSelections()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="section-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Number</th><th>Bot</th><th>Status</th><th>Chosen via</th><th>Telegram</th><th>Actions</th></tr></thead>
+              <tbody id="selTbody"><tr><td colspan="6"><div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">No paired numbers yet</div></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LIVE LOGS ── -->
+    <div id="tab-logs" class="tab-pane">
+      <div class="page-header">
+        <div class="page-title">Live Logs</div>
+        <div class="page-sub">Real-time SSE log stream from the server</div>
+      </div>
+      <div class="section">
+        <div class="section-hd">
+          <div class="section-title">📋 Log Stream</div>
+          <div class="section-actions">
+            <button type="button" class="btn btn-outline" onclick="clearLogs()">🗑 Clear</button>
+            <button type="button" class="btn btn-outline" id="pauseLogBtn" onclick="togglePauseLog()">⏸ Pause</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="log-tabs">
+            <button type="button" class="log-tab active" onclick="setLogFilter('all',this)">All</button>
+            <button type="button" class="log-tab" onclick="setLogFilter('system',this)">System</button>
+            <button type="button" class="log-tab" onclick="setLogFilter('pairing',this)">Pairing</button>
+            <button type="button" class="log-tab" onclick="setLogFilter('telegram',this)">Telegram</button>
+            <button type="button" class="log-tab" onclick="setLogFilter('error',this)">Errors</button>
+            <button type="button" class="log-tab" onclick="setLogFilter('admin',this)">Admin</button>
+          </div>
+          <div class="log-box" id="logBox"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS ── -->
+    <div id="tab-settings" class="tab-pane">
+      <div class="page-header">
+        <div class="page-title">Settings</div>
+        <div class="page-sub">Configure bot token and integrations</div>
+      </div>
+      <!-- Telegram Bot Token -->
+      <div class="section" style="margin-bottom:18px">
+        <div class="section-hd">
+          <div class="section-title">📡 Telegram Bot Token</div>
+          <div id="tgBotStatus" style="font-size:.75rem;color:var(--muted)">Loading...</div>
+        </div>
+        <div class="section-body">
+          <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px">Paste your Telegram bot token here. Saving will immediately restart the Telegram polling with the new token.</p>
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px">
+              <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:5px;font-weight:600">Bot Token (from @BotFather)</label>
+              <input type="text" id="tgTokenInput" class="search-input" style="width:100%;font-family:monospace;font-size:.8rem" placeholder="123456789:ABCdef…"/>
+            </div>
+            <button type="button" class="btn btn-primary" id="saveTgTokenBtn" onclick="saveBotToken()">💾 Save &amp; Start Polling</button>
+            <button type="button" class="btn btn-danger" onclick="removeBotToken()">✕ Remove Token</button>
+          </div>
+          <div id="tgTokenMsg" style="display:none;margin-top:10px;font-size:.78rem;padding:8px 12px;border-radius:8px;"></div>
+          <div style="margin-top:14px;padding:12px;background:var(--card2);border-radius:10px;font-size:.75rem;color:var(--muted)">
+            <strong style="color:var(--text)">Current token:</strong> <span id="tgTokenMasked" style="font-family:monospace">—</span>
+            &nbsp;·&nbsp;
+            <strong style="color:var(--text)">Status:</strong> <span id="tgBotActive">—</span>
+          </div>
+        </div>
+      </div>
+      <!-- Quick Actions -->
+      <div class="section">
+        <div class="section-hd"><div class="section-title">⚡ Quick Bot Actions</div></div>
+        <div class="section-body" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline" onclick="reconnectFailed()">↻ Reconnect Failed Bots</button>
+          <button type="button" class="btn btn-danger" onclick="confirmPauseAll()">⏸ Pause All Bots</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SYSTEM ── -->
+    <div id="tab-system" class="tab-pane">
+      <div class="page-header">
+        <div class="page-title">System Health</div>
+        <div class="page-sub">Server resources and diagnostics</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">💾</div><div class="stat-val" id="sys-heap">—</div><div class="stat-lbl">Heap Used</div></div>
+        <div class="stat-card green"><div class="stat-icon">🧠</div><div class="stat-val" id="sys-rss">—</div><div class="stat-lbl">RSS Memory</div></div>
+        <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-val" id="sys-cpu">—</div><div class="stat-lbl">CPU Load (1m)</div></div>
+        <div class="stat-card purple"><div class="stat-icon">🗂</div><div class="stat-val" id="sys-store">—</div><div class="stat-lbl">Storage</div></div>
+        <div class="stat-card green" id="card-settings-db"><div class="stat-icon">⚙️</div><div class="stat-val" id="sys-settings-db" style="font-size:0.95rem;padding-top:4px">—</div><div class="stat-lbl">Settings DB</div></div>
+        <div class="stat-card green" id="card-session-db"><div class="stat-icon">🔑</div><div class="stat-val" id="sys-session-db" style="font-size:0.95rem;padding-top:4px">—</div><div class="stat-lbl">Session DB</div></div>
+        <div class="stat-card purple" id="card-vol"><div class="stat-icon">📦</div><div class="stat-val" id="sys-vol" style="font-size:0.95rem;padding-top:4px">—</div><div class="stat-lbl">Railway Volume</div></div>
+      </div>
+      <div class="sys-grid">
+        <div class="section">
+          <div class="section-hd"><div class="section-title">Memory Usage</div></div>
+          <div class="section-body"><div id="memDetails"></div></div>
+        </div>
+        <div class="section">
+          <div class="section-hd"><div class="section-title">Server Info</div></div>
+          <div class="section-body"><div id="serverDetails"></div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-hd"><div class="section-title">⚙️ Actions</div></div>
+        <div class="section-body" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline" onclick="doBackup()">💾 Download Backup</button>
+          <button type="button" class="btn btn-outline" onclick="reconnectFailed()">↻ Reconnect Failed Bots</button>
+          <button type="button" class="btn btn-danger" onclick="clearErrors()">🗑 Clear Error Log</button>
+          <button type="button" class="btn btn-danger" onclick="cleanAllDb()" style="background:#e11d48;border-color:#e11d48;">🧹 Clean All DB</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// THEMES
+// ══════════════════════════════════════════════════════
+const THEMES=[
+  {id:'dark-leon',  name:'Dark Leon',  bg:'#05070b',a1:'#3ef2c4',a2:'#25d366'},
+  {id:'cyber-neon', name:'Cyber Neon', bg:'#0d0014',a1:'#ff2dde',a2:'#39ff14'},
+  {id:'galaxy',     name:'Galaxy',     bg:'#05030f',a1:'#a78bfa',a2:'#60a5fa'},
+  {id:'matrix',     name:'Matrix',     bg:'#000300',a1:'#00ff41',a2:'#39ff14'},
+  {id:'sunset',     name:'Sunset',     bg:'#120508',a1:'#ff6b35',a2:'#f7c59f'},
+  {id:'ocean',      name:'Ocean',      bg:'#020c14',a1:'#00b4d8',a2:'#48cae4'},
+  {id:'arctic',     name:'Arctic',     bg:'#f0f5f9',a1:'#0077b6',a2:'#00b4d8'},
+];
+(function buildTP(){
+  const grid=document.getElementById('tpGrid');
+  THEMES.forEach(t=>{
+    const c=document.createElement('div'); c.className='tp-card'; c.id='tpc-'+t.id;
+    c.innerHTML=`<div class="tp-preview" style="background:${t.bg}"><div class="tp-dot" style="left:7px;background:${t.a1}"></div><div class="tp-dot" style="left:17px;background:${t.a2}"></div></div><div class="tp-name" style="color:${t.a1}">${t.name}</div>`;
+    c.style.background=t.bg+'cc';
+    c.onclick=()=>{applyTheme(t.id);toggleTP(true);};
+    grid.appendChild(c);
+  });
+})();
+function applyTheme(id){
+  document.documentElement.setAttribute('data-theme',id);
+  localStorage.setItem('mais-theme',id);
+  document.querySelectorAll('.tp-card').forEach(c=>c.classList.remove('sel'));
+  const s=document.getElementById('tpc-'+id); if(s)s.classList.add('sel');
+}
+const tp=document.getElementById('tp');
+function toggleTP(close){if(close){tp.classList.remove('open');return;}tp.classList.toggle('open');}
+document.addEventListener('click',e=>{if(!tp.contains(e.target)&&!e.target.closest('.topbar'))tp.classList.remove('open');});
+applyTheme(localStorage.getItem('mais-theme')||'dark-leon');
+
+// ══════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════
+let token=null;
+const loginScreen=document.getElementById('loginScreen');
+
+async function doLogin(){
+  const p=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginErr');
+  const btn=document.getElementById('loginBtn');
+  if(!p){err.textContent='Password required.';err.style.display='block';return;}
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>Signing in...';
+  try{
+    const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+    const d=await r.json();
+    if(d.ok){token=d.token;localStorage.setItem('mais-token',token);loginScreen.style.display='none';onLoggedIn();}
+    else{err.textContent=d.error||'Login failed.';err.style.display='block';}
+  }catch{err.textContent='Network error.';err.style.display='block';}
+  btn.disabled=false; btn.textContent='Sign In';
+}
+async function doLogout(){
+  if(token)await fetch('/api/admin/logout',{method:'POST',headers:{'x-admin-token':token}}).catch(()=>{});
+  token=null;localStorage.removeItem('mais-token');location.reload();
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+// Auto-login with saved token
+(async()=>{
+  const saved=localStorage.getItem('mais-token');
+  if(!saved)return;
+  try{const r=await fetch('/api/admin/stats',{headers:{'x-admin-token':saved}});if(r.ok){token=saved;loginScreen.style.display='none';onLoggedIn();}else localStorage.removeItem('mais-token');}catch{}
+})();
+
+function api(path,opts={}){
+  return fetch(path,{...opts,headers:{...(opts.headers||{}),'x-admin-token':token,'Content-Type':'application/json'}}).then(r=>r.json());
+}
+
+// ══════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════
+function showTab(id){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const btn=document.querySelector(`.nav-item[data-tab="${id}"]`);if(btn)btn.classList.add('active');
+  if(id==='users')loadUsers();
+  if(id==='bots')loadSelections();
+  if(id==='system')loadSystem();
+  if(id==='settings')loadSettings();
+  if(id==='logs'&&!logSse)startLogStream();
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+function toast(msg,type='info'){
+  const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;
+  document.getElementById('toast').appendChild(t);
+  setTimeout(()=>t.style.opacity='0',2800);setTimeout(()=>t.remove(),3200);
+}
+
+// ══════════════════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════════════════
+let _modalCb=null;
+function openModal(icon,title,sub,cb,confirmTxt='Confirm',btnCls='btn-danger'){
+  document.getElementById('modalIcon').textContent=icon;
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalSub').textContent=sub;
+  const btn=document.getElementById('modalConfirm');btn.textContent=confirmTxt;btn.className='btn '+btnCls;
+  _modalCb=cb; document.getElementById('modal').classList.add('show');
+}
+function closeModal(){document.getElementById('modal').classList.remove('show');_modalCb=null;}
+document.getElementById('modalConfirm').onclick=()=>{closeModal();if(_modalCb)_modalCb();};
+
+// ══════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════
+function fmtUptime(ms){if(!ms)return'—';const s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60),d=Math.floor(h/24);if(d)return`${d}d ${h%24}h`;if(h)return`${h}h ${m%60}m`;if(m)return`${m}m`;return`${s}s`;}
+function fmtDate(ts){if(!ts)return'—';const d=new Date(ts);return d.toLocaleDateString()+' '+d.toLocaleTimeString();}
+function fmtUpServer(s){const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);if(d)return`${d}d ${h}h`;if(h)return`${h}h ${m}m`;return`${m}m`;}
+
+// ══════════════════════════════════════════════════════
+// BOT STATUS SSE (dashboard)
+// ══════════════════════════════════════════════════════
+let statusSse=null;
+function startStatusStream(){
+  if(statusSse)statusSse.close();
+  statusSse=new EventSource(`/api/bot-status/stream?token=${token}`);
+  statusSse.addEventListener('state',e=>{
+    try{updateDashboard(JSON.parse(e.data));}catch{}
+  });
+  statusSse.onerror=()=>{
+    document.getElementById('sbStatusTxt').textContent='Reconnecting...';
+    document.getElementById('sbDot').style.background='var(--yellow)';
+  };
+}
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtAgo(ts){const s=Math.max(0,Math.floor((Date.now()-ts)/1000));if(s<60)return s+'s ago';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<48)return h+'h ago';return Math.floor(h/24)+'d ago';}
+// One label per bot, derived from the live process plus its WhatsApp connection record.
+function botBadge(paused,alive,bs){
+  if(paused)return '<span class="badge badge-yellow">⏸ Paused</span>';
+  if(!alive)return '<span class="badge badge-red">● Offline</span>';
+  const st=bs&&bs.state;
+  if(st==='open')return '<span class="badge badge-green"><span class="dot-live"></span> Live</span>';
+  if(st==='unlinked')return '<span class="badge badge-red">Logged out</span>';
+  if(st==='closed')return '<span class="badge badge-yellow"><span class="dot-live"></span> Reconnecting</span>';
+  return '<span class="badge badge-blue">Starting</span>';
+}
+function closeLine(bs){
+  if(!bs||bs.lastCloseCode==null)return '';
+  const when=bs.lastCloseAt?' · '+fmtAgo(bs.lastCloseAt):'';
+  return `<div class="close-line">Last disconnect code ${esc(bs.lastCloseCode)}${when}${bs.lastCloseMsg?'<br>'+esc(String(bs.lastCloseMsg).slice(0,120)):''}</div>`;
+}
+
+function updateDashboard(d){
+  document.getElementById('sbStatusTxt').textContent=d.ready?'Server Ready':'Warming Up';
+  document.getElementById('sbDot').style.background='var(--green)';
+  const running=(d.running||[]).filter(r=>r.alive).length;
+  const paused=(d.running||[]).filter(r=>r.paused).length;
+  document.getElementById('st-paired').textContent=d.totalPaired||0;
+  document.getElementById('st-running').textContent=running;
+  document.getElementById('st-paused').textContent=paused;
+
+  const list=document.getElementById('botStatusList');
+  if(!d.running||!d.running.length){list.innerHTML='<div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">No bots yet</div></div>';return;}
+  list.innerHTML='<div class="bot-grid">'+d.running.map(bot=>{
+    const num=(bot.number||'').replace('@s.whatsapp.net','');
+    const jidEnc=encodeURIComponent(bot.number||num+'@s.whatsapp.net');
+    const pauseBtn=bot.paused
+      ?`<button type="button" class="act-btn act-green" onclick="resumeBot('${jidEnc}','${num}')">▶ Resume</button>`
+      :bot.alive
+        ?`<button type="button" class="act-btn act-yellow" onclick="pauseBot('${jidEnc}','${num}')">⏸ Pause</button>`
+        :`<button type="button" class="act-btn act-green" onclick="resumeBot('${jidEnc}','${num}')">▶ Start</button>`;
+    return`<div class="bot-card${bot.alive&&!bot.paused&&bot.botStatus&&bot.botStatus.state==='open'?' is-live':''}">
+      <div class="bot-top"><span class="bot-num">${esc(num)}</span>${botBadge(bot.paused,bot.alive,bot.botStatus)}</div>
+      ${closeLine(bot.botStatus)}
+      <div class="bot-meta"><span>PID ${bot.pid||'—'}</span><span>Up ${fmtUptime(bot.uptimeMs)}</span><span>↺ ${bot.restarts||0}</span></div>
+      <div class="bot-actions">
+        ${pauseBtn}
+        <button type="button" class="act-btn act-blue" onclick="restartBot('${jidEnc}','${num}')">↻ Restart</button>
+        <button type="button" class="act-btn act-red" onclick="confirmDelete('${jidEnc}','${num}')">✕</button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+// ══════════════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════════════
+async function loadStats(){
+  try{
+    const d=await api('/api/admin/stats'); if(!d.ok)return;
+    document.getElementById('st-failed').textContent=d.failed||0;
+    document.getElementById('st-web').textContent=d.analytics?.web||0;
+    document.getElementById('st-uptime').textContent=fmtUpServer(d.uptime||0);
+  }catch{}
+}
+
+// ══════════════════════════════════════════════════════
+// USERS TABLE
+// ══════════════════════════════════════════════════════
+let _users=[];
+async function loadUsers(){
+  const tbody=document.getElementById('usersTbody');
+  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px"><span class="spin"></span> Loading...</td></tr>';
+  try{
+    const d=await api('/api/admin/users'); if(!d.ok){tbody.innerHTML='<tr><td colspan="7"><div class="empty">Failed to load</div></td></tr>';return;}
+    _users=d.users||[]; renderUsers(_users);
+  }catch{tbody.innerHTML='<tr><td colspan="7"><div class="empty">Error loading</div></td></tr>';}
+}
+
+function renderUsers(users){
+  const tbody=document.getElementById('usersTbody');
+  if(!users.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No paired users</div></div></td></tr>';return;}
+  tbody.innerHTML=users.map(u=>{
+    const num=(u.number||u.jid||'').replace('@s.whatsapp.net','');
+    const jidEnc=encodeURIComponent(u.jid||(num+'@s.whatsapp.net'));
+    const badge=botBadge(u.paused,u.running,u.botStatus);
+    const src=u.source==='telegram'?'<span class="badge badge-blue">Telegram</span>':'<span class="badge badge-muted">Web</span>';
+    const pauseBtn=u.paused
+      ?`<button type="button" class="act-btn act-green" onclick="resumeBot('${jidEnc}','${num}')">▶ Resume</button>`
+      :u.running
+        ?`<button type="button" class="act-btn act-yellow" onclick="pauseBot('${jidEnc}','${num}')">⏸ Pause</button>`
+        :`<button type="button" class="act-btn act-green" onclick="resumeBot('${jidEnc}','${num}')">▶ Start</button>`;
+    return`<tr>
+      <td><span style="font-family:monospace;font-weight:600">${num}</span><br><span style="font-size:.65rem;color:var(--muted)">PID: ${u.pid||'—'}</span></td>
+      <td>${badge}${closeLine(u.botStatus)}</td><td>${src}</td>
+      <td style="font-size:.72rem;color:var(--muted)">${fmtDate(u.pairedAt)}</td>
+      <td style="font-size:.72rem">${fmtUptime(u.uptimeMs)}</td>
+      <td style="text-align:center"><span class="badge badge-muted">${u.restarts||0}</span></td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap;">
+        ${pauseBtn}
+        <button type="button" class="act-btn act-blue" onclick="restartBot('${jidEnc}','${num}')">↻ Restart</button>
+        <button type="button" class="act-btn act-red" onclick="confirmDelete('${jidEnc}','${num}')">✕ Delete</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterUsers(){
+  const q=document.getElementById('userSearch').value.toLowerCase();
+  renderUsers(_users.filter(u=>((u.number||u.jid||'')).includes(q)||((u.source||'')).includes(q)));
+}
+
+// ── PAUSE ──
+async function pauseBot(jidEnc,num){
+  try{
+    const d=await api(`/api/admin/pause/${jidEnc}`,{method:'POST'});
+    toast(d.ok?`⏸ Paused ${num}`:d.error||'Failed',d.ok?'info':'err');
+    if(d.ok){
+      loadUsers();
+      setTimeout(loadUsers,800);
+    }
+  }catch{toast('Network error','err');}
+}
+
+// ── RESUME ──
+async function resumeBot(jidEnc,num){
+  toast(`▶ Starting ${num}...`,'info');
+  try{
+    const d=await api(`/api/admin/resume/${jidEnc}`,{method:'POST'});
+    toast(d.ok?`▶ Resumed ${num}`:d.error||'Failed',d.ok?'ok':'err');
+    if(d.ok){
+      loadUsers();
+      setTimeout(loadUsers,1800);
+    }
+  }catch{toast('Network error','err');}
+}
+
+// ── RESTART ──
+async function restartBot(jidEnc,num){
+  openModal('↻','Restart Bot',`Restart bot for ${num}? It will reconnect in ~3 seconds.`,async()=>{
+    try{const d=await api(`/api/admin/restart/${jidEnc}`,{method:'POST'});toast(d.ok?`↻ Restarted ${num}`:d.error||'Failed',d.ok?'ok':'err');if(d.ok)setTimeout(loadUsers,3500);}catch{toast('Network error','err');}
+  },'Restart','btn-outline');
+}
+
+// ── DELETE ──
+function confirmDelete(jidEnc,num){
+  openModal('⚠️','Delete Session',`Permanently delete session for ${num}? The bot will stop immediately, and all database and disk session files will be erased.`,async()=>{
+    toast(`⏳ Deleting session ${num}...`,'info');
+    try{
+      const d=await api(`/api/admin/user/${jidEnc}`,{method:'DELETE'});
+      toast(d.ok?`✕ Deleted ${num}`:d.error||'Failed',d.ok?'info':'err');
+      if(d.ok){
+        loadUsers();
+        setTimeout(loadUsers,1200);
+      }
+    }catch{toast('Network error','err');}
+  },'Delete','btn-danger');
+}
+
+// ── RECONNECT FAILED ──
+async function reconnectFailed(){
+  toast('↻ Reconnecting failed bots...','info');
+  try{const d=await api('/api/admin/reconnect-failed',{method:'POST'});toast(d.ok?`↻ Reconnected ${d.reconnected}/${d.total}`:d.error||'Failed',d.ok?'ok':'err');setTimeout(loadUsers,2500);}catch{toast('Network error','err');}
+}
+
+// ══════════════════════════════════════════════════════
+// LIVE LOG STREAM (SSE)
+// ══════════════════════════════════════════════════════
+let logSse=null, logPaused=false, activeLogFilter='all';
+const logBox=document.getElementById('logBox');
+let logBuffer=[];
+const MAX_LOG=500;
+
+function setLogFilter(f,el){
+  activeLogFilter=f;
+  document.querySelectorAll('.log-tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  logBox.innerHTML='';
+  logBuffer.filter(e=>f==='all'||e.type===f).slice(-200).forEach(appendLogDom);
+  logBox.scrollTop=logBox.scrollHeight;
+}
+
+function togglePauseLog(){
+  logPaused=!logPaused;
+  document.getElementById('pauseLogBtn').textContent=logPaused?'▶ Resume':'⏸ Pause';
+}
+
+function appendLogDom(entry){
+  const div=document.createElement('div');
+  div.className='log-entry '+(entry.level||'INFO');
+  const time=entry.ts?new Date(entry.ts).toLocaleTimeString():'';
+  const pfx=entry.type?`[${entry.type.toUpperCase()}] `:'';
+  div.textContent=`${time} ${pfx}${entry.level||''} — ${entry.message||JSON.stringify(entry)}`;
+  logBox.appendChild(div);
+  while(logBox.children.length>MAX_LOG)logBox.removeChild(logBox.firstChild);
+}
+
+function addLogEntry(entry){
+  logBuffer.push(entry);
+  if(logBuffer.length>MAX_LOG)logBuffer.shift();
+  if(logPaused)return;
+  if(activeLogFilter!=='all'&&entry.type!==activeLogFilter)return;
+  appendLogDom(entry);
+  logBox.scrollTop=logBox.scrollHeight;
+}
+
+function startLogStream(){
+  if(logSse){logSse.close();logSse=null;}
+  logSse=new EventSource(`/api/admin/logs/stream?token=${token}`);
+  logSse.addEventListener('bootstrap',e=>{try{const d=JSON.parse(e.data);if(d.lines)d.lines.forEach(l=>addLogEntry(l));}catch{}});
+  logSse.onmessage=e=>{try{addLogEntry(JSON.parse(e.data));}catch{}};
+  logSse.onerror=()=>{if(logSse){logSse.close();logSse=null;}setTimeout(()=>{if(token)startLogStream();},5000);};
+}
+
+async function clearLogs(){
+  try{await api('/api/admin/cache/clear-logs',{method:'POST'});logBox.innerHTML='';logBuffer=[];toast('Logs cleared','info');}catch{}
+}
+
+// ══════════════════════════════════════════════════════
+// SYSTEM
+// ══════════════════════════════════════════════════════
+
+async function checkAdminDb(){
+  const sDot = document.getElementById('sbSettingsDbDot');
+  const sTxt = document.getElementById('sbSettingsDbTxt');
+  const sessDot = document.getElementById('sbSessionDbDot');
+  const sessTxt = document.getElementById('sbSessionDbTxt');
+  const sysSettingsDb = document.getElementById('sys-settings-db');
+  const sysSessionDb = document.getElementById('sys-session-db');
+  const sysVol = document.getElementById('sys-vol');
+
+  try {
+    const r = await fetch('/api/database/status', { cache: 'no-store' });
+    const d = await r.json();
+    const stg = d.settingsDb || {};
+    const sess = d.sessionDb || {};
+
+    if (sDot && sTxt) {
+      if (stg.attached) {
+        sDot.style.background = 'var(--green)';
+        sTxt.textContent = 'Settings DB: Attached (' + (stg.database || 'neondb') + ')';
+      } else if (stg.status === 'error') {
+        sDot.style.background = 'var(--red)';
+        sTxt.textContent = 'Settings DB: Error';
+      } else {
+        sDot.style.background = 'var(--yellow)';
+        sTxt.textContent = 'Settings DB: Not Attached';
+      }
+    }
+
+    if (sessDot && sessTxt) {
+      if (sess.attached) {
+        sessDot.style.background = 'var(--green)';
+        const sCount = typeof sess.sessionsInDb === 'number' ? ' • ' + sess.sessionsInDb + ' sess' : '';
+        sessTxt.textContent = 'Session DB: Attached (' + (sess.database || 'neondb') + sCount + ')';
+      } else if (sess.status === 'error') {
+        sessDot.style.background = 'var(--red)';
+        sessTxt.textContent = 'Session DB: Error';
+      } else {
+        sessDot.style.background = 'var(--yellow)';
+        sessTxt.textContent = 'Session DB: Not Attached';
+      }
+    }
+
+    if (sysSettingsDb) {
+      sysSettingsDb.textContent = stg.attached ? 'Attached (' + (stg.database || 'neondb') + ')' : (stg.status === 'error' ? 'Error' : 'Not Attached');
+    }
+    if (sysSessionDb) {
+      const sCount = typeof sess.sessionsInDb === 'number' ? ' • ' + sess.sessionsInDb + ' sess' : '';
+      sysSessionDb.textContent = sess.attached ? 'Attached (' + (sess.database || 'neondb') + sCount + ')' : (sess.status === 'error' ? 'Error' : 'Not Attached');
+    }
+    if (sysVol) {
+      sysVol.textContent = d.volumeMounted ? 'Mounted (/app/nexstore)' : 'Not Mounted';
+    }
+  } catch {}
+}
+
+async function cleanAllDb(){
+  openModal('🧹', 'Clean All Databases', 'Are you sure you want to clean all databases? This will purge all sessions, database tables, and reset active link state. This action cannot be undone.', async () => {
+    try {
+      const d = await api('/api/admin/database/clean-all', { method: 'POST' });
+      if (d && d.ok) {
+        toast(d.message || 'All databases cleaned successfully', 'ok');
+        setTimeout(() => {
+          checkAdminDb();
+          if (typeof loadUsers === 'function') loadUsers();
+        }, 800);
+      } else {
+        toast(d?.error || 'Failed to clean databases', 'err');
+      }
+    } catch {
+      toast('Network error', 'err');
+    }
+  });
+}
+setInterval(checkAdminDb, 15000);
+setTimeout(checkAdminDb, 500);
+
+async function loadSystem(){
+  try{
+    const d=await api('/api/admin/system'); if(!d.ok)return;
+    document.getElementById('sys-heap').textContent=(d.memory?.heapUsedMb||'—')+'MB';
+    document.getElementById('sys-rss').textContent=(d.memory?.rssMb||'—')+'MB';
+    document.getElementById('sys-cpu').textContent=d.cpu?.load1||'—';
+    document.getElementById('sys-store').textContent=(d.storage?.nexstoreKb||0)+'KB';
+    const hPct=Math.min(100,Math.round((parseFloat(d.memory?.heapUsedMb)||0)/(parseFloat(d.memory?.heapTotalMb)||1)*100));
+    document.getElementById('memDetails').innerHTML=`
+      <div class="sys-row"><span class="sys-lbl">Heap Used</span><span class="sys-val">${d.memory?.heapUsedMb||'—'} MB</span></div>
+      <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${hPct}%"></div></div>
+      <div class="sys-row"><span class="sys-lbl">Heap Total</span><span class="sys-val">${d.memory?.heapTotalMb||'—'} MB</span></div>
+      <div class="sys-row"><span class="sys-lbl">RSS</span><span class="sys-val">${d.memory?.rssMb||'—'} MB</span></div>
+      <div class="sys-row"><span class="sys-lbl">System Free</span><span class="sys-val">${d.memory?.freeMemMb||'—'} MB</span></div>`;
+    document.getElementById('serverDetails').innerHTML=`
+      <div class="sys-row"><span class="sys-lbl">Node.js</span><span class="sys-val">${d.nodeVersion||'—'}</span></div>
+      <div class="sys-row"><span class="sys-lbl">Uptime</span><span class="sys-val">${fmtUpServer(d.uptime||0)}</span></div>
+      <div class="sys-row"><span class="sys-lbl">CPU Cores</span><span class="sys-val">${d.cpu?.cores||'—'}</span></div>
+      <div class="sys-row"><span class="sys-lbl">CPU (1m avg)</span><span class="sys-val">${d.cpu?.load1||'—'}</span></div>
+      <div class="sys-row"><span class="sys-lbl">Active Bots</span><span class="sys-val">${d.processes?.activeInstances||0}</span></div>
+      <div class="sys-row"><span class="sys-lbl">Paused Bots</span><span class="sys-val">${d.processes?.pausedInstances||0}</span></div>
+      <div class="sys-row"><span class="sys-lbl">Nexstore</span><span class="sys-val">${d.storage?.nexstoreKb||0} KB</span></div>
+      <div class="sys-row"><span class="sys-lbl">Telegram Bot</span><span class="sys-val">${d.telegram?.botActive?'✅ Active':'⚠ Inactive'}</span></div>`;
+  }catch{}
+}
+
+async function clearErrors(){openModal('🗑','Clear Error Log','Delete all error records?',async()=>{try{const d=await api('/api/admin/errors',{method:'DELETE'});if(d.ok)toast('Error log cleared','info');}catch{}});}
+function doBackup(){window.open(`/api/admin/backup?token=${token}`);}
+
+// ══════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════
+async function loadSettings(){
+  try{
+    const d=await api('/api/admin/settings');
+    if(!d.ok)return;
+    document.getElementById('tgTokenMasked').textContent=d.telegramBotToken||'(none)';
+    const active=d.botActive;
+    const el=document.getElementById('tgBotActive');
+    el.textContent=active?'✅ Running':'⚠️ Stopped';
+    el.style.color=active?'var(--green)':'var(--yellow)';
+    document.getElementById('tgBotStatus').textContent=active?'● Polling':'○ Idle';
+    document.getElementById('tgBotStatus').style.color=active?'var(--green)':'var(--muted)';
+  }catch{}
+}
+
+async function saveBotToken(){
+  const inp=document.getElementById('tgTokenInput');
+  const tok=inp.value.trim();
+  if(!tok){showTgMsg('Paste a token first.','err');return;}
+  const btn=document.getElementById('saveTgTokenBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Saving...';
+  try{
+    const d=await api('/api/admin/settings/bot-token',{method:'POST',body:JSON.stringify({token:tok})});
+    if(d.ok){
+      showTgMsg(d.message||'Token saved and polling started!','ok');
+      inp.value='';
+      loadSettings();
+    } else {
+      showTgMsg(d.error||'Failed to save token.','err');
+    }
+  }catch{showTgMsg('Network error.','err');}
+  btn.disabled=false;btn.textContent='💾 Save & Start Polling';
+}
+
+async function removeBotToken(){
+  openModal('⚠️','Remove Bot Token','Stop Telegram polling and remove the token?',async()=>{
+    try{
+      const d=await api('/api/admin/settings/bot-token',{method:'DELETE'});
+      if(d.ok){showTgMsg('Token removed. Telegram bot stopped.','info');loadSettings();}
+      else showTgMsg(d.error||'Failed.','err');
+    }catch{showTgMsg('Network error.','err');}
+  });
+}
+
+function showTgMsg(msg,type){
+  const el=document.getElementById('tgTokenMsg');
+  el.style.display='block';
+  el.textContent=msg;
+  el.style.background=type==='ok'?'rgba(34,197,94,.12)':type==='err'?'rgba(239,68,68,.1)':'rgba(148,163,184,.08)';
+  el.style.color=type==='ok'?'var(--green)':type==='err'?'var(--red)':'var(--muted)';
+  el.style.border=type==='ok'?'1px solid rgba(34,197,94,.25)':type==='err'?'1px solid rgba(239,68,68,.2)':'1px solid var(--border)';
+  setTimeout(()=>{el.style.display='none';},5000);
+}
+
+async function confirmPauseAll(){
+  openModal('⏸','Pause All Bots','Stop all running bots? They keep their sessions and can be resumed.',async()=>{
+    const d=await api('/api/admin/users');
+    if(!d.ok)return;
+    const running=(d.users||[]).filter(u=>u.running&&!u.paused);
+    if(!running.length){toast('No active bots to pause','info');return;}
+    let done=0;
+    for(const u of running){
+      try{const r=await api(`/api/admin/pause/${encodeURIComponent(u.jid)}`,{method:'POST'});if(r.ok)done++;}catch{}
+    }
+    toast(`⏸ Paused ${done}/${running.length} bots`,'info');
+    setTimeout(loadUsers,800);
+  },'Pause All','btn-danger');
+}
+
+// ══════════════════════════════════════════════════════
+// BOT CHOICES
+// ══════════════════════════════════════════════════════
+let _availableBots=[];
+
+async function loadBotCatalog(){
+  try{ const d=await fetch('/api/bots').then(r=>r.json()); if(d.ok)_availableBots=d.bots||[]; }catch{}
+}
+
+async function loadSelections(){
+  await loadBotCatalog();
+  const tb=document.getElementById('selTbody');
+  let d;
+  try{ d=await api('/api/admin/selections'); }catch{ d={ok:false}; }
+  if(!d.ok){ tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-text">Could not load choices</div></div></td></tr>'; return; }
+
+  const rows=d.selections||[];
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">No paired numbers yet</div></div></td></tr>'; return; }
+
+  tb.innerHTML=rows.map(r=>{
+    const tg=r.telegram?('@'+(r.telegram.username||r.telegram.id)):'—';
+    const status=r.locked
+      ? (r.botRunning?'🟢 Running':'🔒 Locked')
+      : '⏳ Awaiting choice';
+    const picker=r.locked
+      ? '<span class="muted">Locked</span>'
+      : `<select id="pick-${r.number}">${_availableBots.map(b=>`<option value="${b.id}">${b.name}</option>`).join('')}</select>
+         <button type="button" class="btn btn-outline" onclick="assignBot('${r.number}')">Deploy</button>`;
+    const unlock=r.locked
+      ? `<button type="button" class="btn btn-outline" onclick="unlockSelection('${r.number}')">Unlock</button>`
+      : '';
+    return `<tr><td>${r.number}</td><td>${r.botName||'—'}</td><td>${status}</td><td>${r.source||'—'}</td><td>${tg}</td><td>${picker} ${unlock}</td></tr>`;
+  }).join('');
+}
+
+async function assignBot(number){
+  const sel=document.getElementById('pick-'+number);
+  const botId=sel&&sel.value;
+  if(!botId)return toast('Pick a bot first','error');
+  toast('Deploying…');
+  const d=await api('/api/admin/selections/'+number,{method:'POST',body:JSON.stringify({botId})});
+  if(d.ok){ toast(`${d.bot.name} deployed for ${number}`,'success'); }
+  else { toast(d.error||'Failed','error'); }
+  loadSelections();
+}
+
+async function unlockSelection(number){
+  if(!confirm(`Unlock ${number}? They will be able to choose a different bot after re-pairing.`))return;
+  const d=await api('/api/admin/selections/'+number,{method:'DELETE'});
+  toast(d.ok?'Unlocked':(d.error||'Failed'),d.ok?'success':'error');
+  loadSelections();
+}
+
+// ══════════════════════════════════════════════════════
+// STARTUP
+// ══════════════════════════════════════════════════════
+function onLoggedIn(){
+  startStatusStream();
+  startLogStream();
+  loadStats();
+  setInterval(loadStats,15000);
+}
+
+</script>
+
+  <nav class="mob-nav" id="mobNav">
+    <button type="button" class="active" data-tab="dashboard" onclick="showTab('dashboard');_mobActive(this)"><span class="mn-icon">📊</span>Dashboard</button>
+    <button type="button" data-tab="users" onclick="showTab('users');_mobActive(this)"><span class="mn-icon">👥</span>Bots</button>
+    <button type="button" data-tab="bots" onclick="showTab('bots');_mobActive(this)"><span class="mn-icon">🤖</span>Choices</button>
+    <button type="button" data-tab="logs" onclick="showTab('logs');_mobActive(this)"><span class="mn-icon">📋</span>Logs</button>
+    <button type="button" data-tab="settings" onclick="showTab('settings');_mobActive(this)"><span class="mn-icon">🔧</span>Settings</button>
+    <button type="button" data-tab="system" onclick="showTab('system');_mobActive(this)"><span class="mn-icon">⚙️</span>System</button>
+  </nav>
+  <script>function _mobActive(el){document.querySelectorAll('.mob-nav button').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+  // Sync mob-nav active state when sidebar tab changes
+  const _origShowTab=showTab;window.showTab=function(id){_origShowTab(id);document.querySelectorAll('.mob-nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));};
+  </script>
+</body>
+</html>
