@@ -7,6 +7,7 @@
  */
 
 import os from "os";
+import hostMemory from "./hostMemory.cjs";
 
 const CLEANUP_INTERVAL_MS = 30 * 60 * 1000;  // 30 minutes
 const MEMORY_WARN_PCT     = 80;               // warn at 80% heap used
@@ -184,10 +185,13 @@ export function stopResourceManager() {
 // ── Memory health snapshot ────────────────────────────────────────────────────
 export function getMemoryHealth() {
   const mem   = process.memoryUsage();
-  const total = os.totalmem();
-  const free  = os.freemem();
+  const detected = hostMemory.describeMemory();
+  const total = detected.limitMb * 1048576;
+  const cgroupUsed = detected.usedMb === null ? null : detected.usedMb * 1048576;
+  const used = cgroupUsed === null ? Math.min(total, os.totalmem() - os.freemem()) : Math.min(total, cgroupUsed);
+  const free = Math.max(0, total - used);
   const heapPct = Math.round((mem.heapUsed / mem.heapTotal) * 100);
-  const sysPct  = Math.round(((total - free) / total) * 100);
+  const sysPct  = total > 0 ? Math.round((used / total) * 100) : 0;
   const status  = heapPct < 70 ? "🟢 Healthy" : heapPct < 85 ? "🟡 Moderate" : "🔴 High";
   return {
     status,
@@ -198,6 +202,7 @@ export function getMemoryHealth() {
     rssMB:       Math.round(mem.rss       / 1048576),
     sysFreeMB:   Math.round(free          / 1048576),
     sysTotalMB:  Math.round(total         / 1048576),
+    sysMemorySource: detected.source,
     cleanupStats:      { ..._cleanupStats },
     intervalCount:     _intervalRegistry.size,
     lastCleanup:       _lastCleanup ? new Date(_lastCleanup).toLocaleString() : "never",

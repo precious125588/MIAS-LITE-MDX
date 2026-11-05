@@ -25,6 +25,11 @@ test('falls through from unlimited cgroup v2 to cgroup v1', () => {
   assert.equal(memory.readCgroupLimitBytes({ readFile }), 512 * MIB);
 });
 
+test('reads cgroup memory usage for container-aware diagnostics', () => {
+  const readFile = reader({ '/sys/fs/cgroup/memory.current': String(300 * MIB) });
+  assert.equal(memory.readCgroupUsageBytes({ readFile }), 300 * MIB);
+});
+
 test('uses explicit host memory override before cgroup files', () => {
   assert.equal(memory.getMemoryLimitBytes({
     env: { BOT_MEMORY_LIMIT_MB: '640' },
