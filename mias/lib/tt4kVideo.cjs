@@ -204,10 +204,47 @@ async function processVideoTo4k(input, opts = {}) {
         throw new Error("ffmpeg produced an empty 4K output file");
       }
 
-      // No fallback: if output exceeds maxOutputBytes, throw error so caller can use 4K document mode (1.9)
+      // When output exceeds maxOutputBytes (95 MiB), attempt high-quality compression to fit within 95 MiB
       if (stats.size > maxOutputBytes) {
+        const compOut = path.join(WORK_DIR, `tt4k_comp_${jobId}.mp4`);
+        try {
+          const compArgs = [
+            "-y", "-v", "error",
+            "-i", outputPath,
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "24",
+            "-maxrate", "6M", "-bufsize", "12M",
+            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            compOut
+          ];
+          const compRun = await runFfmpeg(ffmpegBin, compArgs, 180000);
+          if (!compRun.error && compRun.code === 0 && fs.existsSync(compOut)) {
+            const compStat = fs.statSync(compOut);
+            if (compStat.size > MIN_OUTPUT_BYTES && compStat.size <= maxOutputBytes) {
+              removeFile(outputPath);
+              let cleanedComp = false;
+              return {
+                path: compOut,
+                bytes: compStat.size,
+                cleanup: () => {
+                  if (cleanedComp) return;
+                  cleanedComp = true;
+                  removeFile(compOut);
+                }
+              };
+            }
+          }
+        } catch {} finally {
+          if (fs.existsSync(compOut)) {
+            const cStat = fs.statSync(compOut);
+            if (cStat.size > maxOutputBytes || cStat.size < MIN_OUTPUT_BYTES) {
+              removeFile(compOut);
+            }
+          }
+        }
+
         removeFile(outputPath);
-        throw new Error("4K video exceeds the 95 MiB size limit. Choose the 4K document option (1.9) to download it.");
+        throw new Error("4K video exceeds the 95 MiB size limit even after compression. Choose the 4K document option (1.9) to download it.");
       }
 
       let cleaned = false;
