@@ -56,12 +56,24 @@ async function bootstrapSessionFromEnv() {
     }
   } catch {}
 
-  // 2. If not raw base64, check if it's a short session ID to fetch from server
+  // 2. If not raw base64, resolve an opaque session ID from its issuing service.
   if (!credsObj) {
-    const serverUrl = process.env.SESSION_SERVER_URL || 'http://localhost:3000';
-    console.log(`[JUST-X bootstrap] Resolving session from ${serverUrl}...`);
+    const serverUrl = String(process.env.SESSION_SERVER_URL || '').trim();
+    if (!serverUrl) {
+      console.error('[JUST-X bootstrap] SESSION_SERVER_URL is missing. Set it to the public HTTPS URL of the session service that issued this SESSION_ID.');
+      return null;
+    }
+    let parsedServerUrl;
     try {
-      const result = await fetchSessionCreds(rawSessionId, serverUrl);
+      parsedServerUrl = new URL(serverUrl);
+      if (!['http:', 'https:'].includes(parsedServerUrl.protocol)) throw new Error('unsupported protocol');
+    } catch {
+      console.error('[JUST-X bootstrap] SESSION_SERVER_URL must be a valid http:// or https:// URL.');
+      return null;
+    }
+    console.log(`[JUST-X bootstrap] Resolving session from ${parsedServerUrl.origin}...`);
+    try {
+      const result = await fetchSessionCreds(rawSessionId, parsedServerUrl.toString());
       credsObj = result.creds;
       phone = result.phoneNumber || '';
     } catch (err) {
@@ -77,7 +89,8 @@ async function bootstrapSessionFromEnv() {
 
   const rawJid = credsObj.me?.id || (phone ? `${phone}@s.whatsapp.net` : 'bot@s.whatsapp.net');
   const digits = String(rawJid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
-  const canonicalJid = digits ? `${digits}@s.whatsapp.net` : rawJid;
+  const canonicalJid = digits ? `${digits}@s.whatsapp.net : rawJid;
+
 
   console.log(`[JUST-X bootstrap] Session authenticated for ${canonicalJid}!`);
   return { canonicalJid, digits, credsObj };
