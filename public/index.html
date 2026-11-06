@@ -109,7 +109,8 @@
         const res = await fetch('/api/bot-info', { cache:'no-store' });
         if (res.ok) {
           const data = await res.json();
-          if (data.username) $('bot-username').textContent = data.username;
+          const displayName = (data.pushName && !/^\d+$/.test(data.pushName)) ? data.pushName : data.username;
+          if (displayName) $('bot-username').textContent = displayName;
           if (data.jid) $('val-jid').textContent = data.jid.split('@')[0];
           if (data.mode) $('val-mode').textContent = data.mode.replaceAll('_',' ');
           $('val-status').textContent = data.live ? 'Online' : 'Offline';

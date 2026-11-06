@@ -2980,8 +2980,8 @@ async function connectToWA(force = false) {
           // incoming message. Now it reads sock.user.name right when the socket
           // opens, so .owner and greetings work from the very first second.
           try {
-            const _sessName = (sock.user?.name || sock.user?.verifiedName || '').trim();
-            if (_sessName) {
+            const _sessName = (sock.user?.name || sock.user?.notify || sock.user?.verifiedName || sock.authState?.creds?.me?.name || sock.authState?.creds?.me?.notify || '').trim();
+            if (_sessName && !/^\d+$/.test(_sessName)) {
               const _ownerNumSess = (CONFIG.OWNER_NUMBER || _cleanNum(sock.user?.id || '')).replace(/[^0-9]/g, '');
               if (_ownerNumSess) {
                 pushNameCache.set(_ownerNumSess, _sessName);
@@ -2989,8 +2989,61 @@ async function connectToWA(force = false) {
               }
               console.log(`👤 Owner name detected from session: "${_sessName}"`);
             }
-            const _botLiveUser = _sessName || (sock.user?.name || sock.user?.verifiedName || '').trim() || CONFIG.OWNER_NAME || (sock.user?.id ? String(sock.user.id).split('@')[0].split(':')[0].replace(/[^0-9]/g, '') : 'User');
+            const _botLiveUser = (_sessName && !/^\d+$/.test(_sessName)) ? _sessName : (CONFIG.OWNER_NAME || (sock.user?.id ? String(sock.user.id).split('@')[0].split(':')[0].replace(/[^0-9]/g, '') : 'User'));
+
+            // Immediately persist active bot identity into active_bot.json for dashboard web server
+            try {
+              const _sessionPaths = require("../sessionPaths.js");
+              const _nexRoot = _sessionPaths.nexstoreRoot();
+              const _activeBotPath = path.join(_nexRoot, "active_bot.json");
+              let _curActive = {};
+              if (fs.existsSync(_activeBotPath)) {
+                try { _curActive = JSON.parse(fs.readFileSync(_activeBotPath, "utf8")) || {}; } catch {}
+              }
+              const _myDigits = String(sock.user?.id || '').split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+              const _finalDisplayName = (_sessName && !/^\d+$/.test(_sessName)) ? _sessName : (_curActive.username && !/^\d+$/.test(_curActive.username) ? _curActive.username : _botLiveUser);
+
+              fs.writeFileSync(_activeBotPath, JSON.stringify({
+                ..._curActive,
+                live: true,
+                username: _finalDisplayName,
+                pushName: (_sessName && !/^\d+$/.test(_sessName)) ? _sessName : (_curActive.pushName || null),
+                jid: sock.user?.id || _curActive.jid,
+                digits: _myDigits || _curActive.digits,
+                mode: "SESSION_ID",
+                updatedAt: new Date().toISOString()
+              }, null, 2), "utf8");
+              process.env.BOT_ACTIVE_USER = _finalDisplayName;
+            } catch (_errActive) {}
+
             console.log(`BOT LIVE for ${_botLiveUser}`);
+
+            // Asynchronous pushName resolution fallback if profile name loads after socket handshake
+            if ((!_sessName || /^\d+$/.test(_sessName)) && sock.user?.id && sock.getName) {
+              Promise.resolve(sock.getName(sock.user.id)).then(_fetchedName => {
+                if (_fetchedName && typeof _fetchedName === 'string' && !/^\d+$/.test(_fetchedName.trim())) {
+                  const _cleanFetched = _fetchedName.trim();
+                  try {
+                    const _sessionPaths = require("../sessionPaths.js");
+                    const _nexRoot = _sessionPaths.nexstoreRoot();
+                    const _activeBotPath = path.join(_nexRoot, "active_bot.json");
+                    let _cur = {};
+                    if (fs.existsSync(_activeBotPath)) {
+                      try { _cur = JSON.parse(fs.readFileSync(_activeBotPath, "utf8")) || {}; } catch {}
+                    }
+                    fs.writeFileSync(_activeBotPath, JSON.stringify({
+                      ..._cur,
+                      live: true,
+                      username: _cleanFetched,
+                      pushName: _cleanFetched,
+                      updatedAt: new Date().toISOString()
+                    }, null, 2), "utf8");
+                    process.env.BOT_ACTIVE_USER = _cleanFetched;
+                    console.log(`BOT LIVE for ${_cleanFetched}`);
+                  } catch {}
+                }
+              }).catch(() => {});
+            }
           } catch (_e) {}
         try { await __getBotPp(sock); } catch {}
         // Apply the saved ON/OFF preference at connect time rather than
