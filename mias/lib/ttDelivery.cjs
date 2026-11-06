@@ -41,7 +41,15 @@ const HD_VIDEO_FILTER = "scale='if(gte(iw,ih),-2,1080)':'if(gte(iw,ih),1080,-2)'
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
 const HD_BOOST = 1.05;
+const HIGH_QUALITY_HD_BOOST = 1.01;
+const HIGH_QUALITY_4K_BOOST = 1.015;
 const HD_MAX_KBPS = 40000;
+
+// Only native 1080p+ sources use the gentle source-relative boost. Smaller
+// sources keep the established HD path and bitrate behavior unchanged.
+function isHighQualitySource(probe) {
+  return Boolean(probe && probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps > 0);
+}
 
 // Encoder threads scale with the host (2 to 4). Output settings are unchanged.
 const HD_THREADS = Math.max(2, Math.min(4, (os.cpus() || []).length || 2));
@@ -191,8 +199,11 @@ async function probeSourceVideo(inPath) {
 }
 
 // Picks the H.264 bitrate for the 1.3 encode from the source probe. Unknown source = reference rate.
-function pickHdBitrate(probe, boost = HD_BOOST) {
+function pickHdBitrate(probe, boost = HD_BOOST, sourceQualityBoost = null) {
   if (!probe || !probe.shortSide || !probe.videoKbps) return HD_REFERENCE_KBPS;
+  if (sourceQualityBoost && isHighQualitySource(probe)) {
+    return Math.min(Math.round(probe.videoKbps * sourceQualityBoost), HD_MAX_KBPS);
+  }
   const alreadyAtHdState = probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps >= HD_REFERENCE_KBPS;
   if (!alreadyAtHdState) return HD_REFERENCE_KBPS;
   return Math.min(Math.round(probe.videoKbps * boost), HD_MAX_KBPS);
@@ -203,20 +214,37 @@ function pickHdBitrate(probe, boost = HD_BOOST) {
  * The input is never deleted here; the caller owns it.
  * @returns {Promise<{path: string, bytes: number, cleanup: () => Promise<void>}>}
  */
-async function reencodeHdForWhatsApp(input, { timeoutMs = HD_ENCODE_TIMEOUT_MS, maxBytes = TT_INLINE_VIDEO_MAX_BYTES, boost = HD_BOOST } = {}) {
+async function reencodeHdForWhatsApp(input, {
+  timeoutMs = HD_ENCODE_TIMEOUT_MS,
+  maxBytes = TT_INLINE_VIDEO_MAX_BYTES,
+  boost = HD_BOOST,
+  sourceQualityBoost = null,
+} = {}) {
   const inPath = typeof input === "string" ? input : input.path;
   ensureWorkDir();
   const out = tempPath("hd", ".mp4");
   const cleanup = async () => { await fsp.rm(out, { force: true }).catch(() => {}); };
   const probe = await probeSourceVideo(inPath).catch(() => null);
-  const kbps = pickHdBitrate(probe, boost);
+
+  // If the video already has original high quality (native 1080p+), leave it untouched.
+  // Sending the untouched original avoids audio cracking / distortion and playback lag.
+  if (isHighQualitySource(probe)) {
+    await fsp.copyFile(inPath, out);
+    const stat = await fsp.stat(out);
+    return { path: out, bytes: stat.size, cleanup, untouched: true };
+  }
+
+  const kbps = pickHdBitrate(probe, boost, sourceQualityBoost);
   const deadline = Date.now() + timeoutMs;
   let run = await runFfmpeg(HD_ARGS(inPath, out, kbps), timeoutMs);
   // Killed by the kernel (usually out of memory), not by our timeout: the same encode once more with the low-memory settings.
   if (!run.error && run.signal === "SIGKILL" && !run.timedOut) {
     await fsp.rm(out, { force: true }).catch(() => {});
     const remaining = deadline - Date.now();
-    if (remaining > 0) run = await runFfmpeg(HD_ARGS(inPath, out, Math.min(kbps, HD_REFERENCE_KBPS), { lowMemory: true }), remaining);
+    const retryKbps = sourceQualityBoost && isHighQualitySource(probe)
+      ? kbps
+      : Math.min(kbps, HD_REFERENCE_KBPS);
+    if (remaining > 0) run = await runFfmpeg(HD_ARGS(inPath, out, retryKbps, { lowMemory: true }), remaining);
   }
   if (run.error || run.timedOut || run.code !== 0) {
     await cleanup();
@@ -233,10 +261,48 @@ async function reencodeHdForWhatsApp(input, { timeoutMs = HD_ENCODE_TIMEOUT_MS, 
     throw new Error("HD re-encode produced an empty file. Nothing was sent.");
   }
 
-  // No fallback: if output exceeds maxBytes, throw error so caller can use document mode
+  // When output exceeds maxBytes (95 MiB), attempt high-quality compression to fit within 95 MiB
   if (stat.size > maxBytes) {
+    const compOut = tempPath("hd_comp", ".mp4");
+    try {
+      // Calculate target bitrate from probe duration or default estimate
+      let durationSec = 60;
+      if (probe && probe.duration) durationSec = Number(probe.duration);
+      // Target 88 MiB to have safety margin under 95 MiB
+      const targetTotalKbps = Math.max(800, Math.floor((88 * 1024 * 8) / (durationSec || 60)));
+      const targetVideoKbps = Math.max(650, targetTotalKbps - 128);
+      const compArgs = [
+        "-y", "-v", "error",
+        "-i", out,
+        "-c:v", "libx264", "-preset", "veryfast",
+        "-b:v", `${targetVideoKbps}k`, "-maxrate", `${targetVideoKbps + 150}k`, "-bufsize", `${targetVideoKbps * 2}k`,
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        compOut
+      ];
+      const compRun = await runFfmpeg(compArgs, timeoutMs);
+      if (!compRun.error && compRun.code === 0 && fs.existsSync(compOut)) {
+        const compStat = await fsp.stat(compOut).catch(() => null);
+        if (compStat && compStat.size > MIN_BYTES && compStat.size <= maxBytes) {
+          await cleanup();
+          return {
+            path: compOut,
+            bytes: compStat.size,
+            cleanup: async () => { await fsp.rm(compOut, { force: true }).catch(() => {}); }
+          };
+        }
+      }
+    } catch {} finally {
+      if (fs.existsSync(compOut)) {
+        const cStat = fs.statSync(compOut);
+        if (cStat.size > maxBytes || cStat.size < MIN_BYTES) {
+          try { fs.unlinkSync(compOut); } catch {}
+        }
+      }
+    }
+
     await cleanup();
-    throw new Error("HD video exceeds the 95 MiB size limit. Choose the document option (1.4) to download it.");
+    throw new Error("HD video exceeds the 95 MiB size limit even after compression. Choose the document option (1.4) to download it.");
   }
 
   return { path: out, bytes: stat.size, cleanup };
@@ -264,16 +330,25 @@ async function deliverTikTokFile({
     return { type: "audio", bytes: file.bytes, sent };
   }
 
-  // 1.4: the provider's original file, as a document, untouched.
-  if (mode && mode.document && !mode.upscale4k) {
+  // 1.4 now re-encodes like 1.3 HD and sends as a document.
+  // Other document modes (such as 1.2 SD document) keep the provider's original file untouched.
+  if (mode && mode.document && !mode.upscale4k && mode.id !== "1.4" && mode.quality !== "hd") {
     const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, caption, quoted);
     return { type: "document", bytes: file.bytes, sent };
   }
 
   // 1.8 / 1.9: the 4K encoder the picker uses. 1.3 and the rest: 1080p HD re-encode.
   const encoded = mode && mode.upscale4k
-    ? await processVideoTo4k(file.path, { timeoutMs: TT4K_TIMEOUT_MS })
-    : await reencodeHdForWhatsApp(file);
+    ? await processVideoTo4k(file.path, {
+        timeoutMs: TT4K_TIMEOUT_MS,
+        sourceQualityBoost: HIGH_QUALITY_4K_BOOST,
+      })
+    : await reencodeHdForWhatsApp(file, {
+        maxBytes: mode && mode.document ? disk.WHATSAPP_DOC_MAX_BYTES : TT_INLINE_VIDEO_MAX_BYTES,
+        sourceQualityBoost: mode && (mode.id === "1.3" || mode.id === "1.4")
+          ? HIGH_QUALITY_HD_BOOST
+          : null,
+      });
   try {
     if (mode && mode.document) {
       const sent = await disk.sendDocumentFromDisk(
@@ -295,7 +370,10 @@ module.exports = {
   HD_ARGS,
   HD_REFERENCE_KBPS,
   HD_BOOST,
+  HIGH_QUALITY_HD_BOOST,
+  HIGH_QUALITY_4K_BOOST,
   HD_MAX_KBPS,
+  isHighQualitySource,
   pickHdBitrate,
   probeSourceVideo,
   TT_INLINE_VIDEO_MAX_BYTES,

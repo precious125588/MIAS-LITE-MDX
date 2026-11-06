@@ -395,60 +395,98 @@ module.exports = function installV36(ctx) {
     return { ctx, fakeQuoted, contactQuoted: null };
   };
 
-  // ── 6. CREATEGC — bot DP + MIAX description + full-details reply ─────────
+  // ── 6. CREATEGC — preserve phone recipients and avoid invalid LIDs ───────
   const wrapCreategc = () => async (sock, msg, args) => {
     const raw = args.join(' ').trim();
     if (!raw) {
-      await sendReply(sock, msg, "Usage: " + (CONFIG.PREFIX || ".") + "creategc <GroupName>");
+      await sendReply(sock, msg, "Usage: " + (CONFIG.PREFIX || ".") + "creategc <GroupName> [| phone numbers] [| description]");
       return;
     }
-    await react(sock, msg, "🌀").catch(() => {});
 
+    const parts = raw.split('|').map(value => value.trim());
+    const subject = parts[0];
+    const description = parts[2] || "Group is created by MIAX MDX";
+    const remoteJid = msg.key?.remoteJid || '';
+    const isDirectMessage = remoteJid.endsWith('@s.whatsapp.net');
+    const sender = msg.key?.participant || msg.participant || (isDirectMessage ? remoteJid : '');
+    const senderPhone = msg.key?.participantPn || msg.key?.senderPn || '';
+    const context = msg.message?.extendedTextMessage?.contextInfo
+      || msg.message?.imageMessage?.contextInfo
+      || msg.message?.videoMessage?.contextInfo
+      || msg.message?.documentMessage?.contextInfo;
+    const candidates = [];
+    const addCandidate = value => { if (value) candidates.push(String(value).trim()); };
+
+    // Explicit phone numbers from the command take priority; mentions and the
+    // sender are additional participants. Never send @lid JIDs to groupCreate.
+    for (const token of (parts[1] || '').split(/[\s,;]+/)) {
+      const digits = token.replace(/[^0-9]/g, '');
+      if (digits.length >= 7 && digits.length <= 15) addCandidate(`${digits}@s.whatsapp.net`);
+    }
+    for (const mentioned of context?.mentionedJid || []) addCandidate(mentioned);
+    if (isDirectMessage) addCandidate(senderPhone || sender);
+    else if (sender) addCandidate(senderPhone || sender);
+
+    const participants = [];
+    const seen = new Set();
+    for (let value of candidates) {
+      if (value.endsWith('@lid')) {
+        try {
+          const pn = await sock.signalRepository?.lidMapping?.getPNForLID?.(value.split('@')[0]);
+          if (pn) value = String(pn).includes('@') ? String(pn) : `${pn}@s.whatsapp.net`;
+        } catch {}
+      }
+      // An unmapped LID is not a phone number, even though its local part is numeric.
+      if (value.endsWith('@lid')) continue;
+      const digits = value.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+      if (digits.length < 7 || digits.length > 15) continue;
+      const jid = `${digits}@s.whatsapp.net`;
+      if (!seen.has(jid)) { seen.add(jid); participants.push(jid); }
+    }
+
+    if (!subject) {
+      await sendReply(sock, msg, '❌ A group name is required. Example: .creategc Study Group | 15551234567');
+      return;
+    }
+    if (!participants.length) {
+      await sendReply(sock, msg, '❌ Add at least one valid phone number (with country code): .creategc Group Name | 15551234567');
+      return;
+    }
+
+    await react(sock, msg, '🌀').catch(() => {});
     try {
-      const parts = raw.split('|').map(s => s.trim());
-      const subject = parts[0];
-      const desc = parts[2] || "Group is created by MIAX MDX";
-
-      const senderJid = msg.key?.participant || msg.participant || (msg.key?.remoteJid?.endsWith('@s.whatsapp.net') ? msg.key?.remoteJid : null);
-      const participants = senderJid ? [senderJid] : [];
-
       const created = await sock.groupCreate(subject, participants);
       const createdJid = created?.id;
+      if (!createdJid) throw new Error('WhatsApp did not return a group ID');
 
-      if (createdJid) {
-        // 1. Silent description set
-        try {
-          await sock.groupUpdateDescription(createdJid, "Group is created by MIAX MDX" + (parts[2] ? " — " + parts[2] : ""));
-        } catch {}
-
-        // 2. Silent bot DP set
-        try {
-          const bp = await getBotPic().catch(() => null);
-          if (bp && bp.length > 1000) {
-            await sock.updateProfilePicture(createdJid, bp).catch(() => {});
-          }
-        } catch {}
-
-        // 3. Invite code
-        const code = await sock.groupInviteCode(createdJid).catch(() => '');
-        const link = code ? ("https://chat.whatsapp.com/" + code) : '—';
-
-        // 4. Send ONLY the final single formatted message
-        const replyText = `✅ Group Created — full details\n\n📛 Name: ${subject}\n👥 Members: ${participants.length || 1}\n📝 Description: Group is created by MIAX MDX\n🆔 Group ID: ${createdJid.split('@')[0]}\n🔗 Invite: ${link}\n🖼️ Icon: bot DP (change with .setgcpic)`;
-
-        await sock.sendMessage(msg.key.remoteJid, { text: replyText }, { quoted: msg });
-        await react(sock, msg, "✅").catch(() => {});
+      try {
+        await sock.groupUpdateDescription(createdJid, description);
+      } catch (error) {
+        console.warn('[creategc] Group created, description update failed:', error?.message || error);
       }
-    } catch (e) {
-      console.error("[creategc clean]", e?.message || e);
-      await react(sock, msg, "❌").catch(() => {});
-      await sendReply(sock, msg, "❌ Failed to create group: " + (e?.message || e));
+      try {
+        const picture = await getBotPic().catch(() => null);
+        if (picture && picture.length > 1000) await sock.updateProfilePicture(createdJid, picture).catch(() => {});
+      } catch {}
+
+      const code = await sock.groupInviteCode(createdJid).catch(() => '');
+      const link = code ? `https://chat.whatsapp.com/${code}` : 'Unavailable';
+      await sock.sendMessage(remoteJid, {
+        text: `✅ Group created\n\n📛 Name: ${subject}\n👥 Requested participants: ${participants.length}\n📝 Description: ${description}\n🆔 Group ID: ${createdJid.split('@')[0]}\n🔗 Invite: ${link}`
+      }, { quoted: msg });
+      await react(sock, msg, '✅').catch(() => {});
+    } catch (error) {
+      console.error('[creategc]', error?.message || error);
+      await react(sock, msg, '❌').catch(() => {});
+      await sendReply(sock, msg, '❌ Failed to create group: ' + (error?.message || error));
     }
   };
-  for (const n of ['creategc','newgroup','newgroup2']) {
-    const e = commands.get(n); if (!e || e.__v36gc) continue;
-    const orig = e._origHandler || e.handler;
-    e.handler = wrapCreategc(orig); e.__v36gc = true; commands.set(n, e);
+  for (const name of ['creategc', 'newgroup', 'newgroup2']) {
+    const entry = commands.get(name);
+    if (!entry || entry.__v36gc) continue;
+    entry.handler = wrapCreategc(entry._origHandler || entry.handler);
+    entry.__v36gc = true;
+    commands.set(name, entry);
   }
 
   // ── 7. SETTINGS — react ⚙️ so you can see it's alive ─────────────────────
@@ -590,4 +628,31 @@ module.exports = function installV36(ctx) {
   } catch (_e37) {}
 
   console.log('[MIAX MDX][boot-verify] creator=@precious125588 anime-edits=ACTIVE ' + parts.join(' | '));
+
+  // ── 12. SYNC ACTIVE BOT IDENTITY — ensure real WhatsApp username on dashboard ───
+  function trySyncActiveUsername(sock) {
+    try {
+      const name = (sock?.user?.name || sock?.user?.notify || sock?.user?.verifiedName || sock?.authState?.creds?.me?.name || sock?.authState?.creds?.me?.notify || '').trim();
+      if (!name || /^\d+$/.test(name)) return;
+      const fs = require('fs');
+      const path = require('path');
+      const sessionPaths = require('../sessionPaths.js');
+      const activeFile = path.join(sessionPaths.nexstoreRoot(), 'active_bot.json');
+      let cur = {};
+      if (fs.existsSync(activeFile)) {
+        try { cur = JSON.parse(fs.readFileSync(activeFile, 'utf8')) || {}; } catch {}
+      }
+      if (!cur.username || /^\d+$/.test(cur.username) || cur.username !== name) {
+        fs.writeFileSync(activeFile, JSON.stringify({
+          ...cur,
+          live: true,
+          username: name,
+          pushName: name,
+          updatedAt: new Date().toISOString()
+        }, null, 2), 'utf8');
+        process.env.BOT_ACTIVE_USER = name;
+      }
+    } catch {}
+  }
+
 };

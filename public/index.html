@@ -1,1000 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Link WhatsApp · MAIS MDX · Made by JUST X</title>
-<meta name="description" content="Link your WhatsApp to MAIS MDX with a pairing code or QR code. Live connection monitor. Made by JUST X.">
-<style>
-  :root{--text:#f5f7fa;--muted:#9ba3b0;--line:rgba(255,50,70,.18);--card-bg:rgba(12,4,8,.82);--green:#25d366;--mint:#3ef2c4;--red:#ff2a44;--chakra:#ff0033;--amber:#ffc24d;--blue:#5ab0ff}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{min-height:100%;background:#08090c;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-  body{position:relative;overflow-x:hidden;padding:22px 16px 48px}
-  
-  .aurora{position:fixed;inset:-25%;pointer-events:none;z-index:0;background:radial-gradient(38% 32% at 18% 8%,rgba(255,0,40,.28),transparent 70%),radial-gradient(32% 28% at 88% 4%,rgba(255,40,70,.18),transparent 70%),radial-gradient(40% 36% at 62% 100%,rgba(255,0,30,.14),transparent 70%);filter:blur(32px);animation:drift 20s ease-in-out infinite alternate}
-  @keyframes drift{from{transform:translate3d(-2%,-1%,0) scale(1)}to{transform:translate3d(2%,2%,0) scale(1.06)}}
-  .gridbg{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 20%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 0%,#000 20%,transparent 70%)}
-  .wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:38px}
-  .brand{display:flex;align-items:center;gap:12px;font-weight:850;letter-spacing:.3px}
-  .mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,var(--green),var(--mint));color:#02140a;box-shadow:0 12px 34px -8px rgba(37,211,102,.6)}
-  .brand small{display:block;font-weight:650;font-size:10.5px;color:var(--muted);letter-spacing:1.8px;text-transform:uppercase;margin-top:3px}
-  .nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .pill{font-size:12px;font-weight:600;padding:8px 13px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:rgba(255,255,255,.035);backdrop-filter:blur(12px);display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--muted)}
-  .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
-  .pill.ok{color:var(--green);border-color:rgba(37,211,102,.35)}
-  .pill.bad{color:var(--red);border-color:rgba(255,92,108,.35)}
-  .pill.warn{color:var(--amber);border-color:rgba(255,194,77,.35)}
-  .pill.link:hover{color:var(--text);border-color:rgba(255,255,255,.22)}
-  .pill.link::before{display:none}
-  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--mint);padding:7px 13px;border-radius:999px;border:1px solid rgba(62,242,196,.25);background:rgba(62,242,196,.06);margin-bottom:18px}
-  .eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint);animation:pulse 1.8s ease-in-out infinite}
-  @keyframes pulse{50%{opacity:.35}}
-  h1{font-size:clamp(36px,6.4vw,64px);line-height:.98;letter-spacing:-.045em;font-weight:880;margin-bottom:16px}
-  h1 span{background:linear-gradient(100deg,var(--green) 5%,var(--mint) 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .lead{color:var(--muted);font-size:15.5px;line-height:1.65;max-width:620px;margin-bottom:34px}
-  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:18px;align-items:start}
-  @media(max-width:880px){.grid{grid-template-columns:1fr}}
-  .card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:28px;padding:26px;min-width:0;backdrop-filter:blur(18px);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 40px 90px -50px #000}
-  .card::before{content:"";position:absolute;left:24px;right:24px;top:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(62,242,196,.7),transparent);opacity:.7}
-  .card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px}
-  .card h2{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:750;display:flex;align-items:center;gap:9px}
-  .card h2 b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:rgba(37,211,102,.14);color:var(--green);font-weight:850;font-size:11px;letter-spacing:0}
-  label{display:block;font-size:13px;color:var(--muted);margin-bottom:9px;font-weight:600}
-  .field{position:relative}
-  .field svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
-  input[type=tel]{width:100%;background:rgba(0,0,0,.55);border:1px solid var(--line);color:var(--text);border-radius:16px;padding:16px 16px 16px 46px;font-size:18px;outline:none;transition:border-color .2s,box-shadow .2s;letter-spacing:.4px;font-variant-numeric:tabular-nums}
-  input[type=tel]::placeholder{color:#4a505b}
-  input[type=tel]:focus{border-color:rgba(37,211,102,.65);box-shadow:0 0 0 4px rgba(37,211,102,.14)}
-  .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:16px 0;padding:5px;border-radius:17px;background:rgba(0,0,0,.5);border:1px solid var(--line)}
-  .seg button{padding:12px;border-radius:12px;border:1px solid transparent;background:none;color:var(--muted);font-weight:750;font-size:14px;cursor:pointer;transition:all .2s}
-  .seg button:hover{color:var(--text)}
-  .seg button[aria-pressed=true]{color:#02140a;background:linear-gradient(135deg,var(--green),var(--mint));box-shadow:0 10px 26px -10px rgba(37,211,102,.7)}
-  .btn{width:100%;padding:16px;border-radius:16px;border:0;background:linear-gradient(135deg,var(--green),var(--mint));color:#02140a;font-weight:850;font-size:15.5px;cursor:pointer;transition:transform .15s,box-shadow .2s,opacity .2s;box-shadow:0 18px 40px -14px rgba(37,211,102,.7);letter-spacing:.1px}
-  .btn:hover{transform:translateY(-1px);box-shadow:0 22px 46px -14px rgba(37,211,102,.8)}
-  .btn:active{transform:translateY(0) scale(.99)}
-  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-  .btn.ghost{background:rgba(255,255,255,.03);color:var(--text);border:1px solid var(--line);box-shadow:none;font-weight:700;font-size:14px}
-  .btn.ghost:hover{border-color:rgba(255,255,255,.24);box-shadow:none;background:rgba(255,255,255,.06)}
-  .row{display:flex;gap:10px;margin-top:10px}
-  .row .btn{flex:1}
-  .hidden{display:none!important}
-  .alert{display:none;margin-top:14px;padding:13px 15px;border-radius:15px;font-size:14px;line-height:1.5}
-  .alert.show{display:block}
-  .alert.err{background:rgba(255,92,108,.09);border:1px solid rgba(255,92,108,.3);color:#ffc7ce}
-  .alert.info{background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.28);color:#c9f8da}
-  .tools{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-  .hint{color:var(--muted);font-size:13px;line-height:1.6}
-  .note{margin-top:16px;padding:14px;border-radius:18px;background:rgba(0,0,0,.4);border:1px solid var(--line);font-size:13px;color:var(--muted);line-height:1.6}
-  .note b{color:var(--text);font-weight:700}
-
-  .monitor{display:grid;justify-items:center;text-align:center;gap:6px}
-  .ring-wrap{position:relative;width:208px;height:208px;margin:4px 0 6px}
-  .ring{width:100%;height:100%;transform:rotate(-90deg)}
-  .ring .track{fill:none;stroke:rgba(255,255,255,.07);stroke-width:7}
-  .ring .fill{fill:none;stroke:url(#grad);stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1),stroke .4s}
-  .ring.is-bad .fill{stroke:url(#gradBad)}
-  .ring.is-warn .fill{stroke:url(#gradWarn)}
-  .ring-glow{position:absolute;inset:18%;border-radius:50%;background:radial-gradient(closest-side,rgba(37,211,102,.22),transparent);filter:blur(10px);pointer-events:none}
-  .ring-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .ring-num b{font-size:46px;font-weight:880;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1}
-  .ring-num span{font-size:12px;color:var(--muted);margin-top:8px;max-width:130px;line-height:1.35;font-weight:600}
-  .phase{display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:999px;font-size:13.5px;font-weight:750;border:1px solid var(--line);color:var(--muted);background:rgba(255,255,255,.03)}
-  .phase::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
-  .phase.ok{color:var(--green);border-color:rgba(37,211,102,.35);background:rgba(37,211,102,.08)}
-  .phase.info{color:var(--blue);border-color:rgba(90,176,255,.35);background:rgba(90,176,255,.08)}
-  .phase.warn{color:var(--amber);border-color:rgba(255,194,77,.35);background:rgba(255,194,77,.08)}
-  .phase.bad{color:var(--red);border-color:rgba(255,92,108,.35);background:rgba(255,92,108,.08)}
-  #phaseHint{max-width:430px;margin-top:4px;min-height:40px}
-  .stage-out{width:100%;min-height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px 0;border-top:1px solid var(--line);margin-top:18px}
-  .qr{background:#fff;padding:14px;border-radius:22px;width:min(248px,100%);box-shadow:0 0 0 1px rgba(62,242,196,.3),0 24px 70px -18px rgba(37,211,102,.55)}
-  .qr img{display:block;width:100%;height:auto;image-rendering:pixelated}
-  .codes{display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap}
-  .cbox{width:44px;height:58px;border-radius:14px;background:rgba(0,0,0,.7);border:1px solid rgba(62,242,196,.35);display:grid;place-items:center;font-size:27px;font-weight:880;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--mint);box-shadow:inset 0 0 22px rgba(62,242,196,.12),0 10px 30px -14px rgba(62,242,196,.5)}
-  .cdash{color:#3a404a;font-size:26px;margin:0 4px;font-weight:300}
-  .spin{width:40px;height:40px;border-radius:50%;border:3px solid rgba(255,255,255,.08);border-top-color:var(--mint);animation:sp .9s linear infinite}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .done-mark{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--mint));color:#02140a;display:grid;place-items:center;font-size:36px;font-weight:900;box-shadow:0 0 50px rgba(37,211,102,.55)}
-  .bad-mark{width:76px;height:76px;border-radius:50%;background:rgba(255,92,108,.12);border:1px solid rgba(255,92,108,.35);color:var(--red);display:grid;place-items:center;font-size:30px;font-weight:900}
-  .steps{list-style:none;margin-top:18px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;width:100%}
-  @media(max-width:620px){.steps{grid-template-columns:1fr 1fr}}
-  .steps li{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);font-weight:650;text-align:center;line-height:1.3}
-  .steps li::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid #2a2f37;background:#000;flex:none}
-  .steps li.done{color:var(--text)}
-  .steps li.done::before{background:var(--green);border-color:var(--green);box-shadow:0 0 10px rgba(37,211,102,.6)}
-  .steps li.now{color:var(--text)}
-  .steps li.now::before{border-color:var(--mint);box-shadow:0 0 0 5px rgba(62,242,196,.15)}
-  .steps li.fail::before{background:var(--red);border-color:var(--red)}
-  .checks{width:100%;display:grid;gap:7px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line);text-align:left}
-  .chk{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:11px;font-size:13px;padding:10px 13px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid var(--line)}
-  .chk i{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 9px var(--red)}
-  .chk.ok i{background:var(--green);box-shadow:0 0 9px var(--green)}
-  .chk span{color:#d6dbe2;font-weight:600}
-  .chk em{font-style:normal;color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;max-width:200px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .log-hd{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:750}
-  .log{width:100%;margin-top:8px;max-height:156px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#6f7782;background:rgba(0,0,0,.45);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:5px;text-align:left}
-  .log div:first-child{color:var(--text)}
-  footer{margin-top:44px;text-align:center;color:#5a6069;font-size:13px;letter-spacing:.4px}
-  footer b{background:linear-gradient(100deg,var(--green),var(--mint));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:880}
-  footer a{color:inherit;opacity:.75;margin-left:8px}
-
-  
-
-  /* ── CARDS & BUTTONS THEMED TO CRIMSON CHAKRA ── */
-  .card{position:relative;background:var(--card-bg);border:1px solid var(--line);border-radius:28px;padding:26px;min-width:0;backdrop-filter:blur(22px);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 40px 90px -50px #000}
-  .card::before{content:"";position:absolute;left:24px;right:24px;top:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,42,68,.85),transparent);opacity:.8}
-  .btn{width:100%;padding:16px;border-radius:16px;border:0;background:linear-gradient(135deg,#ff2040,#d8001e);color:#fff;font-weight:850;font-size:15.5px;cursor:pointer;transition:transform .15s,box-shadow .2s,opacity .2s;box-shadow:0 18px 40px -14px rgba(255,0,50,.75);letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
-  .btn:hover{transform:translateY(-1px);box-shadow:0 22px 46px -12px rgba(255,0,50,.9)}
-  .seg button[aria-pressed=true]{color:#fff;background:linear-gradient(135deg,#ff2040,#b50019);box-shadow:0 10px 26px -10px rgba(255,0,50,.75)}
-  h1 span{background:linear-gradient(100deg,#ff4055 5%,#ff8090 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .eyebrow{color:#ff556b;border-color:rgba(255,50,80,.35);background:rgba(255,40,70,.12)}
-  .eyebrow i{background:#ff2040;box-shadow:0 0 10px #ff2040}
-
-  /* ── DIAGNOSTIC & DEBUG INSPECTOR ── */
-  .debug-panel{margin-top:20px;border-top:1px solid var(--line);padding-top:18px;width:100%}
-  .debug-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:10px}
-  .debug-toggle-btn{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700}
-  .debug-toggle-btn:hover{color:#fff;border-color:rgba(255,50,70,.4)}
-  .debug-card{display:none;background:rgba(25,5,10,.88);border:1px solid rgba(255,40,60,.4);border-radius:18px;padding:16px;margin-bottom:12px;font-size:13px;line-height:1.55;box-shadow:0 8px 30px rgba(255,0,50,.15)}
-  .debug-card.show{display:block;animation:fadeUp .3s ease}
-  .debug-card-title{display:flex;align-items:center;gap:8px;font-weight:850;font-size:13.5px;color:#ff526a;margin-bottom:8px}
-  .debug-row{margin-top:6px;font-size:12.5px;color:#d6dbe2}
-  .debug-row b{color:#ff8595;font-weight:700}
-  .sfx-chip:hover{background:rgba(255,0,50,.28);color:#fff}
-
-
-.storage-btn{cursor:pointer;border:0;font:inherit;background:none}
-.storage-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
-.storage-overlay.open{opacity:1;pointer-events:auto}
-.storage-drawer{position:fixed;top:0;right:0;height:100%;width:min(380px,92vw);overflow:auto;background:var(--card,#111);border-left:1px solid var(--line,#333);padding:18px;box-sizing:border-box;transform:translateX(100%);transition:transform .25s ease;z-index:60}
-.storage-drawer.open{transform:translateX(0)}
-.storage-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:16px}
-.storage-sub{color:var(--muted);font-size:12px;line-height:1.5;margin:0 0 12px}
-.storage-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08090d">
+  <title>MIAS MDX · Bot Status</title>
+  <style>
+    :root { color-scheme: dark; --green:#25d366; --mint:#3ef2c4; --muted:#9ba3b4; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { min-height:100vh; background:#08090d; color:#f1f4f9; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; display:flex; justify-content:center; padding:24px 14px; overflow-x:hidden; }
+    .glow { position:fixed; inset:0; pointer-events:none; background:radial-gradient(circle at 15% 18%,rgba(37,211,102,.14),transparent 40%),radial-gradient(circle at 85% 80%,rgba(0,168,132,.11),transparent 44%); }
+    .page { position:relative; z-index:1; width:min(100%,760px); margin:auto; }
+    .owner-card,.bot-card { background:rgba(18,22,30,.92); border:1px solid rgba(255,255,255,.08); border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.45); text-align:center; backdrop-filter:blur(18px); }
+    .owner-card { max-width:520px; margin:0 auto; padding:40px 32px; transition:padding .25s ease,border-color .25s ease; }
+    .page.has-rentals .owner-card { padding:24px 24px; border-color:rgba(37,211,102,.24); }
+    .badge { display:inline-flex; align-items:center; gap:9px; color:var(--green); border:1px solid rgba(37,211,102,.32); background:rgba(37,211,102,.1); border-radius:99px; text-transform:uppercase; letter-spacing:.7px; font-size:12px; font-weight:750; padding:7px 14px; margin-bottom:22px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:currentColor; box-shadow:0 0 12px currentColor; animation:pulse 2s infinite; }
+    @keyframes pulse { 50%{opacity:.45;transform:scale(.85)} }
+    h1 { font-size:clamp(25px,5vw,36px); line-height:1.2; letter-spacing:-.6px; margin-bottom:10px; }
+    .name { display:block; margin-top:5px; overflow-wrap:anywhere; background:linear-gradient(135deg,var(--green),var(--mint)); color:transparent; background-clip:text; -webkit-background-clip:text; }
+    .subtext { color:var(--muted); font-size:15px; line-height:1.55; margin:0 auto 28px; max-width:440px; }
+    .page.has-rentals .subtext { font-size:13px; margin-bottom:18px; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; text-align:left; }
+    .tile { min-width:0; padding:14px 16px; border-radius:13px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.065); }
+    .label { color:#788397; text-transform:uppercase; letter-spacing:.6px; font-size:10px; margin-bottom:5px; }
+    .value { color:#e2e8f0; font-size:14px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ok { color:var(--green); }
+    .page.has-rentals .owner-card .tile { padding:10px 12px; }
+    .page.has-rentals .owner-card .value { font-size:13px; }
+    .family { display:none; max-width:680px; margin:0 auto; padding-bottom:4px; }
+    .page.has-rentals .family { display:block; }
+    .trunk { width:2px; height:30px; margin:0 auto; background:linear-gradient(var(--green),var(--mint)); box-shadow:0 0 9px rgba(62,242,196,.55); }
+    .family-title { position:relative; width:max-content; max-width:100%; margin:0 auto 18px; padding:7px 15px; border:1px solid rgba(62,242,196,.38); border-radius:30px; background:#10151c; color:var(--mint); font-size:11px; font-weight:750; letter-spacing:.65px; text-transform:uppercase; }
+    .branches { position:relative; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; padding-top:18px; }
+    .branches::before { content:""; position:absolute; top:0; left:25%; right:25%; height:16px; border-top:2px solid rgba(62,242,196,.8); border-left:2px solid rgba(62,242,196,.8); border-right:2px solid rgba(62,242,196,.8); border-radius:8px 8px 0 0; }
+    .branches.one { grid-template-columns:minmax(0,340px); justify-content:center; }
+    .branches.one::before { left:50%; right:auto; width:2px; height:18px; border:0; background:rgba(62,242,196,.8); border-radius:0; }
+    .bot-card { position:relative; padding:24px 20px; border-color:rgba(62,242,196,.22); }
+    .bot-card::before { content:""; position:absolute; top:-19px; left:50%; height:18px; width:2px; background:rgba(62,242,196,.8); }
+    .bot-card .badge { margin-bottom:14px; font-size:10px; padding:6px 12px; color:var(--mint); border-color:rgba(62,242,196,.35); background:rgba(62,242,196,.09); }
+    .bot-card h2 { font-size:21px; line-height:1.25; margin-bottom:8px; }
+    .bot-card .subtext { font-size:12px; margin-bottom:17px; }
+    .bot-card .tile { padding:10px 11px; }
+    .bot-card .value { font-size:12px; }
+    .owner-link { display:block; margin-top:16px; color:#8792a5; font-size:11px; overflow-wrap:anywhere; text-decoration:none; }
+    .owner-link:hover { color:var(--mint); }
+    .footer { max-width:520px; margin:24px auto 0; padding:18px 8px 0; border-top:1px solid rgba(255,255,255,.08); color:#64748b; text-align:center; font-size:12px; }
+    @media(max-width:580px) { body{padding:18px 12px}.owner-card{padding:30px 20px;border-radius:20px}.page.has-rentals .owner-card{padding:21px 16px}.branches{grid-template-columns:minmax(0,1fr);gap:18px;padding-top:0}.branches::before{display:none}.branches.one{grid-template-columns:minmax(0,1fr)}.bot-card{max-width:420px;width:100%;margin:0 auto}.bot-card::before{display:none}.trunk{height:23px}.family-title{margin-bottom:16px} }
+  </style>
 </head>
 <body>
-
-<div class="aurora" aria-hidden="true"></div>
-<div class="gridbg" aria-hidden="true"></div>
-<div class="wrap">
-  <header>
-    <div class="brand">
-      <div class="logo-box" style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#25d366,#128c7e);display:grid;place-items:center;font-size:20px;box-shadow:0 0 20px rgba(37,211,102,0.3);">🤖</div>
-      <div>MAIS MDX<small>WhatsApp Link</small></div>
-    </div>
-    <div class="nav">
-      <span id="serverPill" class="pill">Checking server…</span>
-      <button type="button" class="pill link storage-btn" id="storageBtn" aria-controls="storageDrawer" aria-expanded="false">🗄️ Storage</button>
-      <a class="pill link" href="/admin">Admin</a>
-    </div>
-  </header>
-
-  <span class="eyebrow"><i></i>Live pairing</span>
-  <h1>Link your <span>WhatsApp</span><br>in a few taps.</h1>
-  <p class="lead">Enter your number, choose a pairing code or QR, then approve the link on your phone. The monitor tracks every step, then keeps watching the live connection.</p>
-
-  <div class="grid">
-    <section class="card" aria-labelledby="s1">
-      <div class="card-hd"><h2 id="s1"><b>01</b> Your number</h2></div>
-      <label for="phoneInput">WhatsApp number with country code</label>
-      <div class="field">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>
-        <input id="phoneInput" type="tel" inputmode="tel" autocomplete="tel" placeholder="+2348012345678" maxlength="20">
-      </div>
-      <div class="seg" role="group" aria-label="Link method">
-        <button type="button" id="modeCode" aria-pressed="true">Pairing code</button>
-        <button type="button" id="modeQr" aria-pressed="false">QR code</button>
-      </div>
-      <button type="button" class="btn" id="pairBtn">Get pairing code</button>
-      <div class="row hidden" id="repairRow"><button type="button" class="btn ghost" id="repairBtn">Re-pair anyway</button></div>
-      <div id="alertBox" class="alert" role="alert"></div>
-      <div class="tools">
-        <button type="button" class="btn ghost" id="checkBtn">Check status</button>
-        <button type="button" class="btn ghost" id="resetBtn">Reset number</button>
-      </div>
-      <div class="note"><b>Check status</b> reads a number's live state without starting a new link. <b>Reset</b> clears its saved session so you can link it again.</div>
-    </section>
-
-    <section class="card monitor-card" aria-labelledby="s2">
-      <div class="card-hd"><h2 id="s2"><b>02</b> Live monitor</h2></div>
-      <div class="monitor">
-        <div class="ring-wrap">
-          <div class="ring-glow" aria-hidden="true"></div>
-          <svg class="ring" id="ringSvg" viewBox="0 0 120 120" role="img" aria-label="Linking progress">
-            <defs>
-              <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#25d366"/><stop offset="100%" stop-color="#3ef2c4"/></linearGradient>
-              <linearGradient id="gradBad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff5c6c"/><stop offset="100%" stop-color="#ff9aa4"/></linearGradient>
-              <linearGradient id="gradWarn" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffc24d"/><stop offset="100%" stop-color="#ffe29a"/></linearGradient>
-            </defs>
-            <circle class="track" cx="60" cy="60" r="54"/>
-            <circle class="fill" id="ringFill" cx="60" cy="60" r="54"/>
-          </svg>
-          <div class="ring-num"><b id="pctNum">0%</b><span id="pctLabel" aria-live="polite">Idle</span></div>
-        </div>
-        <span id="phaseBadge" class="phase">Not linked yet</span>
-        <p id="phaseHint" class="hint">Enter your number to start. Once linked, this monitor shows the live bot connection.</p>
-      </div>
-
-      <div class="stage-out" id="stageOut" aria-live="polite">
-        <p class="hint">Enter your number and press Get pairing code.</p>
-      </div>
-
-      <ol class="steps" id="steps">
-        <li data-step="connect">Connect</li>
-        <li data-step="auth">Approve</li>
-        <li data-step="ready">Code or QR</li>
-        <li data-step="linked">Linked</li>
-        <li data-step="bot">Bot live</li>
-      </ol>
-
-      <div class="checks" id="checks" aria-label="Connection conditions"></div>
-
-      <!-- Diagnostic & Debug Inspector -->
-      <div class="debug-panel">
-        <div class="debug-hd">
-          <span>🛠️ Live Diagnostics & Debug Log</span>
-          <div>
-            <button type="button" id="copyDebugBtn" class="debug-toggle-btn">📋 Copy Report</button>
-          </div>
-        </div>
-
-        <!-- Issue Detail Box (explains exactly what happened and why) -->
-        <div id="debugCard" class="debug-card">
-          <div class="debug-card-title">
-            <span id="debugCardIcon">⚠️</span>
-            <span id="debugCardStage">Issue Detected</span>
-            <span id="debugCardCode" class="pill bad" style="font-size:10.5px;padding:3px 8px;margin-left:auto">Code</span>
-          </div>
-          <div class="debug-row"><b>What Happened:</b> <span id="debugWhat">—</span></div>
-          <div class="debug-row"><b>Why:</b> <span id="debugWhy">—</span></div>
-          <div class="debug-row"><b>Solution:</b> <span id="debugSolution">—</span></div>
-        </div>
-
-        <div class="log-hd" style="margin-top:10px"><span>Event Stream</span><span id="logCount"></span></div>
-        <div class="log" id="logBody" aria-label="Event log"></div>
+  <div class="glow" aria-hidden="true"></div>
+  <main class="page" id="page">
+    <section class="owner-card" aria-label="Main bot status">
+      <div class="badge"><span class="dot"></span><span id="badge-text">LIVE &amp; ACTIVE</span></div>
+      <h1>Bot is live for <span class="name" id="bot-username">Connecting…</span></h1>
+      <p class="subtext" id="status-desc">Connected via Session ID. WhatsApp services and auto-responders are running.</p>
+      <div class="grid">
+        <div class="tile"><div class="label">Mode</div><div class="value" id="val-mode">SESSION ID</div></div>
+        <div class="tile"><div class="label">Status</div><div class="value ok" id="val-status">Online</div></div>
+        <div class="tile"><div class="label">Uptime</div><div class="value" id="val-uptime">Active</div></div>
+        <div class="tile"><div class="label">WhatsApp ID</div><div class="value" id="val-jid">Connected</div></div>
       </div>
     </section>
-  </div>
-
-  <footer>Made by <b>JUST X</b></footer>
-</div>
-
-<div class="storage-overlay" id="storageOverlay"></div>
-<aside class="storage-drawer" id="storageDrawer" aria-label="Storage status" aria-hidden="true">
-  <div class="storage-hd"><b>Storage</b><button type="button" class="btn ghost" id="storageClose" aria-label="Close storage panel">✕</button></div>
-  <p class="storage-sub">Storage is JSON files only. PostgreSQL and Redis are switched off.</p>
-  <div class="storage-pills">
-    <span id="settingsDbPill" class="pill">Settings DB: Checking…</span>
-    <span id="sessionDbPill" class="pill">Session DB: Checking…</span>
-    <span id="externalDbPill" class="pill">Railway DB: Checking…</span>
-    <span id="redisPill" class="pill">Redis: Checking…</span>
-  </div>
-      <div id="persistBox" style="margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid var(--line);font-size:12px;line-height:1.6;">
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-            <span>⚙️ <b>Settings DB:</b> <span id="settingsDbDetailTxt" style="color:var(--muted)">Checking...</span></span>
-            <span>🔑 <b>Session DB:</b> <span id="sessionDbDetailTxt" style="color:var(--muted)">Checking...</span></span>
-            <span>🚂 <b>External DB:</b> <span id="externalDbDetailTxt" style="color:var(--muted)">Checking...</span></span>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;">
-            <span>📁 <b>Disk Volume:</b> <span id="volDetailTxt" style="color:var(--muted)">Checking Volume...</span></span>
-            <span>🧰 <b>Redis cache:</b> <span id="redisDetailTxt" style="color:var(--muted)">Checking...</span></span>
-            <span id="storageModeTxt" style="color:var(--muted);font-size:11px;">Dedicated Session DB</span>
-          </div>
-          <div id="dbDiagnostics" role="status" aria-live="polite" style="display:none;margin-top:8px;padding:9px 10px;border:1px solid rgba(255,255,255,0.09);border-radius:12px;background:rgba(255,255,255,0.025);color:var(--muted);font-size:12px;line-height:1.55;"></div>
-        </div>
-      </div>
-</aside>
-<script>
-(() => {
-  const $ = id => document.getElementById(id);
-  const ORDER = ['idle','connect','auth','ready','linked','bot'];
-  const PCT = {idle:0, connect:15, auth:35, ready:60, linked:90, bot:100};
-  const LABEL = {idle:'Idle', connect:'Connecting', auth:'Waiting for approval', linked:'Number linked', bot:'Bot is live'};
-  // What the ring shows when no pairing is running: driven by the server's health phase.
-  const RING_BY_PHASE = {
-    live:[100,'Bot is live','ok'], reconnecting:[85,'Reconnecting','warn'], starting:[80,'Starting up','info'],
-    stopped:[70,'Linked, bot stopped','warn'], start_failed:[70,'Startup failed','bad'], pairing:[35,'Waiting for approval','info'],
-    logged_out:[40,'Logged out','bad'], replaced:[40,'Taken over','bad'], new:[0,'Not linked','muted']
-  };
-  const WAIT_LIMIT_MS = 420000;   // includes approval and large-account initial sync
-  const STALL_NOTE_MS = 90000;    // log a note if WhatsApp is slow
-  const HEALTH_MS = 5000;         // live condition refresh
-  const CIRC = 2 * Math.PI * 54;
-  const EVENTS = ['waiting','state','connecting','authenticating','qr_ready','code_ready','linked','bot_started','failed','timeout','debug','linking','paired','bot_error'];
-
-  let mode = 'code', number = '', es = null, stage = 'idle', pending = false;
-  let startedAt = 0, lastEventAt = 0, stallNoted = false;
-  let codeShown = null, qrReady = false, qrRetries = 0, lastPhase = null;
-  let pollTimer = null, watchTimer = null, healthTimer = null;
-  let logCount = 0;
-
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const ago = ts => {
-    const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-    if (s < 60) return s + 's ago';
-    const m = Math.floor(s / 60); if (m < 60) return m + 'm ago';
-    const h = Math.floor(m / 60); if (h < 48) return h + 'h ago';
-    return Math.floor(h / 24) + 'd ago';
-  };
-
-  $('ringFill').style.strokeDasharray = CIRC;
-  $('ringFill').style.strokeDashoffset = CIRC;
-
-  function log(msg){
-    const body = $('logBody');
-    const row = document.createElement('div');
-    row.textContent = new Date().toLocaleTimeString() + '  ' + msg;
-    body.insertBefore(row, body.firstChild);
-    while (body.childElementCount > 80) body.removeChild(body.lastChild);
-    logCount++;
-    $('logCount').textContent = logCount + ' events';
-  }
-
-  function alertMsg(text, kind){
-    const a = $('alertBox'); a.textContent = text; a.className = 'alert show ' + (kind || 'err');
-  }
-  function clearAlert(){ const a = $('alertBox'); a.className = 'alert'; a.textContent = ''; }
-
-  function setRing(p, label, tone){
-    $('pctNum').textContent = p + '%';
-    $('pctLabel').textContent = label;
-    $('ringFill').style.strokeDashoffset = CIRC * (1 - p / 100);
-    const ring = $('ringSvg');
-    ring.classList.toggle('is-bad', tone === 'bad');
-    ring.classList.toggle('is-warn', tone === 'warn');
-  }
-
-  function setPct(p, label){ setRing(p, label, ''); }
-
-  function markSteps(upTo, failed){
-    const idx = ORDER.indexOf(upTo);
-    document.querySelectorAll('#steps li').forEach(li => {
-      const i = ORDER.indexOf(li.dataset.step);
-      li.classList.toggle('done', i < idx || (upTo === 'bot' && i === idx));
-      li.classList.toggle('now', i === idx && !failed && upTo !== 'bot');
-      li.classList.toggle('fail', failed && i === idx);
-    });
-  }
-
-  function setStage(next, detail){
-    if (ORDER.indexOf(next) < ORDER.indexOf(stage)) return; // never move backwards
-    stage = next;
-    const label = next === 'ready' ? (mode === 'qr' ? 'Scan the QR now' : 'Enter the code') : LABEL[next];
-    setPct(PCT[next], label);
-    if (next !== 'idle') markSteps(next, false);
-    if (detail) log(detail);
-  }
-
-  function showSpinner(text){
-    $('stageOut').innerHTML = '<div class="spin" aria-hidden="true"></div><p class="hint">' + esc(text) + '</p>';
-  }
-
-  function showNote(markHtml, text){
-    $('stageOut').innerHTML = markHtml + '<p class="hint">' + esc(text) + '</p>';
-  }
-
-  function showCode(code){
-    const clean = String(code).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-    const boxes = clean.split('').map(ch => '<div class="cbox">' + esc(ch) + '</div>');
-    const half = Math.ceil(clean.length / 2);
-    $('stageOut').innerHTML =
-      '<div class="codes" aria-label="Pairing code ' + esc(clean) + '">' +
-        boxes.slice(0, half).join('') + '<span class="cdash" aria-hidden="true">–</span>' + boxes.slice(half).join('') +
-      '</div>' +
-      '<p class="hint">In WhatsApp open Linked devices, choose Link with phone number, then type this code. It expires in about two minutes.</p>' +
-      '<button type="button" class="btn ghost" id="copyBtn" style="max-width:220px">Copy code</button>';
-    $('copyBtn').onclick = async () => {
-      try { await navigator.clipboard.writeText(String(code)); $('copyBtn').textContent = 'Copied'; }
-      catch { $('copyBtn').textContent = 'Copy failed'; }
-    };
-    if (codeShown !== clean) log('Pairing code ready. Enter it in WhatsApp.');
-    codeShown = clean;
-  }
-
-  function showQr(url){
-    const src = (url || ('/api/pair/qr/' + number)) + (url && url.includes('?') ? '&' : '?') + 't=' + Date.now();
-    const img = $('qrImg');
-    if (img && $('stageOut').contains(img)) { img.src = src; return; }
-    $('stageOut').innerHTML =
-      '<div class="qr"><img id="qrImg" alt="WhatsApp pairing QR code" src="' + esc(src) + '"></div>' +
-      '<p class="hint">In WhatsApp open Linked devices, tap Link a device, then scan this code. It refreshes on its own.</p>';
-    const el = $('qrImg');
-    el.onload = () => { qrReady = true; qrRetries = 0; };
-    el.onerror = () => {
-      if (qrRetries++ > 20) return;
-      setTimeout(() => { const cur = $('qrImg'); if (cur && pending) cur.src = '/api/pair/qr/' + number + '?t=' + Date.now(); }, 1500);
-    };
-  }
-
-  function showDone(){
-    showNote('<div class="done-mark" aria-hidden="true">✓</div>', 'Your WhatsApp is linked and the bot is running.');
-  }
-
-  // Renders the live condition panel from the server's health summary.
-  function renderHealth(h){
-    if (!h) return;
-    const badge = $('phaseBadge');
-    badge.textContent = h.label || 'Unknown';
-    badge.className = 'phase ' + (h.tone === 'ok' ? 'ok' : h.tone === 'bad' ? 'bad' : h.tone === 'warn' ? 'warn' : h.tone === 'info' ? 'info' : '');
-    let hint = '';
-    if (h.lastClose) hint = 'Last disconnect: ' + h.lastClose.hint + (h.lastClose.at ? ' (' + ago(h.lastClose.at) + ')' : '');
-    else if (h.phase === 'live') hint = 'Connected and listening for messages. Updates every few seconds.';
-    else if (h.phase === 'new') hint = 'Enter your number to start. Once linked, this monitor shows the live bot connection.';
-    else if (h.phase === 'start_failed') hint = h.startError || 'Bot startup failed. Your session is saved; use Restart bot in admin.';
-    else if (h.phase === 'stopped') hint = 'The number is linked but its bot process is not running. Restart it from the admin page; a valid link does not need Reset.';
-    $('phaseHint').textContent = hint;
-    $('checks').innerHTML = (h.checks || []).map(c =>
-      '<div class="chk ' + (c.ok ? 'ok' : '') + '"><i></i><span>' + esc(c.label) + '</span><em title="' + esc(c.value ?? '') + '">' + esc(c.value ?? '') + '</em></div>'
-    ).join('');
-
-    // When no pairing is running, the ring and the summary follow the real state, never a stale stage.
-    if (!pending) {
-      const r = RING_BY_PHASE[h.phase];
-      if (r) {
-        setRing(r[0], r[1], r[2] === 'bad' ? 'bad' : r[2] === 'warn' ? 'warn' : '');
-        markSteps(h.phase === 'live' ? 'bot' : 'none', false);
-      }
-      if (h.phase === 'live') showDone();
-      else if (h.phase === 'logged_out' || h.phase === 'replaced') showNote('<div class="bad-mark" aria-hidden="true">!</div>', h.phase === 'replaced' ? 'Session conflict: stop duplicate services or replicas using this session, then restart the bot. Your saved session has not been deleted.' : 'WhatsApp rejected or unlinked this session. Use Re-pair anyway to create a fresh link.');
-      else if (h.phase === 'start_failed') showNote('<div class="bad-mark" aria-hidden="true">!</div>', h.startError || 'Bot startup failed. Your session is saved; use Restart bot in admin.');
-      else if (h.phase === 'stopped') showNote('<div class="bad-mark" aria-hidden="true">!</div>', 'Linked, but the bot process is not running. Press Check status again in a moment.');
-      else if (h.phase === 'reconnecting' || h.phase === 'starting') showNote('<div class="spin" aria-hidden="true"></div>', 'The bot is reconnecting on its own. This updates live.');
-      else if (h.phase === 'pairing') showNote('<div class="spin" aria-hidden="true"></div>', 'A pairing is waiting for approval on your phone.');
-      else if (h.phase === 'new') $('stageOut').innerHTML = '<p class="hint">Enter your number and press Get pairing code.</p>';
-    }
-
-    if (h.phase !== lastPhase) { lastPhase = h.phase; if (number) log('Status: ' + h.label); }
-  }
-
-  async function refreshHealth(){
-    if (!number) return null;
-    try {
-      const r = await fetch('/api/pair/status/' + number, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
-      const s = await r.json();
-      if (!s || !s.ok) return null;
-      renderHealth(s.health);
-      return s;
-    } catch { return null; }
-  }
-
-  function closeStream(){ if (es) { es.close(); es = null; } }
-  function stopTimers(){ clearInterval(pollTimer); clearInterval(watchTimer); pollTimer = null; watchTimer = null; }
-  function stopAll(){ stopTimers(); closeStream(); }
-
-  function fail(msg){
-    pending = false;
-    stopAll();
-    setRing(PCT[stage] || 0, 'Failed', 'bad');
-    markSteps(stage === 'idle' ? 'connect' : stage, true);
-    showNote('<div class="bad-mark" aria-hidden="true">!</div>', msg);
-    alertMsg(msg, 'err');
-    log('Failed: ' + msg);
-  }
-
-  function openStream(){
-    closeStream();
-    es = new EventSource('/api/pair/stream/' + number + '?mode=' + encodeURIComponent(mode));
-    EVENTS.forEach(name => {
-      es.addEventListener(name, e => {
-        let data = {};
-        try { data = JSON.parse(e.data || '{}'); } catch {}
-        handle(name, data);
-      });
-    });
-  }
-
-  function handle(name, d){
-    lastEventAt = Date.now();
-    stallNoted = false;
-    switch (name) {
-      case 'debug':          if (d) showDiagnosticInfo(d); break;
-      case 'waiting':        showSpinner(d.msg || 'Warming up…'); break;
-      case 'state':          
-        if (d.debug) showDiagnosticInfo(d.debug);
-        if (d.active && stage === 'idle') setStage('connect', 'Pairing session started'); 
-        break;
-      case 'connecting':     
-        setStage('connect', 'Connecting to WhatsApp servers'); 
-        showSpinner(d.msg || 'Connecting…'); 
-        break;
-      case 'authenticating': 
-        setStage('auth', 'Waiting for WhatsApp to approve the link'); 
-        showSpinner(d.msg || 'Authenticating…'); 
-        break;
-      case 'code_ready':     
-        if (!pending) break; 
-        setStage('ready', d.cached ? 'Pairing code ready (saved)' : 'Pairing code issued'); 
-        showCode(d.code); 
-        if (d.debug) showDiagnosticInfo(d.debug);
-        setTimeout(() => {
-          if (stage === 'ready' && pending) {
-            showDiagnosticInfo({
-              code: 'NO_NOTIFICATION_DETECTED',
-              stage: 'No WhatsApp Notification?',
-              what: 'WhatsApp did not show the "Enter code to link new device" push notification.',
-              why: 'Phone battery optimization, background sleep mode, or notification restrictions prevented WhatsApp from pushing the link prompt.',
-              solution: 'Do NOT wait for a notification! Manually open WhatsApp ➔ Settings (⋮) ➔ Linked Devices ➔ Link a Device ➔ tap "Link with phone number instead" ➔ Enter your pairing code.'
-            });
-          }
-        }, 8000);
-        break;
-      case 'qr_ready':       
-        if (!pending) break; 
-        setStage('ready', 'QR code issued'); 
-        showQr(d.url); 
-        break;
-      case 'linking':
-        setStage('auth', 'Linking with WhatsApp...');
-        showSpinner('Linking device with WhatsApp on your phone…');
-        break;
-      case 'paired':
-      case 'linked':         
-        setStage('linked', 'WhatsApp linked. Starting the bot'); 
-        showSpinner(d.msg || 'Starting the bot…'); 
-        break;
-      case 'bot_started':
-        setStage('linked', 'Bot process started; checking WhatsApp connection');
-        showSpinner('Bot process started. Waiting for the WhatsApp connection…');
-        refreshHealth();
-        break;
-      case 'bot_error':
-        fail(d.msg || 'WhatsApp is linked, but the bot could not start. Your session is saved; restart from the admin page.');
-        refreshHealth();
-        break;
-      case 'failed':         
-        if (d.debug) showDiagnosticInfo(d.debug);
-        fail(d.msg || 'Pairing failed. Try again.'); 
-        break;
-      case 'timeout':        fail('The monitor timed out. Press Get pairing code to try again.'); break;
-    }
-  }
-
-  async function pollStatus(){
-    if (!pending || !number) return;
-    const s = await refreshHealth();
-    if (!s || !pending) return;
-    if (s.debug) showDiagnosticInfo(s.debug);
-    if (s.health?.phase === 'start_failed') { fail(s.health.startError || 'Bot startup failed. Session saved — use Restart bot in admin.'); return; }
-    if (s.health?.phase === 'replaced') {
-      fail(s.botStatus?.lastCloseMsg || 'Session conflict. Stop duplicate services or replicas using this session, then restart the bot. Credentials are preserved.');
-      return;
-    }
-    if (s.health?.phase === 'logged_out') {
-      fail('WhatsApp rejected or unlinked this session. Use Re-pair anyway to create a fresh link.');
-      return;
-    }
-    // Only the server's health phase can declare the bot live. A stale botRunning flag is not enough.
-    const live = s.health ? s.health.phase === 'live' : !!s.botRunning;
-    if (live && stage !== 'bot') { setStage('bot', 'Bot is live'); showDone(); pending = false; stopAll(); return; }
-    if (s.error) { fail(s.error); return; }
-    if (s.paired && (stage === 'connect' || stage === 'auth' || stage === 'ready')) setStage('linked', 'WhatsApp linked. Starting the bot');
-    if (!s.paired && mode === 'code' && s.code && s.code.replace(/-/g,'').toUpperCase() !== codeShown) { setStage('ready', 'Pairing code issued'); showCode(s.code); }
-    if (!s.paired && mode === 'qr' && s.qr && !qrReady && !$('qrImg')) { setStage('ready', 'QR code issued'); showQr(); }
-  }
-
-  function watch(){
-    if (!pending) return;
-    const waited = Date.now() - startedAt;
-    if (stage === 'linked' && waited > WAIT_LIMIT_MS + 150000) {
-      fail('WhatsApp is linked, but startup has not completed. Your session is saved. Check status or use Restart bot in admin; do not reset a valid link.');
-      refreshHealth();
-      return;
-    }
-    if (stage !== 'linked' && stage !== 'bot' && waited > WAIT_LIMIT_MS) {
-      fail('WhatsApp linking did not finish within the allowed time. Check status and retry on a stable connection. Do not reset a session that is already linked.');
-      return;
-    }
-    if (stage !== 'bot' && !stallNoted && Date.now() - lastEventAt > STALL_NOTE_MS) {
-      stallNoted = true;
-      log('Still waiting on WhatsApp. Slow networks can take a while.');
-    }
-  }
-
-  function readNumber(){
-    const digits = $('phoneInput').value.replace(/\D/g, '');
-    return (digits.length >= 7 && digits.length <= 15) ? digits : '';
-  }
-
-
-  
-  // Diagnostic Log State & UI
-  function showDiagnosticInfo(info) {
-    const card = $("debugCard");
-    if (!card) return;
-    if (!info || (!info.what && !info.why && !info.code)) {
-      card.classList.remove("show");
-      return;
-    }
-    card.classList.add("show");
-    const stEl = $("debugCardStage"); if (stEl) stEl.textContent = info.stage || "Connection Diagnosis";
-    const cdEl = $("debugCardCode"); if (cdEl) cdEl.textContent = info.code ? "Code " + info.code : "Protocol";
-    const whEl = $("debugWhat"); if (whEl) whEl.textContent = info.what || "Pairing activity ongoing.";
-    const wyEl = $("debugWhy"); if (wyEl) wyEl.textContent = info.why || "Standard WhatsApp multi-device validation.";
-    const slEl = $("debugSolution"); if (slEl) slEl.textContent = info.solution || "Keep WhatsApp open on your phone.";
-  }
-
-  async function start(force){
-    clearAlert();
-    const repairRow = $("repairRow");
-    if (repairRow) repairRow.classList.add("hidden");
-    const digits = $("phoneInput").value.replace(/\D/g, "");
-    if (digits.length < 7 || digits.length > 15) {
-      alertMsg("Enter a valid WhatsApp number with country code, for example +2348012345678.");
-      return;
-    }
-    stopAll();
-    number = digits; stage = "idle"; codeShown = null; qrReady = false; qrRetries = 0; pending = true; lastPhase = null;
-    try { localStorage.setItem("mais-last-number", number); } catch {}
-    startedAt = Date.now(); lastEventAt = Date.now(); stallNoted = false;
-    const lb = $("logBody"); if (lb) lb.innerHTML = "";
-    logCount = 0;
-    const lc = $("logCount"); if (lc) lc.textContent = "";
-    $("stageOut").innerHTML = "";
-    const pBtn = $("pairBtn"); if (pBtn) pBtn.disabled = true;
-    setPct(0, "Starting…");
-    markSteps("none", false);
-    openStream();
-    log("Starting pairing for " + number + " (" + mode + " mode)");
-    try {
-      const r = await fetch("/api/pair", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({ number, mode, force: !!force })
-      });
-      const data = await r.json().catch(() => ({}));
-      if (r.status === 409 && data.canRepair) {
-        pending = false; stopAll();
-        setPct(0, "Already connected");
-        alertMsg(data.error || "This number is already connected.", "info");
-        if (repairRow) repairRow.classList.remove("hidden");
-        refreshHealth();
-        return;
-      }
-      if (r.status === 503) return fail(data.error || "The server is still starting. Try again in 30 seconds.");
-      if (r.status === 429) return fail("Too many attempts. Wait a minute, then try again.");
-      // A failure can arrive on SSE before the POST response. Never restart
-      // timers or overwrite that failure with this older response.
-      if (!pending) return;
-      if (!r.ok || data.ok === false) return fail(data.error || "Could not start pairing. Try again.");
-      if (data.restored) {
-        setStage('linked', data.message || 'Starting from saved session');
-        showSpinner('Reconnecting using saved credentials. No new code is needed.');
-      } else setStage("connect", "Request accepted");
-      pollTimer = setInterval(pollStatus, 3000);
-      watchTimer = setInterval(watch, 1000);
-    } catch {
-      fail("Network problem. Check your connection and try again.");
-    } finally {
-      if (pBtn) pBtn.disabled = false;
-    }
-  }
-
-  function setMode(m){
-    mode = m;
-    const mc = $("modeCode"); if (mc) mc.setAttribute("aria-pressed", String(m === "code"));
-    const mq = $("modeQr"); if (mq) mq.setAttribute("aria-pressed", String(m === "qr"));
-    const pb = $("pairBtn"); if (pb) pb.textContent = m === "qr" ? "Show QR code" : "Get pairing code";
-  }
-
-  $('copyDebugBtn')?.addEventListener('click', () => {
-    const logs = Array.from(document.querySelectorAll('#logBody div')).map(d => d.textContent).join('\n');
-    const diag = `Stage: ${$('debugCardStage')?.textContent || ''}\nCode: ${$('debugCardCode')?.textContent || ''}\nWhat: ${$('debugWhat')?.textContent || ''}\nWhy: ${$('debugWhy')?.textContent || ''}\nSolution: ${$('debugSolution')?.textContent || ''}`;
-    const fullReport = `=== MAIS MDX DIAGNOSTIC LOG ===\nNumber: ${number || 'N/A'}\nStatus: ${stage}\n${diag}\n\nEvent Trail:\n${logs}`;
-    navigator.clipboard.writeText(fullReport).then(() => {
-      alertMsg('Diagnostic log copied to clipboard!', 'info');
-    }).catch(() => {
-      alertMsg('Could not copy log automatically.', 'info');
-    });
-  });
-
-  $('modeCode').addEventListener('click', () => setMode('code'));
-  $('modeQr').addEventListener('click', () => setMode('qr'));
-  $('pairBtn').addEventListener('click', () => start(false));
-  $('repairBtn').addEventListener('click', () => start(true));
-  $('phoneInput').addEventListener('keydown', e => { if (e.key === 'Enter') start(false); });
-  $('phoneInput').addEventListener('input', () => {
-    const n = readNumber();
-    if (n && n !== number && !pending) { number = n; lastPhase = null; refreshHealth(); }
-  });
-
-  $('checkBtn').addEventListener('click', async () => {
-    const n = readNumber();
-    if (!n) { alertMsg('Enter the number first, then press Check status.'); return; }
-    number = n; lastPhase = null; clearAlert();
-    const s = await refreshHealth();
-    if (!s) alertMsg('Could not read this number right now. Try again in a moment.');
-    else log('Checked status for ' + n);
-  });
-
-  $('resetBtn').addEventListener('click', async () => {
-    const digits = $('phoneInput').value.replace(/\D/g, '');
-    if (digits.length < 7) { alertMsg('Enter the number first, then press Reset.'); return; }
-    if (!confirm('Clear the saved session for this number? You will need to link it again.')) return;
-    try {
-      const r = await fetch('/api/pair/reset', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: digits })
-      });
-      const d = await r.json().catch(() => ({}));
-      alertMsg(d.message || 'Session cleared. You can pair this number again.', 'info');
-    } catch { alertMsg('Could not reset. Try again.'); }
-    pending = false; stopAll();
-    stage = 'idle';
-    $('stageOut').innerHTML = '<p class="hint">Enter your number and press Get pairing code.</p>';
-    number = digits; lastPhase = null;
-    refreshHealth();
-  });
-
-    function showJsonOnlyStorage(d){
-      const labels = { settingsDbPill: 'Settings DB: Off', sessionDbPill: 'Session DB: Off', externalDbPill: 'Railway DB: Off', redisPill: 'Redis: Off' };
-      Object.keys(labels).forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.textContent = labels[id]; el.className = 'pill'; el.title = 'Off. Storage is JSON files only.'; }
-      });
-      ['settingsDbDetailTxt','sessionDbDetailTxt','externalDbDetailTxt','redisDetailTxt'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.textContent = 'Off (JSON only)'; el.style.color = 'var(--muted)'; el.style.fontWeight = ''; }
-      });
-      const vol = document.getElementById('volDetailTxt');
-      if (vol) vol.innerHTML = d.volumeMounted
-        ? '<span style="color:var(--green);font-weight:700;">Mounted (/app/nexstore)</span>'
-        : '<span style="color:var(--amber);">Ephemeral (No Volume)</span>';
-      const mode = document.getElementById('storageModeTxt');
-      if (mode) mode.textContent = 'JSON files only';
-      const box = document.getElementById('dbDiagnostics');
-      if (box) { box.style.display = 'none'; box.textContent = ''; }
-    }
-
-    (function wireStorageDrawer(){
-      const drawer = document.getElementById('storageDrawer');
-      const overlay = document.getElementById('storageOverlay');
-      const openBtn = document.getElementById('storageBtn');
-      const closeBtn = document.getElementById('storageClose');
-      if (!drawer || !openBtn) return;
-      function setOpen(open) {
-        drawer.classList.toggle('open', open);
-        overlay.classList.toggle('open', open);
-        drawer.setAttribute('aria-hidden', String(!open));
-        openBtn.setAttribute('aria-expanded', String(open));
-        if (open) checkDatabase();
-      }
-      openBtn.addEventListener('click', () => setOpen(!drawer.classList.contains('open')));
-      closeBtn.addEventListener('click', () => setOpen(false));
-      overlay.addEventListener('click', () => setOpen(false));
-      document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
-    })();
-
-    async function checkDatabase(){
-    const settingsPill = document.getElementById('settingsDbPill');
-    const sessionPill = document.getElementById('sessionDbPill');
-    const externalPill = document.getElementById('externalDbPill');
-    const redisPill = document.getElementById('redisPill');
-    const settingsTxt = document.getElementById('settingsDbDetailTxt');
-    const sessionTxt = document.getElementById('sessionDbDetailTxt');
-    const externalTxt = document.getElementById('externalDbDetailTxt');
-    const redisTxt = document.getElementById('redisDetailTxt');
-    const volTxt = document.getElementById('volDetailTxt');
-    const diagnosticsBox = document.getElementById('dbDiagnostics');
-    const oldPill = document.getElementById('dbPill');
-    const oldDbTxt = document.getElementById('dbDetailTxt');
-
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);
-      const r = await fetch('/api/database/status', { cache: 'no-store', signal: ctrl.signal });
-      clearTimeout(timer);
-      const d = await r.json();
-      if (d.storageMode === 'json') { showJsonOnlyStorage(d); return; }
-      const stg = d.settingsDb || {};
-      const sess = d.sessionDb || {};
-      const ext = d.externalDb || {};
-      const redis = d.redis || {};
-
-      if (settingsPill) {
-        if (stg.attached) {
-          settingsPill.textContent = 'Settings DB: Attached';
-          settingsPill.className = 'pill ok';
-          settingsPill.title = 'Settings database (' + (stg.database || 'neondb') + ') is attached.';
-        } else if (stg.status === 'error') {
-          settingsPill.textContent = 'Settings DB: Error';
-          settingsPill.className = 'pill bad';
-          settingsPill.title = 'Settings DB error: ' + (stg.message || 'connection error');
-        } else {
-          settingsPill.textContent = 'Settings DB: Not Attached';
-          settingsPill.className = 'pill warn';
-          settingsPill.title = 'DATABASE_URL is not configured. Settings run on local JSON.';
+    <section class="family" id="family" aria-label="Rented bot family tree">
+      <div class="trunk" aria-hidden="true"></div>
+      <div class="family-title" id="family-title">🌿 Bot family · rented bots</div>
+      <div class="branches" id="branches"></div>
+    </section>
+    <footer class="footer">MIAS-LITE-MDX · Powered by JUST X</footer>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const safeText = value => String(value ?? '');
+    function renderRentals(bots) {
+      const active = Array.isArray(bots) ? bots.slice(0, 2) : [];
+      const page = $('page'), branches = $('branches');
+      page.classList.toggle('has-rentals', active.length > 0);
+      if (!active.length) { branches.replaceChildren(); return; }
+      $('family-title').textContent = `🌿 BOT FAMILY · RENTED BOTS (${active.length}/2)`;
+      branches.classList.toggle('one', active.length === 1);
+      branches.replaceChildren(...active.map((bot, index) => {
+        const card = document.createElement('article');
+        card.className = 'bot-card';
+        const badge = document.createElement('div'); badge.className = 'badge';
+        const dot = document.createElement('span'); dot.className = 'dot';
+        const badgeLabel = document.createElement('span'); badgeLabel.textContent = `RENTED BOT ${index + 1} · ${bot.status === 'live' ? 'LIVE' : 'STARTING'}`;
+        badge.append(dot, badgeLabel);
+        const heading = document.createElement('h2'); heading.textContent = 'Bot is live for';
+        const name = document.createElement('span'); name.className = 'name'; name.textContent = `@${safeText(bot.username || bot.number || `Bot ${index + 1}`)}`;
+        heading.append(name);
+        const sub = document.createElement('p'); sub.className = 'subtext'; sub.textContent = 'Rented bot connected via Session ID.';
+        const grid = document.createElement('div'); grid.className = 'grid';
+        const rentedAt = bot.rentedAt ? new Date(bot.rentedAt).toLocaleString('en-US', { timeZone:'Africa/Lagos', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Active';
+        for (const [label, value, isOk] of [['Mode','RENTED BOT',false],['Status',bot.status === 'live' ? 'Online' : 'Starting',true],['Rented At',rentedAt,false],['WhatsApp ID',bot.number ? `+${bot.number}` : 'Connected',false]]) {
+          const tile = document.createElement('div'); tile.className = 'tile';
+          const l = document.createElement('div'); l.className = 'label'; l.textContent = label;
+          const v = document.createElement('div'); v.className = `value${isOk && bot.status === 'live' ? ' ok' : ''}`; v.textContent = value;
+          tile.append(l, v); grid.append(tile);
         }
-      }
-
-      if (sessionPill) {
-        if (sess.attached) {
-          const sCount = typeof sess.sessionsInDb === 'number' ? ' • ' + sess.sessionsInDb + ' session' + (sess.sessionsInDb === 1 ? '' : 's') : '';
-          sessionPill.textContent = 'Session DB: Attached' + sCount;
-          sessionPill.className = 'pill ok';
-          sessionPill.title = 'Session database (' + (sess.database || 'neondb') + ') is attached with ' + (sess.sessionsInDb || 0) + ' sessions in DB.';
-        } else if (sess.status === 'error') {
-          sessionPill.textContent = 'Session DB: Error';
-          sessionPill.className = 'pill bad';
-          sessionPill.title = 'Session DB error: ' + (sess.message || 'connection error');
-        } else {
-          sessionPill.textContent = 'Session DB: Not Attached';
-          sessionPill.className = 'pill warn';
-          sessionPill.title = 'SESSION_DATABASE_URL is not configured. Sessions run on local files.';
-        }
-      }
-
-      if (externalPill) {
-        if (ext.attached) {
-          externalPill.textContent = 'Railway DB: Connected';
-          externalPill.className = 'pill ok';
-          externalPill.title = 'Railway PostgreSQL (' + (ext.database || 'connected') + ') is reachable.';
-        } else if (ext.status === 'error') {
-          externalPill.textContent = 'Railway DB: Error';
-          externalPill.className = 'pill bad';
-          externalPill.title = 'Railway PostgreSQL error: ' + (ext.message || 'connection error');
-        } else {
-          externalPill.textContent = 'Railway DB: Not configured';
-          externalPill.className = 'pill warn';
-          externalPill.title = 'Set RAILWAY_DATABASE_URL in the host environment to enable the external PostgreSQL backend.';
-        }
-      }
-
-      if (redisPill) {
-        if (redis.attached) {
-          redisPill.textContent = 'Redis: Connected';
-          redisPill.className = 'pill ok';
-          redisPill.title = 'Redis ping succeeded. PostgreSQL remains the durable state store.';
-        } else if (redis.status === 'error') {
-          redisPill.textContent = 'Redis: Error';
-          redisPill.className = 'pill bad';
-          redisPill.title = 'Redis connectivity error: ' + (redis.message || 'connection error');
-        } else {
-          redisPill.textContent = 'Redis: Not configured';
-          redisPill.className = 'pill warn';
-          redisPill.title = 'Optional REDIS_URL is not configured.';
-        }
-      }
-
-      if (settingsTxt) {
-        if (stg.attached) {
-          settingsTxt.innerHTML = '<span style="color:var(--green);font-weight:700;">Attached (' + (stg.database || 'neondb') + ')</span>';
-        } else if (stg.status === 'error') {
-          settingsTxt.innerHTML = '<span style="color:var(--red);font-weight:700;">Error (' + (stg.message || 'failed') + ')</span>';
-        } else {
-          settingsTxt.innerHTML = '<span style="color:var(--amber);font-weight:700;">Local JSON (Not attached)</span>';
-        }
-      }
-
-      if (sessionTxt) {
-        if (sess.attached) {
-          const sCount = typeof sess.sessionsInDb === 'number' ? ' (' + sess.sessionsInDb + ' session' + (sess.sessionsInDb === 1 ? '' : 's') + ' in DB)' : '';
-          sessionTxt.innerHTML = '<span style="color:var(--green);font-weight:700;">Attached (' + (sess.database || 'neondb') + ')' + sCount + '</span>';
-        } else if (sess.status === 'error') {
-          sessionTxt.innerHTML = '<span style="color:var(--red);font-weight:700;">Error (' + (sess.message || 'failed') + ')</span>';
-        } else {
-          sessionTxt.innerHTML = '<span style="color:var(--amber);font-weight:700;">Local Files (Not attached)</span>';
-        }
-      }
-
-      if (externalTxt) {
-        if (ext.attached) {
-          externalTxt.textContent = 'Connected (' + (ext.database || 'PostgreSQL') + ')';
-          externalTxt.style.color = 'var(--green)';
-          externalTxt.style.fontWeight = '700';
-        } else if (ext.status === 'error') {
-          externalTxt.textContent = 'Error (' + (ext.message || 'failed') + ')';
-          externalTxt.style.color = 'var(--red)';
-          externalTxt.style.fontWeight = '700';
-        } else {
-          externalTxt.textContent = 'Not configured';
-          externalTxt.style.color = 'var(--amber)';
-        }
-      }
-
-      if (redisTxt) {
-        if (redis.attached) {
-          redisTxt.textContent = 'Connected (optional cache)';
-          redisTxt.style.color = 'var(--green)';
-          redisTxt.style.fontWeight = '700';
-        } else if (redis.status === 'error') {
-          redisTxt.textContent = 'Error (' + (redis.message || 'failed') + ')';
-          redisTxt.style.color = 'var(--red)';
-          redisTxt.style.fontWeight = '700';
-        } else {
-          redisTxt.textContent = 'Not configured';
-          redisTxt.style.color = 'var(--amber)';
-        }
-      }
-
-      if (volTxt) {
-        if (d.volumeMounted) {
-          volTxt.innerHTML = '<span style="color:var(--green);font-weight:700;">Mounted (/app/nexstore)</span>';
-        } else {
-          volTxt.innerHTML = '<span style="color:var(--amber);">Ephemeral (No Volume)</span>';
-        }
-      }
-
-      if (diagnosticsBox) {
-        const notices = [];
-        const addErrorNotice = (label, status) => {
-          if (!status || status.status !== 'error') return;
-          const info = status.diagnostic || {};
-          const code = info.code || status.message || 'CONNECTION_FAILED';
-          notices.push(label + ' (' + code + '): ' + (info.summary || 'The connection check failed.') + ' ' + (info.action || 'Check the configured URL and selected database service without sharing its credentials.'));
-          if (info.impact) notices.push(info.impact);
-        };
-        addErrorNotice('Settings DB', stg);
-        addErrorNotice('Session DB', sess);
-        addErrorNotice('Railway DB', ext);
-        addErrorNotice('Redis', redis);
-        if (!ext.attached && ext.status === 'not_configured') {
-          notices.push('Railway DB check is optional. It only runs when RAILWAY_DATABASE_URL has a non-empty value.');
-        }
-        if (!redis.attached && redis.status === 'not_configured') {
-          notices.push('Redis is optional cache infrastructure; its absence does not mean PostgreSQL is disconnected.');
-        }
-        if (!d.volumeMounted) {
-          notices.push('No Railway volume is mounted. Local session files can be lost when Railway replaces the container; this is separate from the database URL errors.');
-        }
-        diagnosticsBox.replaceChildren();
-        for (const notice of notices) {
-          const line = document.createElement('div');
-          line.textContent = notice;
-          line.style.margin = '0 0 5px';
-          diagnosticsBox.appendChild(line);
-        }
-        diagnosticsBox.style.display = notices.length ? 'block' : 'none';
-      }
-
-      if (oldPill) {
-        oldPill.textContent = (sess.attached || stg.attached) ? 'DB: Connected' : 'DB: Not Attached';
-        oldPill.className = (sess.attached || stg.attached) ? 'pill ok' : 'pill warn';
-      }
-      if (oldDbTxt) {
-        oldDbTxt.innerHTML = (sess.attached || stg.attached) ? '<span style="color:var(--green);font-weight:700;">Connected</span>' : '<span style="color:var(--amber);">Not Attached</span>';
-      }
-    } catch {
-      if (settingsPill) { settingsPill.textContent = 'Settings DB: Offline'; settingsPill.className = 'pill bad'; }
-      if (sessionPill) { sessionPill.textContent = 'Session DB: Offline'; sessionPill.className = 'pill bad'; }
-      if (externalPill) { externalPill.textContent = 'Railway DB: Offline'; externalPill.className = 'pill bad'; }
-      if (redisPill) { redisPill.textContent = 'Redis: Offline'; redisPill.className = 'pill bad'; }
-      const diagnosticsBox = document.getElementById('dbDiagnostics');
-      if (diagnosticsBox) { diagnosticsBox.textContent = 'Database status could not be read. Check Railway deploy logs for the latest connection error.'; diagnosticsBox.style.display = 'block'; }
+        card.append(badge, heading, sub, grid);
+        if (bot.ownerUrl) { const owner = document.createElement('a'); owner.className='owner-link'; owner.href=bot.ownerUrl; owner.textContent='Owner contact'; owner.rel='noopener noreferrer'; card.append(owner); }
+        return card;
+      }));
     }
-  }
-
-  async function checkServer(){
-    const pill = $('serverPill');
-    if (!pill) return;
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 8000);
-      const r = await fetch('/api/ready', { cache: 'no-store', signal: ctrl.signal });
-      clearTimeout(timer);
-      const d = await r.json();
-      pill.textContent = d.ok ? 'Server ready' : (d.pairReady ? 'Warming up' : 'Starting up');
-      pill.className = 'pill ' + (d.ok ? 'ok' : 'bad');
-    } catch {
-      pill.textContent = 'Server unreachable';
-      pill.className = 'pill bad';
+    async function refreshStatus() {
+      try {
+        const res = await fetch('/api/bot-info', { cache:'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const displayName = (data.pushName && !/^\d+$/.test(data.pushName)) ? data.pushName : data.username;
+          if (displayName) $('bot-username').textContent = displayName;
+          if (data.jid) $('val-jid').textContent = data.jid.split('@')[0];
+          if (data.mode) $('val-mode').textContent = data.mode.replaceAll('_',' ');
+          $('val-status').textContent = data.live ? 'Online' : 'Offline';
+          $('val-status').classList.toggle('ok', !!data.live);
+          if (Array.isArray(data.rentedBots)) renderRentals(data.rentedBots);
+        }
+      } catch (_) {}
+      try {
+        const res = await fetch('/api/ready', { cache:'no-store' });
+        if (res.ok) { const data = await res.json(); if (data.uptime) { const mins=Math.floor(data.uptime/60),hrs=Math.floor(mins/60); $('val-uptime').textContent=hrs ? `${hrs}h ${mins%60}m` : `${mins}m`; } }
+      } catch (_) {}
     }
-  }
-
-  // Start with the last number used on this device, so the monitor is live immediately.
-  try {
-    const saved = localStorage.getItem('mais-last-number');
-    if (saved) { $('phoneInput').value = '+' + saved; number = saved; }
-  } catch {}
-  setMode('code');
-  markSteps('none', false);
-  checkServer();
-  checkDatabase();
-  refreshHealth();
-  healthTimer = setInterval(() => { if (number && !pending) refreshHealth(); }, HEALTH_MS);
-  setInterval(() => { checkServer(); checkDatabase(); }, 20000);
-})();
-</script>
+    refreshStatus(); setInterval(refreshStatus, 8000);
+  </script>
 </body>
 </html>

@@ -110,6 +110,7 @@ import { installSettingsCommand } from "./features/settingsCommands.js";
 import { installSplitVideo } from "./features/splitVideo.js";
 import { convertToMp4 } from "./lib/videoTools.js";
 import { installPairCommands } from "./features/pairCommands.js";
+import { installRentBotCommands } from "./features/rentBotCommands.js";
 import { installSetsudoCommand, installSudoCommand, sudoPending as __sudoPendingMap } from "./features/sudoCommands.js";
 import { createCmdGrantStore, installCmdGrantCommands } from "./features/cmdGrants.js";
 import { runTikTokBulk, formatBulkSummary, bulkModeId } from "./features/ttBulk.js";
@@ -2539,7 +2540,7 @@ async function connectToWA(force = false) {
       logger,
       printQRInTerminal: false,
       auth: { creds: state.creds, keys: state.keys },
-      browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.ubuntu("Safari") : ["Mac OS", "Safari", "17.4.1"]),
+      browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.macOS("Safari") : ["Mac OS", "Safari", "17.4.1"]),
       // Respect the persisted Always Online setting at socket creation.
       // MARK_ONLINE=0 remains an explicit environment-wide stealth override.
       markOnlineOnConnect: process.env.MARK_ONLINE === "0" ? false : _isAlwaysOnlineEnabled(),
@@ -2714,13 +2715,16 @@ async function connectToWA(force = false) {
           const _cmErr = String(e?.message || e || "");
           const _needsResync = /app.?state.?key.?not.?present|not.?synced|not synced|sync/i.test(_cmErr);
           if (_needsResync && typeof sock.resyncAppState === "function") {
-            // Full re-sync then wait 6s before retrying — less is not enough
+            // Full re-sync then wait 4s before retrying
             await sock.resyncAppState(["critical_block", "critical_unblock_low", "regular", "regular_low", "regular_high"], true).catch(() => {});
-            await new Promise(r => setTimeout(r, 6000));
+            await new Promise(r => setTimeout(r, 4000));
             try { return await _rawChatModify(mod, jid); } catch (_e2) {
-              // One last try with a stripped lastMessages to avoid hash mismatch
-              const modNoMsgs = { ...mod, lastMessages: undefined };
-              return await _rawChatModify(modNoMsgs, jid);
+              // Only strip lastMessages if not an archive/pin op (archive requires lastMessages in Baileys)
+              if (!("archive" in mod) && !("pin" in mod)) {
+                const modNoMsgs = { ...mod, lastMessages: undefined };
+                return await _rawChatModify(modNoMsgs, jid);
+              }
+              throw _e2;
             }
           }
           throw e;
@@ -2976,14 +2980,69 @@ async function connectToWA(force = false) {
           // incoming message. Now it reads sock.user.name right when the socket
           // opens, so .owner and greetings work from the very first second.
           try {
-            const _sessName = (sock.user?.name || sock.user?.verifiedName || '').trim();
-            if (_sessName) {
+            const _sessName = (sock.user?.name || sock.user?.notify || sock.user?.verifiedName || sock.authState?.creds?.me?.name || sock.authState?.creds?.me?.notify || '').trim();
+            if (_sessName && !/^\d+$/.test(_sessName)) {
               const _ownerNumSess = (CONFIG.OWNER_NUMBER || _cleanNum(sock.user?.id || '')).replace(/[^0-9]/g, '');
               if (_ownerNumSess) {
                 pushNameCache.set(_ownerNumSess, _sessName);
                 try { saveContact(_ownerNumSess, _sessName); } catch {}
               }
               console.log(`👤 Owner name detected from session: "${_sessName}"`);
+            }
+            const _botLiveUser = (_sessName && !/^\d+$/.test(_sessName)) ? _sessName : (CONFIG.OWNER_NAME || (sock.user?.id ? String(sock.user.id).split('@')[0].split(':')[0].replace(/[^0-9]/g, '') : 'User'));
+
+            // Immediately persist active bot identity into active_bot.json for dashboard web server
+            try {
+              const _sessionPaths = require("../sessionPaths.js");
+              const _nexRoot = _sessionPaths.nexstoreRoot();
+              const _activeBotPath = path.join(_nexRoot, "active_bot.json");
+              let _curActive = {};
+              if (fs.existsSync(_activeBotPath)) {
+                try { _curActive = JSON.parse(fs.readFileSync(_activeBotPath, "utf8")) || {}; } catch {}
+              }
+              const _myDigits = String(sock.user?.id || '').split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+              const _finalDisplayName = (_sessName && !/^\d+$/.test(_sessName)) ? _sessName : (_curActive.username && !/^\d+$/.test(_curActive.username) ? _curActive.username : _botLiveUser);
+
+              fs.writeFileSync(_activeBotPath, JSON.stringify({
+                ..._curActive,
+                live: true,
+                username: _finalDisplayName,
+                pushName: (_sessName && !/^\d+$/.test(_sessName)) ? _sessName : (_curActive.pushName || null),
+                jid: sock.user?.id || _curActive.jid,
+                digits: _myDigits || _curActive.digits,
+                mode: "SESSION_ID",
+                updatedAt: new Date().toISOString()
+              }, null, 2), "utf8");
+              process.env.BOT_ACTIVE_USER = _finalDisplayName;
+            } catch (_errActive) {}
+
+            console.log(`BOT LIVE for ${_botLiveUser}`);
+
+            // Asynchronous pushName resolution fallback if profile name loads after socket handshake
+            if ((!_sessName || /^\d+$/.test(_sessName)) && sock.user?.id && sock.getName) {
+              Promise.resolve(sock.getName(sock.user.id)).then(_fetchedName => {
+                if (_fetchedName && typeof _fetchedName === 'string' && !/^\d+$/.test(_fetchedName.trim())) {
+                  const _cleanFetched = _fetchedName.trim();
+                  try {
+                    const _sessionPaths = require("../sessionPaths.js");
+                    const _nexRoot = _sessionPaths.nexstoreRoot();
+                    const _activeBotPath = path.join(_nexRoot, "active_bot.json");
+                    let _cur = {};
+                    if (fs.existsSync(_activeBotPath)) {
+                      try { _cur = JSON.parse(fs.readFileSync(_activeBotPath, "utf8")) || {}; } catch {}
+                    }
+                    fs.writeFileSync(_activeBotPath, JSON.stringify({
+                      ..._cur,
+                      live: true,
+                      username: _cleanFetched,
+                      pushName: _cleanFetched,
+                      updatedAt: new Date().toISOString()
+                    }, null, 2), "utf8");
+                    process.env.BOT_ACTIVE_USER = _cleanFetched;
+                    console.log(`BOT LIVE for ${_cleanFetched}`);
+                  } catch {}
+                }
+              }).catch(() => {});
             }
           } catch (_e) {}
         try { await __getBotPp(sock); } catch {}
@@ -3364,7 +3423,26 @@ async function connectToWA(force = false) {
             }
           }
         }
-        if (ev.type && ev.type !== "notify") { __replyTrace({ key: { fromMe: (ev.messages || []).some((x) => x?.key?.fromMe) } }, "upsert-" + ev.type); return; }
+        if (ev.type && ev.type !== "notify") {
+          if (ev.type === "append") {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const liveAppendMsgs = (ev.messages || []).filter((m) => {
+              if (!m || !m.message || m.messageStubType != null) return false;
+              if (m.key?.id && _botSentMsgIds.has(m.key.id)) return false;
+              const ts = Number(m.messageTimestamp?.low ?? m.messageTimestamp ?? 0);
+              if (!ts || Math.abs(nowSec - ts) > 90) return false;
+              return true;
+            });
+            if (liveAppendMsgs.length === 0) {
+              __replyTrace({ key: { fromMe: (ev.messages || []).some((x) => x?.key?.fromMe) } }, "upsert-append-stale");
+              return;
+            }
+            ev.messages = liveAppendMsgs;
+          } else {
+            __replyTrace({ key: { fromMe: (ev.messages || []).some((x) => x?.key?.fromMe) } }, "upsert-" + ev.type);
+            return;
+          }
+        }
 
         const msgs = ev.messages || [];
         const NOW_SECS = Math.floor(Date.now() / 1000);
@@ -3424,6 +3502,7 @@ async function connectToWA(force = false) {
         const _floodNow = Date.now();
         const _safeMessages = msgs.filter(msg => {
           if (!msg || !msg.message) return false;
+          if (msg.key?.id && _botSentMsgIds.has(msg.key.id)) return false;
           const _fJid = msg.key && msg.key.remoteJid ? msg.key.remoteJid : '';
           if (!_fJid || (msg.key && msg.key.fromMe)) return true; // never block owner
           const _fEntry = globalThis._floodTracker.get(_fJid);
@@ -3442,6 +3521,7 @@ async function connectToWA(force = false) {
         for (let _bi = 0; _bi < _safeMessages.length; _bi += _PROC_BATCH) {
         await Promise.all(_safeMessages.slice(_bi, _bi + _PROC_BATCH).map(async (msg) => {
           if (!msg || !msg.message) return;
+          if (msg.key?.id && _botSentMsgIds.has(msg.key.id)) return;
 
           // ── ⚡ Drop stale messages (>60s old) — pure history replay,
           //    not a live message. Even when ev.type is "notify",
@@ -3620,12 +3700,36 @@ async function connectToWA(force = false) {
                 } catch {}
                 // Notify the last person who pinged while owner was AFK
                 try {
-                  const _lastPing = _afkLastPinger.get(_ownerAfkJid);
+                  const _lastPing = _afkLastPinger.get(_ownerAfkJid) || _afkLastPinger.get(_ownerAfkCheck);
                   if (_lastPing && _lastPing.senderJid && _lastPing.chatJid) {
                     _afkLastPinger.delete(_ownerAfkJid);
-                    await sock.sendMessage(_lastPing.chatJid, {
-                      text: `👋 *Hey ${_lastPing.senderName || "there"}!*\n\nJust letting you know — the owner is *back online* now and will reply to you shortly! 🎉`
-                    }, { quoted: null });
+                    _afkLastPinger.delete(_ownerAfkCheck);
+
+                    const _lastPingerClean = _cleanNum(_lastPing.senderJid);
+                    const _ownerNum = _cleanNum(_ownerAfkJid) || _cleanNum(_ownerAfkCheck) || _cleanNum(CONFIG.OWNER_NUMBER);
+                    const _botNum = _cleanNum(sock?.user?.id) || _cleanNum(_botJid);
+
+                    // Strictly verify that the pinger was an actual external contact (not owner or bot)
+                    if (_lastPingerClean && _lastPingerClean !== _ownerNum && _lastPingerClean !== _botNum) {
+                      let pingerName = String(_lastPing.senderName || "").trim();
+                      const botName = String(sock?.user?.name || CONFIG?.BOT_NAME || "PHANTOM x").trim();
+                      const ownerName = String(getOwnerDisplayName() || "").trim();
+
+                      if (!pingerName || pingerName.toLowerCase() === botName.toLowerCase() || pingerName.toLowerCase() === ownerName.toLowerCase()) {
+                        try {
+                          if (typeof getDisplayName === "function") {
+                            pingerName = await getDisplayName(sock, _lastPing.senderJid, _lastPing.chatJid);
+                          }
+                        } catch {}
+                      }
+                      if (!pingerName || pingerName.toLowerCase() === botName.toLowerCase() || pingerName.toLowerCase() === ownerName.toLowerCase() || pingerName === "Unknown") {
+                        pingerName = _lastPingerClean ? `+${_lastPingerClean}` : "there";
+                      }
+
+                      await sock.sendMessage(_lastPing.chatJid, {
+                        text: `👋 *Hey ${pingerName}!*\n\nJust letting you know — the owner is *back online* now and will reply to you shortly! 🎉`
+                      }, { quoted: null });
+                    }
                   }
                 } catch {}
               }
@@ -3773,8 +3877,9 @@ END:VCARD`;
           // Skip messages older than 90 seconds — prevents replaying queued msgs
           // on reconnect and flooding groups with invisible/duplicate content.
           try {
-            const _msgTs = Number(msg.messageTimestamp || 0) * 1000;
-            if (_msgTs > 0 && Date.now() - _msgTs > 90000) return;
+            const _rawTs = Number(msg.messageTimestamp?.low ?? msg.messageTimestamp ?? 0);
+            const _msgTs = _rawTs * 1000;
+            if (_msgTs > 0 && (Date.now() - _msgTs > 90000) && !msg.key?.fromMe) return;
           } catch {}
 
           let body = (typeof getBody === "function" ? getBody(msg) : "") || "";
@@ -4082,36 +4187,46 @@ END:VCARD`;
 
           // ── AFK NOTIFICATION: someone messaged while owner is AFK ────────────
           try {
-            if (!msg.key.fromMe && msg.key.remoteJid !== "status@broadcast") {
+            const _isFromOwnerOrBot = (msg.key.fromMe || isOwner(getSender(msg)) || _cleanNum(getSender(msg)) === _cleanNum(getOwnerJid())) || _botSentMsgIds.has(msg.key.id);
+            if (!_isFromOwnerOrBot && msg.key.remoteJid !== "status@broadcast") {
               const _ownerJ = getOwnerJid();
               const _ownerAfkCheck = toStandardJid(resolveLid(_ownerJ || "")) || _ownerJ;
               const _afkInfo = afkUsers.get(_ownerAfkCheck) || afkUsers.get(_ownerJ) || (sock?.user?.id ? afkUsers.get(toStandardJid(sock.user.id)) : null);
               if (_afkInfo) {
-                const _afkInfo = afkUsers.get(_ownerAfkCheck);
                 const _afkSender = toStandardJid(getSender(msg) || "");
-                const _afkSenderName = String(msg.pushName || "").trim() || `+${_cleanNum(_afkSender)}`;
+                const _afkSenderNum = _cleanNum(_afkSender);
+                const _ownerNum = _cleanNum(_ownerAfkCheck) || _cleanNum(_ownerJ) || _cleanNum(CONFIG.OWNER_NUMBER);
+                const _botNum = _cleanNum(sock?.user?.id || _botJid || "");
+
                 // In groups, only notify when someone chats/mentions or replies to the owner
                 const _afkIsGroup = String(msg.key.remoteJid || "").endsWith("@g.us");
                 let _shouldNotifyAfk = !_afkIsGroup;
                 if (_afkIsGroup) {
                   const _afkMentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
                   const _afkQuotedPart = msg.message?.extendedTextMessage?.contextInfo?.participant;
-                  const _afkOwnerNum = _cleanNum(_ownerAfkCheck);
-                  const _mentionedOwner = _afkMentions.some(m => _cleanNum(m) === _afkOwnerNum);
-                  const _repliedToOwner = _afkQuotedPart && _cleanNum(_afkQuotedPart) === _afkOwnerNum;
+                  const _mentionedOwner = _afkMentions.some(m => _cleanNum(m) === _ownerNum);
+                  const _repliedToOwner = _afkQuotedPart && _cleanNum(_afkQuotedPart) === _ownerNum;
                   if (_mentionedOwner || _repliedToOwner) {
                     _shouldNotifyAfk = true;
                   }
                 }
 
-                if (_afkSender && !isOwner(_afkSender) && _shouldNotifyAfk) {
-                  const _afkMs = Date.now() - (_afkInfo?.time || Date.now());
-                  const _afkSecT = Math.floor(_afkMs / 1000);
-                  const _afkMins = Math.floor(_afkSecT / 60);
-                  const _afkHrs  = Math.floor(_afkMins / 60);
-                  const _afkDur  = _afkHrs > 0 ? `${_afkHrs}h ${_afkMins % 60}m` : _afkMins > 0 ? `${_afkMins}m ${_afkSecT % 60}s` : `${_afkSecT} second${_afkSecT !== 1 ? "s" : ""}`;
+                // Strictly ensure sender is NOT the owner or bot
+                if (_afkSender && _afkSenderNum !== _ownerNum && _afkSenderNum !== _botNum && !isOwner(_afkSender) && _shouldNotifyAfk) {
+                  let _afkSenderName = String(msg.pushName || "").trim();
+                  const ownerName = String(getOwnerDisplayName() || "").trim();
+                  const botName = String(sock?.user?.name || CONFIG?.BOT_NAME || "PHANTOM x").trim();
+
+                  // If pushName matches owner or bot, resolve from cache or phone number
+                  if (!_afkSenderName || _afkSenderName.toLowerCase() === ownerName.toLowerCase() || _afkSenderName.toLowerCase() === botName.toLowerCase()) {
+                    _afkSenderName = senderProfileName(_afkSender) || (typeof pushNameCache !== "undefined" && pushNameCache?.get(_afkSenderNum)) || `+${_afkSenderNum}`;
+                  }
+
                   // Store this sender as last pinger (owner will be notified when they return)
-                  _afkLastPinger.set(_ownerAfkCheck, { senderJid: _afkSender, senderName: _afkSenderName, chatJid: msg.key.remoteJid, time: Date.now() });
+                  const pingerData = { senderJid: _afkSender, senderName: _afkSenderName, chatJid: msg.key.remoteJid, time: Date.now() };
+                  _afkLastPinger.set(_ownerAfkCheck, pingerData);
+                  if (_ownerJ) _afkLastPinger.set(_ownerJ, pingerData);
+
                   if (!globalThis.__afkNoticeThrottle) globalThis.__afkNoticeThrottle = new Map();
                   const _afkThrottleKey = `${_ownerAfkCheck}|${msg.key.remoteJid}`;
                   const _afkLastNotice = globalThis.__afkNoticeThrottle.get(_afkThrottleKey) || 0;
@@ -10059,29 +10174,71 @@ cmd(["quote"], { desc: "Get a quote card (THIS IS FOR YOU)", category: "MISC" },
   }
 });
 
-// ── Daily quote: one card to the owner's DM every day at 12am Lagos time ──
-const __DAILY_QUOTE_FILE = path.join(process.cwd(), "nexstore", "daily_quote_state.json");
-function _readDailyQuoteState() { try { return JSON.parse(fs.readFileSync(__DAILY_QUOTE_FILE, "utf8")); } catch { return {}; } }
+// ── Daily quote: one card to the owner's DM every day at 12:00 GMT ──
+// Quotes must only drop at 12 GMT and never follow connection messages.
+function _dailyQuoteStateFiles() {
+  const files = [];
+  try {
+    if (typeof AUTH_DIR === "string" && AUTH_DIR) {
+      files.push(path.join(AUTH_DIR, "daily_quote_state.json"));
+    }
+  } catch {}
+  try {
+    files.push(path.join(process.cwd(), "nexstore", "daily_quote_state.json"));
+  } catch {}
+  return files;
+}
+
+function _readDailyQuoteState() {
+  if (globalThis.__miasLastDailyQuoteSentDate) {
+    return { lastSentDate: globalThis.__miasLastDailyQuoteSentDate };
+  }
+  for (const file of _dailyQuoteStateFiles()) {
+    try {
+      if (fs.existsSync(file)) {
+        const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+        if (parsed?.lastSentDate) {
+          globalThis.__miasLastDailyQuoteSentDate = parsed.lastSentDate;
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return {};
+}
+
+function _writeDailyQuoteState(state) {
+  if (state?.lastSentDate) {
+    globalThis.__miasLastDailyQuoteSentDate = state.lastSentDate;
+  }
+  for (const file of _dailyQuoteStateFiles()) {
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(state, null, 2), "utf8");
+    } catch {}
+  }
+}
+
 let _dailyQuoteBusy = false;
 async function _dailyQuoteTick() {
   if (_dailyQuoteBusy) return;
   const sock = globalThis.sock;
   if (!sock?.user) return;
   const now = new Date();
-  if (!__quoteCmd.shouldSendDailyQuote(now, _readDailyQuoteState().lastSentDate)) return;
+  const state = _readDailyQuoteState();
+  if (!__quoteCmd.shouldSendDailyQuote(now, state.lastSentDate)) return;
   _dailyQuoteBusy = true;
   try {
     const ownerNum = String(CONFIG.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
     const botJid = String(sock.user.id || "").replace(/:[0-9]+@/, "@");
     const target = ownerNum ? ownerNum + "@s.whatsapp.net" : botJid;
     if (!target) return;
-    const dateKey = __quoteCmd.lagosParts(now).dateKey;
+    const dateKey = (__quoteCmd.gmtParts ? __quoteCmd.gmtParts(now) : __quoteCmd.lagosParts(now)).dateKey;
     // Claim the day before sending, so a retry can never send it twice.
-    fs.mkdirSync(path.dirname(__DAILY_QUOTE_FILE), { recursive: true });
-    fs.writeFileSync(__DAILY_QUOTE_FILE, JSON.stringify({ lastSentDate: dateKey, target, sentAt: now.toISOString() }, null, 2));
+    _writeDailyQuoteState({ lastSentDate: dateKey, target, sentAt: now.toISOString() });
     const card = __quoteCmd.buildQuoteCard({ jid: target, name: getOwnerDisplayName(), quote: _randomMenuQuoteForUser(target) });
     await sock.sendMessage(target, { text: card.text, mentions: card.mentions });
-    console.log(`[DAILY-QUOTE] sent to ${_cleanNum(target)} for ${dateKey} (Lagos)`);
+    console.log(`[DAILY-QUOTE] sent to ${_cleanNum(target)} for ${dateKey} (12 GMT)`);
   } catch (e) {
     console.error("[DAILY-QUOTE] failed:", e?.message || e);
   } finally {
@@ -16286,9 +16443,17 @@ cmd("calendar", { desc: "Show calendar for current month (image)", category: "TO
 });
 
 cmd("afk", { desc: "Set AFK status — .afk [reason]", category: "TOOLS" }, async (sock, msg, args) => {
-  const jid = toStandardJid(resolveLid(msg.key.fromMe || isOwner(getSender(msg)) ? getOwnerJid() : getSender(msg)));
+  const isOwnerSender = msg.key.fromMe || isOwner(getSender(msg));
+  const jid = toStandardJid(resolveLid(isOwnerSender ? getOwnerJid() : getSender(msg)));
   const reason = args.join(" ") || "No reason";
-  afkUsers.set(jid, { reason, time: Date.now() });
+  const afkData = { reason, time: Date.now() };
+  afkUsers.set(jid, afkData);
+  if (isOwnerSender) {
+    const rawOwner = getOwnerJid();
+    if (rawOwner && rawOwner !== jid) afkUsers.set(rawOwner, afkData);
+    _afkLastPinger.delete(jid);
+    if (rawOwner) _afkLastPinger.delete(rawOwner);
+  }
   const senderName = msg.pushName || "You";
   await sendReply(sock, msg,
     `😴 *AFK Activated!*\n\n` +
@@ -16298,9 +16463,14 @@ cmd("afk", { desc: "Set AFK status — .afk [reason]", category: "TOOLS" }, asyn
     `_I'll notify senders that you're away._`);
 });
 cmd("unafk", { desc: "Remove AFK status", category: "TOOLS" }, async (sock, msg) => {
-  const jid = toStandardJid(resolveLid(msg.key.fromMe || isOwner(getSender(msg)) ? getOwnerJid() : getSender(msg)));
-  const afk = afkUsers.get(jid);
+  const isOwnerSender = msg.key.fromMe || isOwner(getSender(msg));
+  const jid = toStandardJid(resolveLid(isOwnerSender ? getOwnerJid() : getSender(msg)));
+  const rawOwner = getOwnerJid();
+  const afk = afkUsers.get(jid) || (rawOwner ? afkUsers.get(rawOwner) : null);
   afkUsers.delete(jid);
+  if (rawOwner) afkUsers.delete(rawOwner);
+  _afkLastPinger.delete(jid);
+  if (rawOwner) _afkLastPinger.delete(rawOwner);
   const senderName = msg.pushName || "You";
   let durStr = "just now";
   if (afk) {
@@ -24112,7 +24282,11 @@ cmd(["pick", "p"], { desc: "Pick randomly from options (A|B|C) OR download adult
         }
         mediaFile = sourceResult.file;
         const { processVideoTo4k } = require("./lib/tt4kVideo.cjs");
-        const processed4k = await processVideoTo4k(mediaFile.path, { timeoutMs: 420000, maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024 });
+        const processed4k = await processVideoTo4k(mediaFile.path, {
+          timeoutMs: 420000,
+          maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024,
+          sourceQualityBoost: 1.015,
+        });
         if (typeof mediaFile.cleanup === "function") {
           try { mediaFile.cleanup(); } catch {}
         }
@@ -24122,7 +24296,7 @@ cmd(["pick", "p"], { desc: "Pick randomly from options (A|B|C) OR download adult
       const streamLargeTikTokVideo = ttMode.kind === "video" && !ttMode.videoNote;
       // 1.3 and the other inline videos stay on disk at every size, so the HD re-encode always runs
       // and the send streams from the file. (Documents 1.4 keep their existing path.)
-      const ttInlineOnDisk = streamLargeTikTokVideo && !ttMode.document && !ttMode.upscale4k;
+      const ttInlineOnDisk = streamLargeTikTokVideo && (!ttMode.document || ttMode.id === "1.4" || (ttMode.quality === "hd" && ttMode.document)) && !ttMode.upscale4k;
       const diskVideoPipeline = streamLargeTikTokVideo ? require("./lib/mediaPipeline.cjs") : null;
       tiktokDiskDelivery = ttMode.kind === "video" ? require("./lib/tiktokDiskDelivery.cjs") : null;
       // A TikWM URL can expire between the preview and the user's choice.
@@ -24218,10 +24392,13 @@ cmd(["pick", "p"], { desc: "Pick randomly from options (A|B|C) OR download adult
       // Inline videos over 92 MB are no longer rejected here: they are sent as documents below.
       // Every inline TikTok video (1.3 and the rest) is re-encoded to WhatsApp-compatible HD before sending.
       // Documents, 4K and video notes keep their own paths.
-      if (ttMode.kind === "video" && mediaFile && !ttMode.document && !ttMode.videoNote && !ttMode.upscale4k) {
+      if (ttMode.kind === "video" && mediaFile && (!ttMode.document || ttMode.id === "1.4" || (ttMode.quality === "hd" && ttMode.document)) && !ttMode.videoNote && !ttMode.upscale4k) {
         const _ttdHd = require("./lib/ttDelivery.cjs");
         // No fallback: if the HD re-encode fails, the error reaches the picker's catch and nothing is sent.
-        const _hdEncoded = await _ttdHd.reencodeHdForWhatsApp(mediaFile);
+        const _hdEncoded = await _ttdHd.reencodeHdForWhatsApp(mediaFile, {
+          maxBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : _ttdHd.TT_INLINE_VIDEO_MAX_BYTES,
+          sourceQualityBoost: ttMode.id === "1.3" || ttMode.id === "1.4" ? 1.01 : null,
+        });
         try { await mediaFile.cleanup(); } catch {}
         mediaFile = _hdEncoded;
       }
@@ -34139,17 +34316,30 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
 //     long as the phone is online.
 
 (() => {
-  const _onceKeyMap = new WeakMap();  // sock → bool (forced-bootstrap done)
-
-  // ── force-bootstrap app-state key (no manual phone steps) ───────────────
+  // ── force-bootstrap app-state key (auto-recovers missing sync key) ──────
   async function __miasForceAppStateBootstrap(sock) {
-    if (_onceKeyMap.get(sock)) return !!sock?.authState?.creds?.myAppStateKeyId;
-    _onceKeyMap.set(sock, true);
+    // 1) First check if creds is missing myAppStateKeyId but the key file exists on disk
     try {
-      // 1) Mark presence available — WA gates app-state pushes on this.
+      if (!sock?.authState?.creds?.myAppStateKeyId) {
+        const authPath = (typeof AUTH_DIR === "string" && AUTH_DIR) ? AUTH_DIR : "./auth";
+        const fsMod = typeof fs !== "undefined" ? fs : require("fs");
+        if (fsMod.existsSync(authPath)) {
+          const files = fsMod.readdirSync(authPath).filter(f => f.startsWith("app-state-sync-key-") && f.endsWith(".json"));
+          if (files.length > 0) {
+            const match = files[0].match(/^app-state-sync-key-(.+)\.json$/);
+            if (match && match[1]) {
+              sock.authState.creds.myAppStateKeyId = match[1];
+              try { if (typeof saveCreds === "function") saveCreds(); } catch {}
+              return true;
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 2) Request WhatsApp to push the app-state key snapshot
+    try {
       try { await sock.sendPresenceUpdate("available"); } catch {}
-      // 2) Force full resync of every app-state collection — `true` flag
-      //    asks WA to push the missing key snapshot.
       if (typeof sock.resyncAppState === "function") {
         try {
           await sock.resyncAppState(
@@ -34158,10 +34348,25 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
           );
         } catch {}
       }
-      // 3) Wait up to 6 s for the key-share event from the phone.
+      // 3) Wait up to 6s for the key-share event
       const deadline = Date.now() + 6000;
+      const fsMod = typeof fs !== "undefined" ? fs : require("fs");
+      const authPath = (typeof AUTH_DIR === "string" && AUTH_DIR) ? AUTH_DIR : "./auth";
       while (Date.now() < deadline) {
         if (sock?.authState?.creds?.myAppStateKeyId) return true;
+        try {
+          if (fsMod.existsSync(authPath)) {
+            const files = fsMod.readdirSync(authPath).filter(f => f.startsWith("app-state-sync-key-") && f.endsWith(".json"));
+            if (files.length > 0) {
+              const match = files[0].match(/^app-state-sync-key-(.+)\.json$/);
+              if (match && match[1]) {
+                sock.authState.creds.myAppStateKeyId = match[1];
+                try { if (typeof saveCreds === "function") saveCreds(); } catch {}
+                return true;
+              }
+            }
+          }
+        } catch {}
         await new Promise(r => setTimeout(r, 250));
       }
     } catch {}
@@ -34171,7 +34376,7 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
   // Retry helper for chatModify-based commands.
   // msgObj (optional): the incoming WhatsApp message — used to build REAL lastMessages.
   // WA silently drops chatModify calls with synthetic/fake message IDs; always pass real keys.
-    async function __miasResilientChatModify(sock, payload, jid, { tries = 5, baseDelay = 600 } = {}, msgObj = null) {
+  async function __miasResilientChatModify(sock, payload, jid, { tries = 5, baseDelay = 600 } = {}, msgObj = null) {
     let realLastMsgs = null;
     if (msgObj?.key) {
       try {
@@ -34187,6 +34392,23 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
         realLastMsgs = [{ key: msgObj.key, messageTimestamp: ts }];
       } catch {}
     }
+    // If msgObj was not for target jid, find the latest real message in _msgRetryStore
+    if (!realLastMsgs && typeof _msgRetryStore !== "undefined") {
+      try {
+        for (const [k, v] of _msgRetryStore.entries()) {
+          if (k.startsWith(`${jid}|`) && v?._ts) {
+            const id = k.slice(k.lastIndexOf("|") + 1);
+            if (id) {
+              realLastMsgs = [{
+                key: { remoteJid: jid, fromMe: !!v._fromMe, id },
+                messageTimestamp: Math.floor(v._ts / 1000)
+              }];
+              break;
+            }
+          }
+        }
+      } catch {}
+    }
     if (!realLastMsgs) {
       const crypto = require("crypto");
       realLastMsgs = [{
@@ -34198,22 +34420,26 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
         messageTimestamp: Math.floor(Date.now() / 1000)
       }];
     }
-const variants = realLastMsgs
-      ? [{ ...payload, lastMessages: realLastMsgs }, { ...payload, lastMessages: undefined }]
-      : [{ ...payload, lastMessages: undefined }, { ...payload }];
+    // In Baileys, archive and pin operations REQUIRE lastMessages (omitting it throws TypeError)
+    const isArchiveOrPin = Object.prototype.hasOwnProperty.call(payload, "archive") || Object.prototype.hasOwnProperty.call(payload, "pin");
+    const variants = isArchiveOrPin
+      ? [{ ...payload, lastMessages: realLastMsgs }]
+      : (realLastMsgs
+          ? [{ ...payload, lastMessages: realLastMsgs }, { ...payload, lastMessages: undefined }]
+          : [{ ...payload, lastMessages: undefined }, { ...payload }]);
     let lastErr = "";
     for (let i = 0; i < tries; i++) {
       for (const v of variants) {
         try { await sock.chatModify(v, jid); return { ok: true }; }
         catch (e) { lastErr = e?.message || String(e); }
       }
-      // After the first failed pass, force-bootstrap the app-state key and wait.
-      if (i === 0) {
+      // If app-state key is missing or not synced, actively bootstrap it
+      if (/app.?state.?key.?not.?present|not.?synced/i.test(lastErr) || !sock?.authState?.creds?.myAppStateKeyId) {
         try { await __miasForceAppStateBootstrap(sock); } catch {}
       } else {
         try {
           if (typeof sock.resyncAppState === "function") {
-            await sock.resyncAppState(["regular_high","regular_low","regular"], false);
+            await sock.resyncAppState(["regular_high", "regular_low", "regular"], false);
           }
         } catch {}
       }
@@ -34524,14 +34750,27 @@ const variants = realLastMsgs
   // ".archive 234 906 855 1855" into multiple args, so parse the leading
   // numeric span as one phone number.
   const __miasArchiveTarget = (msg, args = []) => {
+    // 1) Mentioned JID
+    const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+    if (Array.isArray(mentioned) && mentioned.length > 0 && mentioned[0]) {
+      return toStandardJid(resolveLid(mentioned[0]));
+    }
+    // 2) Quoted participant in DM
+    const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
+    if (quotedParticipant && !String(msg.key.remoteJid || "").endsWith("@g.us")) {
+      return toStandardJid(resolveLid(quotedParticipant));
+    }
+    // 3) Digits from args
     const input = Array.isArray(args) ? args.join(" ").trim() : String(args || "").trim();
     const match = input.match(/^\+?[\d][\d\s().-]*/);
     const digits = String(match?.[0] || "").replace(/\D/g, "");
     if (digits.length >= 7) return `${digits}@s.whatsapp.net`;
+    // 4) Current chat
     return msg?.key?.remoteJid || "";
   };
   const __miasArchive = async (sock, msg, args = []) => {
     const targetJid = __miasArchiveTarget(msg, args);
+    if (!targetJid) { await sendReply(sock, msg, "❌ Target chat not specified."); return; }
     await react(sock, msg, "⏳");
     let targetName = targetJid.split("@")[0];
     try {
@@ -34542,11 +34781,21 @@ const variants = realLastMsgs
     } catch {}
     const contextMsg = targetJid === msg.key.remoteJid ? msg : null;
     const res = await __miasResilientChatModify(sock, { archive: true }, targetJid, {}, contextMsg);
-    if (res.ok) { await react(sock, msg, "📦"); await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat archived!*" : `📦 *Archived ${targetName}!*`); }
-    else        { await react(sock, msg, "❌"); await sendReply(sock, msg, `❌ Archive failed.\n_${res.err}_\n\n💡 Open WhatsApp on your phone once, then retry.`); }
+    if (res.ok) {
+      await react(sock, msg, "📦");
+      await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat archived!*" : `📦 *Archived ${targetName}!*`);
+    } else {
+      await react(sock, msg, "❌");
+      const isKeyErr = /app.?state.?key.?not.?present/i.test(res.err);
+      const advice = isKeyErr
+        ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry."
+        : "Open WhatsApp on your phone once, then retry.";
+      await sendReply(sock, msg, `❌ Archive failed.\n_${res.err}_\n\n💡 ${advice}`);
+    }
   };
   const __miasUnarchive = async (sock, msg, args = []) => {
     const targetJid = __miasArchiveTarget(msg, args);
+    if (!targetJid) { await sendReply(sock, msg, "❌ Target chat not specified."); return; }
     await react(sock, msg, "⏳");
     let targetName = targetJid.split("@")[0];
     try {
@@ -34557,8 +34806,17 @@ const variants = realLastMsgs
     } catch {}
     const contextMsg = targetJid === msg.key.remoteJid ? msg : null;
     const res = await __miasResilientChatModify(sock, { archive: false }, targetJid, {}, contextMsg);
-    if (res.ok) { await react(sock, msg, "📦"); await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat unarchived!*" : `📦 *Unarchived ${targetName}!*`); }
-    else        { await react(sock, msg, "❌"); await sendReply(sock, msg, `❌ Unarchive failed.\n_${res.err}_\n\n💡 Open WhatsApp on your phone once, then retry.`); }
+    if (res.ok) {
+      await react(sock, msg, "📦");
+      await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat unarchived!*" : `📦 *Unarchived ${targetName}!*`);
+    } else {
+      await react(sock, msg, "❌");
+      const isKeyErr = /app.?state.?key.?not.?present/i.test(res.err);
+      const advice = isKeyErr
+        ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry."
+        : "Open WhatsApp on your phone once, then retry.";
+      await sendReply(sock, msg, `❌ Unarchive failed.\n_${res.err}_\n\n💡 ${advice}`);
+    }
   };
   { const ex = commands.get("archive")   || { desc: "Archive this chat or a DM — .archive <number>",   category: "WHATSAPP", ownerOnly: true }; ex.desc = "Archive this chat or a DM — .archive <number>"; ex.handler = __miasArchive;   commands.set("archive", ex); }
   { const ex = commands.get("unarchive") || { desc: "Unarchive this chat or a DM — .unarchive <number>", category: "WHATSAPP", ownerOnly: true }; ex.desc = "Unarchive this chat or a DM — .unarchive <number>"; ex.handler = __miasUnarchive; commands.set("unarchive", ex); }
@@ -36153,7 +36411,7 @@ const __miasGst = async (sock, msg, args) => {
           logger: (typeof silentLog !== "undefined" ? silentLog : (typeof logger !== "undefined" ? logger : undefined)),
           printQRInTerminal: false,
           auth: { creds: state.creds, keys: state.keys },
-          browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.ubuntu("Safari") : ["Mac OS", "Safari", "17.4.1"]),
+          browser: (typeof Browsers !== "undefined" && Browsers?.macOS) ? Browsers.macOS("Safari") : ((typeof Browsers !== "undefined" && Browsers?.ubuntu) ? Browsers.macOS("Safari") : ["Mac OS", "Safari", "17.4.1"]),
           markOnlineOnConnect: false,
           generateHighQualityLinkPreview: false,
           defaultQueryTimeoutMs: 60000,
@@ -44212,7 +44470,11 @@ Please wait.`);
         }
         mediaFile = sourceResult.file;
         const { processVideoTo4k } = require("./lib/tt4kVideo.cjs");
-        const processed4k = await processVideoTo4k(mediaFile.path, { timeoutMs: 420000, maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024 });
+        const processed4k = await processVideoTo4k(mediaFile.path, {
+          timeoutMs: 420000,
+          maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024,
+          sourceQualityBoost: 1.015,
+        });
         if (typeof mediaFile.cleanup === "function") {
           try { mediaFile.cleanup(); } catch {}
         }
@@ -44223,8 +44485,11 @@ Please wait.`);
         const _ttd = require("./lib/ttDelivery.cjs");
         // Every inline video is re-encoded to high quality; documents keep the provider's original file.
         mediaFile = await _ttd.fetchTikTokToDisk(PIPE, mediaUrl, { kind: "video", cap: maxBytes, timeout: 120000 });
-        if (!ttMode.document) {
-          const _encoded = await _ttd.reencodeHdForWhatsApp(mediaFile);
+        if (!ttMode.document || ttMode.id === "1.4" || (ttMode.quality === "hd" && ttMode.document)) {
+          const _encoded = await _ttd.reencodeHdForWhatsApp(mediaFile, {
+            maxBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : _ttd.TT_INLINE_VIDEO_MAX_BYTES,
+            sourceQualityBoost: ttMode.id === "1.3" || ttMode.id === "1.4" ? 1.01 : null,
+          });
           try { await mediaFile.cleanup(); } catch {}
           mediaFile = _encoded;
         }
@@ -45029,10 +45294,25 @@ cmd(["tomp4", "tovideo", "converttomp4", "doc2mp4"], { desc: "Convert any video/
       await finish("The converted video is over 2 GB, which is WhatsApp's document limit.");
       return;
     }
-    if (outBuf.length > WA_VIDEO_MAX_BYTES) {
-      await sock.sendMessage(jid, { document: outBuf, mimetype: "video/mp4", fileName: "converted.mp4", caption: "Over 92 MB, so I sent it as a document. Quality is unchanged." }, { quoted: msg });
-    } else {
-      await sock.sendMessage(jid, { video: outBuf, mimetype: "video/mp4" }, { quoted: msg });
+    // Deliver through 4K delivery pipeline without quality loss
+    let sent4k = false;
+    try {
+      const disk = require("./lib/tiktokDiskDelivery.cjs");
+      if (disk && fs.existsSync(outPath) && typeof disk.sendVideoFromDisk === "function") {
+        if (outBuf.length > WA_VIDEO_MAX_BYTES) {
+          await disk.sendDocumentFromDisk(sock, jid, outPath, "converted.mp4", "Converted to MP4 (lossless).", msg);
+        } else {
+          await disk.sendVideoFromDisk(sock, jid, outPath, "", msg);
+        }
+        sent4k = true;
+      }
+    } catch {}
+    if (!sent4k) {
+      if (outBuf.length > WA_VIDEO_MAX_BYTES) {
+        await sock.sendMessage(jid, { document: outBuf, mimetype: "video/mp4", fileName: "converted.mp4", caption: "Over 92 MB, so I sent it as a document. Quality is unchanged." }, { quoted: msg });
+      } else {
+        await sock.sendMessage(jid, { video: outBuf, mimetype: "video/mp4" }, { quoted: msg });
+      }
     }
     await finish(null);
   } catch (e) {
@@ -45495,6 +45775,22 @@ installPairCommands({
   cmd: (...a) => cmd(...a),
   sendReply: (...a) => sendReply(...a),
   CONFIG,
+});
+
+// .rentbot / .delbot / .listbot: rented bot flow
+installRentBotCommands({
+  cmd: (...a) => cmd(...a),
+  sendReply: (...a) => sendReply(...a),
+  CONFIG,
+  logger,
+  makeWASocket,
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion: fetchLatestBaileysVersionRaw,
+  Browsers,
+  DisconnectReason,
+  getSender: (m) => getSender(m),
+  isOwner: (j) => isOwner(j),
+  isCreator: (j) => isCreator(j),
 });
 
 // numeric reply handler for the sudo card

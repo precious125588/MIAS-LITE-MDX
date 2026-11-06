@@ -458,6 +458,111 @@ async function checkDbStatus(force = false) {
   return _dbStatusCache;
 }
 
+
+app.get('/api/bot-info', (_req, res) => {
+  let activeUser = process.env.BOT_ACTIVE_USER || null;
+  let jid = process.env.BOT_ACTIVE_JID || null;
+  let isLive = Boolean(process.env.BOT_IS_LIVE);
+  let pushName = process.env.BOT_PUSH_NAME || null;
+  try {
+    const activeFile = path.join(NEXSTORE, 'active_bot.json');
+    if (fs.existsSync(activeFile)) {
+      const data = JSON.parse(fs.readFileSync(activeFile, 'utf8'));
+      if (data && data.username) activeUser = data.username;
+      if (data && data.pushName) pushName = data.pushName;
+      if (data && data.jid) jid = data.jid;
+      if (data && data.live) isLive = true;
+    }
+  } catch {}
+
+  // Resolve real push name if activeUser is purely digits or missing
+  if (!pushName || !activeUser || /^\d+$/.test(activeUser)) {
+    try {
+      const candidateDirs = [
+        path.join(NEXSTORE, 'pairing'),
+        path.join(NEXSTORE, 'session'),
+        path.join(__dirname, 'mias', 'auth'),
+        process.env.AUTH_DIR
+      ].filter(Boolean);
+
+      for (const baseDir of candidateDirs) {
+        if (!fs.existsSync(baseDir)) continue;
+        const findNameInCreds = (dirPath, depth = 0) => {
+          if (depth > 2) return null;
+          const credsFile = path.join(dirPath, 'creds.json');
+          if (fs.existsSync(credsFile)) {
+            try {
+              const c = JSON.parse(fs.readFileSync(credsFile, 'utf8'));
+              const cand = (c?.me?.name || c?.me?.notify || c?.me?.verifiedName || '').trim();
+              if (cand && !/^\d+$/.test(cand)) return cand;
+            } catch {}
+          }
+          try {
+            const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+            for (const entry of entries) {
+              if (entry.isDirectory()) {
+                const subRes = findNameInCreds(path.join(dirPath, entry.name), depth + 1);
+                if (subRes) return subRes;
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        const resolved = findNameInCreds(baseDir);
+        if (resolved) {
+          pushName = resolved;
+          break;
+        }
+      }
+    } catch {}
+  }
+
+  if (pushName && (!activeUser || /^\d+$/.test(activeUser))) {
+    activeUser = pushName;
+  }
+
+  if (!activeUser && process.env.SESSION_ID) {
+    try {
+      const { bootstrapSessionFromEnv } = require('./scripts/sessionBootstrap.cjs');
+      const b = bootstrapSessionFromEnv();
+      if (b && b.sessionUserName) {
+        activeUser = b.sessionUserName;
+        jid = b.canonicalJid;
+        isLive = true;
+      }
+    } catch {}
+  }
+
+  let rentedBots = [];
+  try {
+    const registryPath = path.join(NEXSTORE, 'rented_bots.json');
+    if (fs.existsSync(registryPath)) {
+      const stored = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+      const records = Array.isArray(stored) ? stored : stored?.rentedBots;
+      if (Array.isArray(records)) {
+        rentedBots = records.slice(0, 2).map(bot => ({
+          number: String(bot.number || '').replace(/[^0-9]/g, ''),
+          username: String(bot.username || bot.number || 'Rented bot').slice(0, 40),
+          rentedAt: Number(bot.rentedAt) || null,
+          status: bot.status === 'live' ? 'live' : 'starting'
+        }));
+      }
+    }
+  } catch {}
+
+  return res.json({
+    ok: true,
+    live: isLive || !!activeUser,
+    username: activeUser || 'User',
+    pushName: pushName || null,
+    jid: jid || null,
+    mode: 'SESSION_ID',
+    rentedBots,
+    message: activeUser ? `Bot is live for ${activeUser}` : 'Bot is active via SESSION_ID'
+  });
+});
+
 app.get('/api/database/status', async (_, res) => {
   const db = await checkDbStatus();
   res.json({ ok: true, ...db });

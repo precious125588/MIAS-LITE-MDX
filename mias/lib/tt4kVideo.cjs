@@ -1,6 +1,8 @@
 "use strict";
 
-const { spawn } = require("child_process");
+const { spawn, execFile } = require("child_process");
+const { promisify } = require("util");
+const execFileAsync = promisify(execFile);
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -57,8 +59,9 @@ function sweepStaleFiles() {
 // with divisible-by-2 guarantees, square pixels (setsar=1), and unsharp edge enhancement.
 const VIDEO_FILTER_4K = "setpts=PTS-STARTPTS,scale='if(gte(iw,ih),-2,2160)':'if(gte(iw,ih),2160,-2)':flags=bicubic,setsar=1";
 const MAX_4K_OUTPUT_BYTES = 95 * 1024 * 1024;
-const FOUR_K_BOOST = 1.15;
 const VIDEO_FILTER = VIDEO_FILTER_4K;
+const MIN_HIGH_QUALITY_SHORT_SIDE = 1080;
+const MAX_SOURCE_BOOST_KBPS = 40000;
 
 // "normal" is the default and is fast. "low-memory" is used once, only after the
 // normal run is SIGKILLed for memory. It gives the same quality (its output is
@@ -67,8 +70,15 @@ function buildFfmpegArgs(inputPath, outputPath, opts, profile) {
   const lowMemory = profile === "low-memory";
   const filter = VIDEO_FILTER_4K;
   const level = "5.2";
-  const maxrate = opts.maxrate || "8M";
-  const bufsize = lowMemory ? "8M" : "16M";
+  const sourceBoostKbps = opts.sourceQualityBoost && opts.sourceProbe
+    && opts.sourceProbe.shortSide >= MIN_HIGH_QUALITY_SHORT_SIDE
+    && opts.sourceProbe.videoKbps > 0
+    ? Math.min(Math.round(opts.sourceProbe.videoKbps * Number(opts.sourceQualityBoost)), MAX_SOURCE_BOOST_KBPS)
+    : 0;
+  const maxrate = sourceBoostKbps ? `${sourceBoostKbps}k` : (opts.maxrate || "8M");
+  const bufsize = sourceBoostKbps
+    ? `${Math.max(sourceBoostKbps * 2, 250)}k`
+    : (lowMemory ? "8M" : "16M");
   return [
     "-y",
     "-v", "error",
@@ -79,7 +89,7 @@ function buildFfmpegArgs(inputPath, outputPath, opts, profile) {
     "-vf", filter,
     "-c:v", "libx264",
     "-preset", opts.preset || "superfast",
-    "-crf", String(opts.crf || 20),
+    ...(sourceBoostKbps ? ["-b:v", `${sourceBoostKbps}k`] : ["-crf", String(opts.crf || 20)]),
     "-level", level,
     "-maxrate", maxrate,
     "-bufsize", bufsize,
@@ -141,6 +151,30 @@ function runFfmpeg(ffmpegBin, args, timeoutMs) {
   });
 }
 
+async function probeSourceVideo(ffmpegBin, inputPath) {
+  let stderr = "";
+  try {
+    await execFileAsync(ffmpegBin, ["-hide_banner", "-i", inputPath], {
+      timeout: 15000,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+  } catch (err) {
+    stderr = String((err && err.stderr) || "");
+  }
+  const videoLine = (stderr.match(/Stream #\d+:\d+[^\n]*Video:[^\n]*/) || [])[0] || "";
+  const audioLine = (stderr.match(/Stream #\d+:\d+[^\n]*Audio:[^\n]*/) || [])[0] || "";
+  if (!videoLine) return null;
+  const size = videoLine.match(/\s(\d{2,5})x(\d{2,5})[\s,]/);
+  const videoText = (videoLine.match(/(\d+) kb\/s/) || [])[1];
+  const audioText = (audioLine.match(/(\d+) kb\/s/) || [])[1];
+  const totalText = (stderr.match(/bitrate: (\d+) kb\/s/) || [])[1];
+  let videoKbps = videoText ? Number(videoText) : null;
+  if (!videoKbps && totalText) videoKbps = Math.max(0, Number(totalText) - (audioText ? Number(audioText) : 0));
+  const width = size ? Number(size[1]) : 0;
+  const height = size ? Number(size[2]) : 0;
+  return { width, height, shortSide: Math.min(width, height), videoKbps: videoKbps || null };
+}
+
 /**
  * Upscales and processes any input video (SD, HD, portrait, or landscape) into true 4K (2160p)
  * resolution with high-fidelity Lanczos interpolation, subtle unsharp edge enhancement,
@@ -179,16 +213,32 @@ async function processVideoTo4k(input, opts = {}) {
 
       const ffmpegBin = resolveFfmpegPath();
       const deadline = Date.now() + timeoutMs;
+      const sourceProbe = await probeSourceVideo(ffmpegBin, inputPath).catch(() => null);
+
+      // If the video already has original high quality (native 1080p+), leave it untouched.
+      // Re-encoding or upscaling pristine sources causes audio cracking and playback lag.
+      if (sourceProbe && sourceProbe.shortSide >= MIN_HIGH_QUALITY_SHORT_SIDE && sourceProbe.videoKbps > 0) {
+        fs.copyFileSync(inputPath, outputPath);
+        const stats = fs.statSync(outputPath);
+        return {
+          path: outputPath,
+          bytes: stats.size,
+          cleanup: () => removeFile(outputPath),
+          untouched: true,
+        };
+      }
+
+      const processingOpts = { ...opts, sourceProbe };
 
       const maxOutputBytes = Number(opts.maxOutputBytes) > 0 ? Number(opts.maxOutputBytes) : MAX_4K_OUTPUT_BYTES;
-      let run = await runFfmpeg(ffmpegBin, buildFfmpegArgs(inputPath, outputPath, opts, "normal"), timeoutMs);
+      let run = await runFfmpeg(ffmpegBin, buildFfmpegArgs(inputPath, outputPath, processingOpts, "normal"), timeoutMs);
 
       // Killed by the kernel (usually out of memory), not by our timeout: retry once with the low-memory profile.
       if (!run.error && run.signal === "SIGKILL" && !run.timedOut) {
         removeFile(outputPath);
         const remaining = deadline - Date.now();
         if (remaining > 0) {
-          run = await runFfmpeg(ffmpegBin, buildFfmpegArgs(inputPath, outputPath, opts, "low-memory"), remaining);
+          run = await runFfmpeg(ffmpegBin, buildFfmpegArgs(inputPath, outputPath, processingOpts, "low-memory"), remaining);
         }
       }
 
@@ -204,10 +254,47 @@ async function processVideoTo4k(input, opts = {}) {
         throw new Error("ffmpeg produced an empty 4K output file");
       }
 
-      // No fallback: if output exceeds maxOutputBytes, throw error so caller can use 4K document mode (1.9)
+      // When output exceeds maxOutputBytes (95 MiB), attempt high-quality compression to fit within 95 MiB
       if (stats.size > maxOutputBytes) {
+        const compOut = path.join(WORK_DIR, `tt4k_comp_${jobId}.mp4`);
+        try {
+          const compArgs = [
+            "-y", "-v", "error",
+            "-i", outputPath,
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "24",
+            "-maxrate", "6M", "-bufsize", "12M",
+            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            compOut
+          ];
+          const compRun = await runFfmpeg(ffmpegBin, compArgs, 180000);
+          if (!compRun.error && compRun.code === 0 && fs.existsSync(compOut)) {
+            const compStat = fs.statSync(compOut);
+            if (compStat.size > MIN_OUTPUT_BYTES && compStat.size <= maxOutputBytes) {
+              removeFile(outputPath);
+              let cleanedComp = false;
+              return {
+                path: compOut,
+                bytes: compStat.size,
+                cleanup: () => {
+                  if (cleanedComp) return;
+                  cleanedComp = true;
+                  removeFile(compOut);
+                }
+              };
+            }
+          }
+        } catch {} finally {
+          if (fs.existsSync(compOut)) {
+            const cStat = fs.statSync(compOut);
+            if (cStat.size > maxOutputBytes || cStat.size < MIN_OUTPUT_BYTES) {
+              removeFile(compOut);
+            }
+          }
+        }
+
         removeFile(outputPath);
-        throw new Error("4K video exceeds the 95 MiB size limit. Choose the 4K document option (1.9) to download it.");
+        throw new Error("4K video exceeds the 95 MiB size limit even after compression. Choose the 4K document option (1.9) to download it.");
       }
 
       let cleaned = false;

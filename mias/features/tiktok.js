@@ -254,7 +254,7 @@ export function buildTikTokPickerSections(info = null) {
         { title: "1.1 SD Video", description: "MP4 video", id: "1.1", rowId: "1.1" },
         { title: "1.2 SD Document", description: "Send as MP4 document", id: "1.2", rowId: "1.2" },
         { title: "1.3 HD Video", description: "Best quality MP4", id: "1.3", rowId: "1.3" },
-        { title: "1.4 HD Document", description: "Send HD MP4 as document", id: "1.4", rowId: "1.4" },
+        { title: "1.4 HD Document", description: "Re-encoded HD MP4 sent as document", id: "1.4", rowId: "1.4" },
         { title: "1.5 SD Watermark", description: "SD video with watermark", id: "1.5", rowId: "1.5" },
         { title: "1.6 HD Watermark", description: "HD video with watermark", id: "1.6", rowId: "1.6" },
         { title: "1.7 HD Video Note", description: "Send as a video note", id: "1.7", rowId: "1.7" },

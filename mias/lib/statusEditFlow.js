@@ -656,6 +656,11 @@ export function getMp4DurationSeconds(buffer) {
   return findMvhd(0, buffer.length);
 }
 
+async function applyGentleSourceQualityBoost(buffer) {
+  // High-quality source videos are left untouched with zero re-encoding to preserve pristine audio and playback.
+  return buffer;
+}
+
 async function trimVideo(buffer) {
   const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mias-status-"));
   const input = path.join(dir, "input.bin");
@@ -878,6 +883,7 @@ export function createStatusEditFlow({ prefix = ".", animeFlow = null } = {}) {
           // normalize/remux pipeline) so they arrive playable, fast, in 4:5 HD.
           let _editBuf = result.buffer;
           try { _editBuf = await prepareTikTokVideo(result.buffer); } catch (_) {}
+          _editBuf = await applyGentleSourceQualityBoost(_editBuf);
           await sock.sendMessage(
             msg.key.remoteJid,
             buildStatusVideoMessage(_editBuf),
