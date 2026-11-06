@@ -129,17 +129,37 @@ async function downloadWaToDisk(rawMsg, kind, ext) {
 
 /* Fetch any URL straight to disk (streamed, RAM-flat). */
 async function fetchToDisk(url, opts = {}) {
-  const axiosE = loadEngine(['axios']);
-  if (!axiosE) throw new Error('axios is not installed');
   const file = tmpFile(DIR_IN, opts.ext || '');
-  const resp = await axiosE.mod.get(url, {
-    responseType: 'stream',
-    timeout: opts.timeout || 120000,
-    maxRedirects: 10,
-    headers: opts.headers || { 'User-Agent': 'Mozilla/5.0 (MIAS-Pipeline)' },
-  });
-  const res = await streamToDisk(resp.data, file, opts.cap || MAX_FILE);
-  return { path: res.path, bytes: res.bytes, cleanup: () => safeUnlink(res.path) };
+  const axiosE = loadEngine(['axios']);
+  if (axiosE) {
+    try {
+      const resp = await axiosE.mod.get(url, {
+        responseType: 'stream',
+        timeout: opts.timeout || 120000,
+        maxRedirects: 10,
+        headers: opts.headers || { 'User-Agent': 'Mozilla/5.0 (MIAS-Pipeline)' },
+      });
+      const res = await streamToDisk(resp.data, file, opts.cap || MAX_FILE);
+      return { path: res.path, bytes: res.bytes, cleanup: () => safeUnlink(res.path) };
+    } catch (err) {
+      if (typeof fetch !== 'function') throw err;
+    }
+  }
+
+  if (typeof fetch === 'function') {
+    const resp = await fetch(url, {
+      redirect: 'follow',
+      headers: opts.headers || { 'User-Agent': 'Mozilla/5.0 (MIAS-Pipeline)' },
+      signal: AbortSignal.timeout(opts.timeout || 120000),
+    });
+    if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status} streaming media`);
+    const { Readable } = require('stream');
+    const nodeStream = typeof Readable.fromWeb === 'function' ? Readable.fromWeb(resp.body) : resp.body;
+    const res = await streamToDisk(nodeStream, file, opts.cap || MAX_FILE);
+    return { path: res.path, bytes: res.bytes, cleanup: () => safeUnlink(res.path) };
+  }
+
+  throw new Error('No HTTP client available to stream to disk');
 }
 
 /* Spill a big Buffer to disk and hand back a stream reference for sending. */
@@ -239,8 +259,11 @@ const MEDIA_KEYS = ['image', 'video', 'audio', 'document', 'sticker'];
 function wrapSocket(sock) {
   try {
     if (!sock || typeof sock.sendMessage !== 'function' || sock.__miasPipelineWrapped) return false;
-    // Mark wrapped; Baileys handles Buffer payloads natively without stream corruption
     sock.__miasPipelineWrapped = true;
+    try {
+      const { installVideoDiskSend } = require('./videoDiskSend.cjs');
+      installVideoDiskSend(sock, { dir: DIR_TMP });
+    } catch {}
     return true;
   } catch { return false; }
 }

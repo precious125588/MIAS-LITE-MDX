@@ -19,19 +19,28 @@ import {
 
 // ─── Simple LRU cache for upload results ─────────────────────────────────────
 
-const CACHE_MAX = 200;
+const CACHE_MAX = 100;
+const CACHE_MAX_BYTES = 16 * 1024 * 1024; // 16 MB max cache total
+const CACHE_MAX_ITEM_BYTES = 512 * 1024;   // Only cache small assets (<= 512 KB) in RAM
 const _uploadCache = new Map();
+let _uploadCacheBytes = 0;
 
 function _cacheGet(key) {
   return _uploadCache.get(key) ?? null;
 }
 
 function _cacheSet(key, value) {
-  if (_uploadCache.size >= CACHE_MAX) {
+  if (!Buffer.isBuffer(value) || value.length > CACHE_MAX_ITEM_BYTES) {
+    return; // Don't hold large media buffers in RAM
+  }
+  while (_uploadCache.size >= CACHE_MAX || (_uploadCacheBytes + value.length > CACHE_MAX_BYTES && _uploadCache.size > 0)) {
     const oldest = _uploadCache.keys().next().value;
+    const oldBuf = _uploadCache.get(oldest);
+    _uploadCacheBytes -= (oldBuf?.length || 0);
     _uploadCache.delete(oldest);
   }
   _uploadCache.set(key, value);
+  _uploadCacheBytes += value.length;
 }
 
 // ─── HTTP fetch ───────────────────────────────────────────────────────────────
