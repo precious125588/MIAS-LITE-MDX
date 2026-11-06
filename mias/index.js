@@ -16252,25 +16252,86 @@ cmd(["getpp","getdp","dp","pfp2"], { desc: "Get profile picture — .getpp @ment
     let targetName = null;
     try { targetName = await getDisplayName(sock, target, isGroup(msg) ? chatJid : null); } catch {}
 
-    // Try HD first, then preview
+    // Build all candidate identifiers (standard JID, LID, group participant entries, onWhatsApp)
+    const candidates = [];
+    if (target) candidates.push(target);
+    if (rawTarget && rawTarget !== target) candidates.push(rawTarget);
+    if (num) {
+      candidates.push(`${num}@s.whatsapp.net`);
+      candidates.push(`${num}@lid`);
+    }
+    const mapped = typeof getLidMapping === "function" ? (getLidMapping(target) || getLidMapping(`${num}@lid`)) : null;
+    if (mapped) candidates.push(mapped);
+
+    if (isGroup(msg)) {
+      try {
+        const meta = _groupMetaCache?.get(chatJid) || await sock.groupMetadata(chatJid).catch(() => null);
+        if (meta?.participants) {
+          const match = meta.participants.find(p =>
+            p.id === target || p.id === rawTarget || _cleanNum(p.id) === num ||
+            (p.lid && (_cleanNum(p.lid) === num || p.lid === target)) ||
+            (p.pn && (_cleanNum(p.pn) === num || p.pn === target))
+          );
+          if (match) {
+            if (match.id) candidates.push(match.id);
+            if (match.lid) candidates.push(match.lid.includes("@") ? match.lid : `${match.lid}@lid`);
+            if (match.pn) candidates.push(match.pn.includes("@") ? match.pn : `${match.pn}@s.whatsapp.net`);
+          }
+        }
+      } catch {}
+    }
+
+    if (typeof sock.onWhatsApp === "function" && num) {
+      try {
+        const checkRes = await sock.onWhatsApp(num).catch(() => []);
+        for (const item of checkRes) {
+          if (item?.jid) candidates.push(item.jid);
+          if (item?.lid) candidates.push(item.lid);
+        }
+      } catch {}
+    }
+
+    const uniqCandidates = [];
+    const seenCands = new Set();
+    for (let c of candidates) {
+      if (!c) continue;
+      c = String(c).replace(/:\d+@/, "@");
+      if (!seenCands.has(c)) {
+        seenCands.add(c);
+        uniqCandidates.push(c);
+      }
+    }
+
+    // Try HD first, then preview across candidates
     let pp = null, isHd = false;
-    try { pp = await sock.profilePictureUrl(target, "image"); isHd = true; } catch {}
-    if (!pp) { try { pp = await sock.profilePictureUrl(target, "preview"); } catch {} }
+    for (const cand of uniqCandidates) {
+      try {
+        pp = await sock.profilePictureUrl(cand, "image");
+        if (pp) { isHd = true; break; }
+      } catch {}
+      try {
+        pp = await sock.profilePictureUrl(cand, "preview");
+        if (pp) { isHd = false; break; }
+      } catch {}
+    }
 
     if (!pp) {
       await sendReply(sock, msg, `❌ No profile picture for +${num} — it's either *private* or not set.`);
       return;
     }
 
-    const buf = await axios.get(pp, { responseType: "arraybuffer", timeout: 15000 });
-    const sizeKb = Math.round((buf.data?.length || 0) / 1024);
-    const meaningful = isMeaningfulName(targetName || "");
-    const label = meaningful ? targetName : `@${num}`;
-    const mentions = meaningful ? [] : [target];
-    const country = _countryFromNumber(num);
+    let imgBuf = null;
+    try {
+      const buf = await axios.get(pp, { responseType: "arraybuffer", timeout: 15000 });
+      imgBuf = Buffer.from(buf.data);
+    } catch {
+      const resp = await fetch(pp);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} downloading profile picture`);
+      imgBuf = Buffer.from(await resp.arrayBuffer());
+    }
 
     // Send image only — no caption text
-    await sock.sendMessage(chatJid, { image: Buffer.from(buf.data) }, { quoted: msg });
+    await sock.sendMessage(chatJid, { image: imgBuf }, { quoted: msg });
     await react(sock, msg, "✅");
   } catch (e) {
     await sendReply(sock, msg, `❌ Profile picture fetch failed.\n_${e?.message || e}_`);
@@ -33424,55 +33485,64 @@ cmd(["dcanonemail","anonemail"], { desc: "Send anonymous email — .dcanonemail 
 cmd(["todoc", "todocument", "tofile"], { desc: "Convert replied audio/video/image to document (no quality loss)", category: "MEDIA" }, async (sock, msg) => {
   const ctx = msg.message?.extendedTextMessage?.contextInfo;
   const q = ctx?.quotedMessage;
-  if (!q) { await sendReply(sock, msg, "❌ Reply to a video/audio/image with .todoc"); return; }
+  if (!q) {
+    await react(sock, msg, "❌");
+    await sendReply(sock, msg, `❌ Reply to a video, audio, image, or sticker with *${CONFIG.PREFIX}todoc*`);
+    return;
+  }
   const aud = q.audioMessage;
   const vid = q.videoMessage;
   const img = q.imageMessage;
   const stk = q.stickerMessage;
   const target = vid || aud || img || stk;
-  if (!target) { await sendReply(sock, msg, "❌ Reply to a video, audio, image, or sticker."); return; }
-  await react(sock, msg, "📄");
-  // Show a status message for large files so the user knows it's working
-  const _fileSizeBytes = target.fileLength || target.fileSize || 0;
-  const _fileSizeMB = (_fileSizeBytes / 1048576).toFixed(1);
-  let _statusKey = null;
-  if (_fileSizeBytes > 5 * 1024 * 1024) { // >5MB = show progress
-    try {
-      const _sm = await sock.sendMessage(msg.key.remoteJid,
-        { text: `📄 *Converting to document...*
-
-📦 File size: *${_fileSizeMB} MB*
-⏳ Downloading — please wait, large files take longer...` },
-        { quoted: msg });
-      _statusKey = _sm?.key;
-    } catch {}
+  if (!target) {
+    await react(sock, msg, "❌");
+    await sendReply(sock, msg, "❌ The replied message does not contain any video, audio, image, or sticker.");
+    return;
   }
+  await react(sock, msg, "🌀");
+
+  let tmpFile = null;
   try {
     const type = vid ? "video" : aud ? "audio" : stk ? "sticker" : "image";
     const stream = await downloadContentFromMessage(target, type);
-    let buf = Buffer.from([]);
-    // Timeout guard: cancel download if it exceeds 90s
-    await Promise.race([
-      (async () => { for await (const c of stream) buf = Buffer.concat([buf, c]); })(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("todoc: download timed out after 90s")), 90000))
-    ]);
+
     let mimetype, fileName;
-    if (vid) { mimetype = target.mimetype || "video/mp4";  fileName = `video-${Date.now()}.mp4`; }
+    if (vid) { mimetype = target.mimetype || "video/mp4"; fileName = `video-${Date.now()}.mp4`; }
     else if (aud) { mimetype = target.mimetype || "audio/mpeg"; fileName = `audio-${Date.now()}.${((target.mimetype || "").includes("ogg") ? "ogg" : "mp3")}`; }
     else if (img) { mimetype = target.mimetype || "image/jpeg"; fileName = `image-${Date.now()}.jpg`; }
     else { mimetype = "image/webp"; fileName = `sticker-${Date.now()}.webp`; }
-    if (_statusKey) {
-      try { await editMessage(sock, msg.key.remoteJid, _statusKey, `📄 *Converting to document...*
 
-📦 File size: *${_fileSizeMB} MB*
-📤 Sending document...`); } catch {}
-    }
-    await sock.sendMessage(msg.key.remoteJid, { document: buf, mimetype, fileName }, { quoted: msg });
-    if (_statusKey) {
-      try { await sock.sendMessage(msg.key.remoteJid, { delete: _statusKey }); } catch {}
-    }
+    // Stream download directly to temporary disk file without buffer accumulation in RAM
+    const workDir = path.join(process.cwd(), "pipeline-work", "tmp");
+    try { fs.mkdirSync(workDir, { recursive: true }); } catch {}
+    tmpFile = path.join(workDir, `todoc_${Date.now()}_${crypto.randomBytes(4).toString("hex")}_${fileName}`);
+    const outStream = fs.createWriteStream(tmpFile);
+
+    await Promise.race([
+      (async () => {
+        for await (const chunk of stream) {
+          outStream.write(chunk);
+        }
+        await new Promise((resolve, reject) => {
+          outStream.end();
+          outStream.on("finish", resolve);
+          outStream.on("error", reject);
+        });
+      })(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("Download timed out after 90 seconds")), 90000))
+    ]);
+
+    await sock.sendMessage(msg.key.remoteJid, { document: { url: tmpFile }, mimetype, fileName }, { quoted: msg });
     await react(sock, msg, "✅");
-  } catch (e) { await react(sock, msg, "❌"); await sendReply(sock, msg, "❌ todoc failed: " + (e?.message || e)); }
+  } catch (e) {
+    await react(sock, msg, "❌");
+    await sendReply(sock, msg, `❌ todoc failed: ${e?.message || e}`);
+  } finally {
+    if (tmpFile) {
+      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile); } catch {}
+    }
+  }
 });
 
 // .tovid — convert a replied sticker (animated webp) into a video.
