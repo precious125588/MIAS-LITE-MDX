@@ -5545,12 +5545,10 @@ async function restoreSession(sessionId = CONFIG.SESSION_ID, authDir = AUTH_DIR)
   if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
   const credsPath = path.join(authDir, "creds.json");
   // If creds already exist on disk from the pairing handoff, use them first.
-  // This package launches MAIS with AUTH_DIR, so SESSION_ID is optional after pairing.
   if (fs.existsSync(credsPath)) {
     try {
       const existing = JSON.parse(fs.readFileSync(credsPath, "utf8"));
-      // Accept any creds that have noiseKey — `registered` may be false on freshly-paired sessions
-      if (existing.noiseKey || existing.signedIdentityKey || existing.me) {
+      if (existing.noiseKey || existing.signedIdentityKey || existing.me || existing.registrationId) {
         console.log(`✅ Session found on disk → ${authDir}`);
         return true;
       }
@@ -5572,45 +5570,120 @@ async function restoreSession(sessionId = CONFIG.SESSION_ID, authDir = AUTH_DIR)
     console.log("ℹ️  No SESSION_ID set; waiting for paired creds in AUTH_DIR.");
     return false;
   }
-  let raw = sessionId.trim();
-  // Strip prezzy_ prefix if present
-  if (raw.startsWith("prezzy_")) raw = raw.slice(7);
-  // Decode session string
+
+  // 1. First delegate to sessionBootstrap if available
   try {
-    const decoded = Buffer.from(raw, "base64").toString("utf8");
-    const parsed = JSON.parse(decoded);
-    if (typeof parsed === "object" && !Array.isArray(parsed)) {
-      // CREDS-ONLY format (new — short session from updated pairing server)
-      if (parsed.noiseKey || parsed.signedIdentityKey || parsed.me) {
-        fs.writeFileSync(credsPath, JSON.stringify(parsed, null, 2), "utf8");
-        console.log("✅ Session restored (prezzy creds format)");
+    const sessionBootstrap = __preciousRequire('../scripts/sessionBootstrap.cjs');
+    if (typeof sessionBootstrap?.ensureSessionForDirectory === 'function') {
+      const ok = await sessionBootstrap.ensureSessionForDirectory(authDir, sessionId);
+      if (ok && fs.existsSync(credsPath)) {
+        console.log(`✅ Session restored via bootstrap parser → ${authDir}`);
         return true;
       }
-      // LEGACY multi-file format (old pairing server — still works)
-      if (parsed["creds.json"]) {
-        for (const [fn, content] of Object.entries(parsed)) {
-          const filePath = path.join(authDir, fn);
-          const fileContent = typeof content === "string" ? content : JSON.stringify(content, null, 2);
-          fs.writeFileSync(filePath, fileContent, "utf8");
+    }
+  } catch {}
+
+  let raw = String(sessionId).trim().replace(/^["']+|["']+$/g, '');
+
+  // 2. Direct JSON check
+  if (raw.startsWith('{') && raw.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(raw);
+      const creds = parsed.creds || parsed;
+      if (creds && (creds.noiseKey || creds.signedIdentityKey || creds.me || creds.registrationId)) {
+        fs.writeFileSync(credsPath, JSON.stringify(creds, null, 2), "utf8");
+        console.log(`✅ Session restored (raw JSON) → ${authDir}`);
+        return true;
+      }
+    } catch {}
+  }
+
+  // 3. Extract candidate base64 strings by stripping known or delimiter prefixes
+  const candidates = [raw];
+  if (raw.includes('~')) {
+    candidates.push(raw.slice(raw.indexOf('~') + 1));
+    candidates.push(raw.slice(raw.lastIndexOf('~') + 1));
+  }
+  if (raw.includes(':')) {
+    candidates.push(raw.slice(raw.indexOf(':') + 1));
+  }
+  if (raw.startsWith('prezzy_')) {
+    candidates.push(raw.slice(7));
+  }
+  const prefixMatch = raw.match(/^[A-Za-z0-9_\-]+[~_:\s]+(.+)$/);
+  if (prefixMatch && prefixMatch[1]) {
+    candidates.push(prefixMatch[1]);
+  }
+
+  for (const cand of candidates) {
+    let clean = cand.trim().replace(/^["']+|["']+$/g, '');
+    if (!clean || clean.length < 20) continue;
+    clean = clean.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = clean.length % 4;
+    if (pad) clean += '='.repeat(4 - pad);
+
+    try {
+      const decoded = Buffer.from(clean, "base64").toString("utf8");
+      if (!decoded.includes('{')) continue;
+      const parsed = JSON.parse(decoded);
+      if (typeof parsed === "object" && !Array.isArray(parsed)) {
+        const creds = parsed.creds || parsed;
+        if (creds && (creds.noiseKey || creds.signedIdentityKey || creds.me || creds.registrationId)) {
+          fs.writeFileSync(credsPath, JSON.stringify(creds, null, 2), "utf8");
+          console.log(`✅ Session restored (base64 creds) → ${authDir}`);
+          return true;
         }
-        console.log(`✅ Session restored (legacy multi-file) → ${authDir}`);
+        if (parsed["creds.json"]) {
+          for (const [fn, content] of Object.entries(parsed)) {
+            const filePath = path.join(authDir, fn);
+            const fileContent = typeof content === "string" ? content : JSON.stringify(content, null, 2);
+            fs.writeFileSync(filePath, fileContent, "utf8");
+          }
+          console.log(`✅ Session restored (legacy multi-file) → ${authDir}`);
+          return true;
+        }
+      }
+    } catch {}
+  }
+
+  // 4. If it is a short session ID, query remote session servers
+  const serverUrls = [
+    process.env.SESSION_SERVER_URL,
+    process.env.PAIRING_SERVER_URL,
+    'https://mias-lite-mdx-session-production.up.railway.app',
+    'http://localhost:3000'
+  ].filter(Boolean);
+
+  const cleanId = raw;
+  for (const baseUrl of serverUrls) {
+    try {
+      const u = `${baseUrl.replace(/\/+$/, '')}/api/session/${encodeURIComponent(cleanId)}`;
+      const httpLib = u.startsWith('https') ? require('https') : require('http');
+      const data = await new Promise((resolve, reject) => {
+        const req = httpLib.get(u, { timeout: 3500 }, res => {
+          let body = '';
+          res.on('data', c => body += c);
+          res.on('end', () => {
+            try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+          });
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      });
+
+      const creds = data?.creds || data?.session?.creds;
+      if (data?.ok && creds && (creds.noiseKey || creds.signedIdentityKey || creds.me || creds.registrationId)) {
+        fs.writeFileSync(credsPath, JSON.stringify(creds, null, 2), "utf8");
+        console.log(`✅ Session restored from server ${baseUrl} → ${authDir}`);
         return true;
       }
-    }
-  } catch {}
-  // Try as plain base64-encoded creds JSON (no prefix)
-  try {
-    const decoded = Buffer.from(raw, "base64").toString("utf8");
-    const obj = JSON.parse(decoded);
-    if (obj && typeof obj === "object") {
-      fs.writeFileSync(credsPath, decoded, "utf8");
-      console.log("✅ Session restored (base64 JSON)");
-      return true;
-    }
-  } catch {}
+    } catch {}
+  }
+
   console.error("❌ Session restore failed — invalid SESSION_ID. Get a new one from the pairing server.");
   return false;
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  HELPERS
