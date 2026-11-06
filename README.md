@@ -18,8 +18,13 @@
 - **Sticker Studio**: Create static and animated WhatsApp stickers on the fly using Sharp and Canvas.
 - **Persistent Storage**: Resilient session storage across local volume and PostgreSQL (Neon / Railway).
 - **Crash-Resilient Architecture**: Automated process supervision, health checks, and graceful reconnection.
+- **Project status**: See the repository commit history and README for current maintenance information. WhatsApp and third-party service changes may affect individual features.
 
 ---
+
+## 🔗 Pair Your WhatsApp Session
+
+Open the [MIAS Lite MDX Pairing Dashboard](https://web-production-0a742.up.railway.app/) to pair your WhatsApp account and obtain a session. Use the pairing page directly; you do not need to copy a session ID from this README.
 
 ## 🚀 Quick Start
 
