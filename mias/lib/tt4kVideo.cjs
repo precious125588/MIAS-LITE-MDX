@@ -213,9 +213,21 @@ async function processVideoTo4k(input, opts = {}) {
 
       const ffmpegBin = resolveFfmpegPath();
       const deadline = Date.now() + timeoutMs;
-      const sourceProbe = opts.sourceQualityBoost
-        ? await probeSourceVideo(ffmpegBin, inputPath).catch(() => null)
-        : null;
+      const sourceProbe = await probeSourceVideo(ffmpegBin, inputPath).catch(() => null);
+
+      // If the video already has original high quality (native 1080p+), leave it untouched.
+      // Re-encoding or upscaling pristine sources causes audio cracking and playback lag.
+      if (sourceProbe && sourceProbe.shortSide >= MIN_HIGH_QUALITY_SHORT_SIDE && sourceProbe.videoKbps > 0) {
+        fs.copyFileSync(inputPath, outputPath);
+        const stats = fs.statSync(outputPath);
+        return {
+          path: outputPath,
+          bytes: stats.size,
+          cleanup: () => removeFile(outputPath),
+          untouched: true,
+        };
+      }
+
       const processingOpts = { ...opts, sourceProbe };
 
       const maxOutputBytes = Number(opts.maxOutputBytes) > 0 ? Number(opts.maxOutputBytes) : MAX_4K_OUTPUT_BYTES;
