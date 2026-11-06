@@ -53,14 +53,14 @@
   <div class="glow" aria-hidden="true"></div>
   <main class="page" id="page">
     <section class="owner-card" aria-label="Main bot status">
-      <div class="badge"><span class="dot"></span><span id="badge-text">LIVE &amp; ACTIVE</span></div>
-      <h1>Bot is live for <span class="name" id="bot-username">Connecting…</span></h1>
+      <div class="badge"><span class="dot"></span><span id="badge-text">CHECKING STATUS…</span></div>
+      <h1>Bot Status: <span class="name" id="bot-username">Connecting…</span></h1>
       <p class="subtext" id="status-desc">Connected via Session ID. WhatsApp services and auto-responders are running.</p>
       <div class="grid">
         <div class="tile"><div class="label">Mode</div><div class="value" id="val-mode">SESSION ID</div></div>
-        <div class="tile"><div class="label">Status</div><div class="value ok" id="val-status">Online</div></div>
+        <div class="tile"><div class="label">Status</div><div class="value" id="val-status">Checking…</div></div>
         <div class="tile"><div class="label">Uptime</div><div class="value" id="val-uptime">Active</div></div>
-        <div class="tile"><div class="label">WhatsApp ID</div><div class="value" id="val-jid">Connected</div></div>
+        <div class="tile"><div class="label">WhatsApp ID</div><div class="value" id="val-jid">Checking…</div></div>
       </div>
     </section>
     <section class="family" id="family" aria-label="Rented bot family tree">
@@ -104,20 +104,40 @@
         return card;
       }));
     }
+    function escapeHtml(s) { return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
     async function refreshStatus() {
       try {
         const res = await fetch('/api/bot-info', { cache:'no-store' });
         if (res.ok) {
           const data = await res.json();
-          const displayName = (data.pushName && !/^\d+$/.test(data.pushName)) ? data.pushName : data.username;
+          const isLive = Boolean(data.live);
+          const displayName = (data.pushName && !/^\d+$/.test(data.pushName)) ? data.pushName : (data.username && data.username !== 'User' ? data.username : (data.jid ? '+' + data.jid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '') : 'Owner'));
           if (displayName) $('bot-username').textContent = displayName;
+
+          const heading = document.querySelector('.owner-card h1');
+          if (heading) {
+            heading.innerHTML = isLive
+              ? `Bot is live for <span class="name" id="bot-username">${escapeHtml(displayName)}</span>`
+              : `Bot is offline <span class="name" id="bot-username" style="font-size:0.85em; opacity:0.85;">(${escapeHtml(displayName)})</span>`;
+          }
+
+          const badgeText = $('badge-text');
+          const badgeDot = document.querySelector('.badge .dot');
+          if (badgeText) badgeText.textContent = isLive ? 'LIVE & ACTIVE' : 'OFFLINE';
+          if (badgeDot) {
+            badgeDot.style.background = isLive ? 'var(--neon-green, #10b981)' : '#ef4444';
+            badgeDot.style.boxShadow = isLive ? '0 0 10px #10b981' : 'none';
+          }
+
           if (data.jid) {
             const digits = data.jid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
             $('val-jid').textContent = digits ? `+${digits}` : data.jid.split('@')[0];
+          } else {
+            $('val-jid').textContent = 'Not connected';
           }
           if (data.mode) $('val-mode').textContent = data.mode.replaceAll('_',' ');
-          $('val-status').textContent = data.live ? 'Online' : 'Offline';
-          $('val-status').classList.toggle('ok', !!data.live);
+          $('val-status').textContent = isLive ? 'Online' : 'Offline';
+          $('val-status').classList.toggle('ok', isLive);
           if (Array.isArray(data.rentedBots)) renderRentals(data.rentedBots);
         }
       } catch (_) {}
