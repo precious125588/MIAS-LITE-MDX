@@ -407,7 +407,7 @@ try {
       const now = Date.now();
       _exitTimes = _exitTimes.filter((t) => now - t < 60000);
       _exitTimes.push(now);
-      if ((code === 75 || code === 78) && _exitTimes.length <= 3
+      if (code === 75 && _exitTimes.length <= 3
           && !(code === 75 && globalThis.__miasAllowRestartExit)) {
         console.error('[exit-guard] suppressed exit(' + code + ') — attempt ' + _exitTimes.length + '/3 in the last minute');
         return;
@@ -5524,7 +5524,11 @@ if (acquireRuntimeLock()) {
   // Launcher code 78 means "duplicate runtime"; it must not auto-restart this
   // child while the process holding the session lock is still alive.
   process.exitCode = 78;
-  setImmediate(() => process.exit(78));
+  if (typeof _origProcessExit === 'function') {
+    _origProcessExit(78);
+  } else {
+    process.exit(78);
+  }
 }
 
 process.on("unhandledRejection", (r) => console.error("unhandledRejection:", r?.message || r));

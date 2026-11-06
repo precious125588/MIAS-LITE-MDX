@@ -163,14 +163,23 @@ async function prepareSessionDatabase() {
       const bootResult = await bootstrapSessionFromEnv();
       if (bootResult && bootResult.canonicalJid && bootResult.credsObj) {
         const sessionRoot = sessionPaths.resolveSessionRoot();
-        for (const targetDir of [
+        const targetDirs = new Set([
           path.join(sessionRoot, bootResult.canonicalJid),
-          path.join(sessionRoot, bootResult.digits),
-          path.join(nexRoot, 'pairing', bootResult.canonicalJid),
-          path.join(nexRoot, 'pairing', bootResult.digits)
-        ]) {
+          path.join(nexRoot, 'pairing', bootResult.canonicalJid)
+        ]);
+        for (const targetDir of targetDirs) {
           fs.mkdirSync(targetDir, { recursive: true });
           fs.writeFileSync(path.join(targetDir, 'creds.json'), JSON.stringify(bootResult.credsObj, null, 2), 'utf8');
+        }
+        for (const legacyDir of [
+          path.join(sessionRoot, bootResult.digits),
+          path.join(nexRoot, 'pairing', bootResult.digits)
+        ]) {
+          try {
+            if (fs.existsSync(legacyDir) && !targetDirs.has(legacyDir)) {
+              fs.rmSync(legacyDir, { recursive: true, force: true });
+            }
+          } catch {}
         }
 
         const webPairsPath = path.join(nexRoot, 'web_pairs.json');

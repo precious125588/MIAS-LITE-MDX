@@ -684,12 +684,16 @@ const _watchdog = setInterval(async () => {
             const cur = running.get(jid);
             if (cur && isAlive(cur.proc)) continue;              // healthy bot — leave it alone
             if (_inFlight.has(jid)) continue;                    // startup already in progress
-            const dirForOwner = path.join(sessionRoot, name);
-            if (_pairingOwnsSession(dirForOwner)) continue;      // pairing or handoff owns this session
-            const dir = path.join(sessionRoot, name);
-            if (!fs.existsSync(path.join(dir, 'creds.json'))) continue; // no saved session
-            if (fs.existsSync(path.join(dir, '.connection-paused.json'))
-                || fs.existsSync(path.join(dir, '.reauth-required.json'))) continue;
+            const sp = require("./sessionPaths");
+            const canonicalDir = sp.sessionDirFor(jid, sessionRoot);
+            if (name !== path.basename(canonicalDir) && fs.existsSync(path.join(canonicalDir, "creds.json"))) {
+                try { fs.rmSync(path.join(sessionRoot, name), { recursive: true, force: true }); } catch {}
+                continue;
+            }
+            const dir = canonicalDir;
+            if (!fs.existsSync(path.join(dir, "creds.json"))) continue; // no saved session
+            if (_pairingOwnsSession(dir)) continue; // pairing or handoff owns this session
+            if (fs.existsSync(path.join(dir, ".reauth-required.json"))) continue;
             const lastTry = _watchdogTried.get(jid) || 0;
             if (Date.now() - lastTry < WATCHDOG_RETRY_MS) continue;
             _watchdogTried.set(jid, Date.now());
