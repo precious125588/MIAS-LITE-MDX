@@ -171,7 +171,7 @@ export function installRentBotCommands(ctx) {
       }
     };
 
-    const ownerNum = (CONFIG?.OWNER_NUMBER || "").replace(/[^0-9]/g, "") || "2349068551055";
+    const ownerNum = (CONFIG?.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
     const ownerUrl = `https://wa.me/${ownerNum}`;
 
     // 2-minute deadline for pairing
