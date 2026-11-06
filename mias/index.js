@@ -110,6 +110,7 @@ import { installSettingsCommand } from "./features/settingsCommands.js";
 import { installSplitVideo } from "./features/splitVideo.js";
 import { convertToMp4 } from "./lib/videoTools.js";
 import { installPairCommands } from "./features/pairCommands.js";
+import { installRentBotCommands } from "./features/rentBotCommands.js";
 import { installSetsudoCommand, installSudoCommand, sudoPending as __sudoPendingMap } from "./features/sudoCommands.js";
 import { createCmdGrantStore, installCmdGrantCommands } from "./features/cmdGrants.js";
 import { runTikTokBulk, formatBulkSummary, bulkModeId } from "./features/ttBulk.js";
@@ -45590,6 +45591,22 @@ installPairCommands({
   cmd: (...a) => cmd(...a),
   sendReply: (...a) => sendReply(...a),
   CONFIG,
+});
+
+// .rentbot / .delbot / .listbot: rented bot flow
+installRentBotCommands({
+  cmd: (...a) => cmd(...a),
+  sendReply: (...a) => sendReply(...a),
+  CONFIG,
+  logger,
+  makeWASocket,
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion: fetchLatestBaileysVersionRaw,
+  Browsers,
+  DisconnectReason,
+  getSender: (m) => getSender(m),
+  isOwner: (j) => isOwner(j),
+  isCreator: (j) => isCreator(j),
 });
 
 // numeric reply handler for the sudo card
