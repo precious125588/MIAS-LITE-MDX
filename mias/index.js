@@ -2545,6 +2545,7 @@ async function connectToWA(force = false) {
       // MARK_ONLINE=0 remains an explicit environment-wide stealth override.
       markOnlineOnConnect: process.env.MARK_ONLINE === "0" ? false : _isAlwaysOnlineEnabled(),
       syncFullHistory: false,
+      shouldIgnoreJid: (jid) => String(jid || "").endsWith("@newsletter"),
       // The bot handles new messages; it must not re-download old contact/chat
       // history immediately after the pairing socket has settled the link.
       shouldSyncHistoryMessage: () => false,
@@ -3466,7 +3467,7 @@ async function connectToWA(force = false) {
         // This hard cap drops ALL messages (owner exempt) once the global window
         // is exhausted. Tune: GLOBAL_FLOOD_MAX (default 100), GLOBAL_FLOOD_WIN_MS (default 10000).
         if (!globalThis._globalFlood) {
-          const _gfMax = Math.max(20,  parseInt(process.env.GLOBAL_FLOOD_MAX    || '100',  10));
+          const _gfMax = Math.max(50,  parseInt(process.env.GLOBAL_FLOOD_MAX    || '500',  10));
           const _gfWin = Math.max(3000, parseInt(process.env.GLOBAL_FLOOD_WIN_MS || '10000', 10));
           globalThis._globalFlood = { count: 0, resetAt: 0, max: _gfMax, win: _gfWin };
           // ── TRACKER CLEANUP: run every 60 s to evict stale per-sender entries ──
@@ -3495,11 +3496,20 @@ async function connectToWA(force = false) {
         const _gfNewMsgs = msgs.filter(m2 => m2?.message && !(m2.key && m2.key.fromMe));
         _gf.count += _gfNewMsgs.length;
         if (_gf.count > _gf.max) {
-          // Over global cap — only keep owner messages and drop the rest
-          const _ownerOnly = msgs.filter(m2 => m2?.message && m2.key && m2.key.fromMe);
-          if (_ownerOnly.length === 0) return; // nothing from owner — skip entire batch
-          // Replace msgs with only owner messages so per-sender filter still runs
-          msgs.splice(0, msgs.length, ..._ownerOnly);
+          // Over global cap on busy/big accounts — keep owner messages and active commands,
+          // dropping background group chatter
+          const _priorityMsgs = msgs.filter(m2 => {
+            if (!m2?.message) return false;
+            if (m2.key && m2.key.fromMe) return true;
+            let b = "";
+            try { b = typeof getBody === "function" ? (getBody(m2) || "") : ""; } catch {}
+            try { b = _extractButtonCommand(b) || b; } catch {}
+            if (isCommandBody(String(b || "").trim())) return true;
+            if (m2.message?.buttonsResponseMessage || m2.message?.listResponseMessage || m2.message?.templateButtonReplyMessage || m2.message?.interactiveResponseMessage) return true;
+            return false;
+          });
+          if (_priorityMsgs.length === 0) return;
+          msgs.splice(0, msgs.length, ..._priorityMsgs);
         }
 
         if (!globalThis._floodTracker) {
@@ -8462,15 +8472,27 @@ async function isGroupAdmin(sock, gid, jid) {
     // 1) Try fresh cache first (updated immediately on group-participants.update)
     const cached = _groupMetaCache.get(gid);
     if (cached) {
-      // Always also do a live fetch in background to keep cache fresh
-      sock.groupMetadata(gid).then(live => {
-        if (live) { updateLidMappingsFromMeta(live); _groupMetaCache.set(gid, live); }
-      }).catch(() => {});
+      const now = Date.now();
+      const lastFetch = cached.__lastFetched || 0;
+      if (now - lastFetch > 300_000) {
+        cached.__lastFetched = now;
+        sock.groupMetadata(gid).then(live => {
+          if (live) {
+            live.__lastFetched = Date.now();
+            updateLidMappingsFromMeta(live);
+            _groupMetaCache.set(gid, live);
+          }
+        }).catch(() => {});
+      }
       return _checkMeta(cached);
     }
-    // 2) No cache yet  fetch live, store in cache
+    // 2) No cache yet — fetch live, store in cache with timestamp
     const live = await sock.groupMetadata(gid);
-    if (live) { updateLidMappingsFromMeta(live); _groupMetaCache.set(gid, live); }
+    if (live) {
+      live.__lastFetched = Date.now();
+      updateLidMappingsFromMeta(live);
+      _groupMetaCache.set(gid, live);
+    }
     return _checkMeta(live);
   } catch { return false; }
 }
@@ -8516,11 +8538,16 @@ async function isBotGroupAdmin(sock, gid) {
     // 1) Check the freshly-updated local cache first
     const cached = _groupMetaCache.get(gid);
     if (cached && checkMeta(cached)) return true;
-    // 2) Fetch live from socket (may be stale) — if cache already said false, this
-    //    is the authoritative last check
+    const now = Date.now();
+    if (cached && (now - (cached.__lastFetched || 0) < 300_000)) {
+      return checkMeta(cached);
+    }
+    // 2) Fetch live from socket when uncached or stale
     const live = await sock.groupMetadata(gid);
-    // 3) Update cache with the live result for future calls
-    if (live) _groupMetaCache.set(gid, live);
+    if (live) {
+      live.__lastFetched = Date.now();
+      _groupMetaCache.set(gid, live);
+    }
     return checkMeta(live);
   } catch { return false; }
 }
@@ -33482,41 +33509,90 @@ cmd(["dcanonemail","anonemail"], { desc: "Send anonymous email — .dcanonemail 
 
 // .todoc — send a replied audio or video as a document (no re-encoding,
 //           preserves original quality and file size).
-cmd(["todoc", "todocument", "tofile"], { desc: "Convert replied audio/video/image to document (no quality loss)", category: "MEDIA" }, async (sock, msg) => {
+cmd(["todoc", "todocument", "tofile"], { desc: "Convert replied media to document (preserves full quality)", category: "MEDIA" }, async (sock, msg, args) => {
   const ctx = msg.message?.extendedTextMessage?.contextInfo;
-  const q = ctx?.quotedMessage;
-  if (!q) {
-    await react(sock, msg, "❌");
-    await sendReply(sock, msg, `❌ Reply to a video, audio, image, or sticker with *${CONFIG.PREFIX}todoc*`);
-    return;
+  let q = ctx?.quotedMessage;
+  if (q) {
+    q = q.ephemeralMessage?.message
+      || q.viewOnceMessage?.message
+      || q.viewOnceMessageV2?.message
+      || q.viewOnceMessageV2Extension?.message
+      || q.documentWithCaptionMessage?.message
+      || q;
   }
-  const aud = q.audioMessage;
-  const vid = q.videoMessage;
-  const img = q.imageMessage;
-  const stk = q.stickerMessage;
-  const target = vid || aud || img || stk;
+  const aud = q?.audioMessage;
+  const vid = q?.videoMessage;
+  const img = q?.imageMessage;
+  const stk = q?.stickerMessage;
+  const doc = q?.documentMessage;
+  const target = vid || aud || img || stk || doc;
   if (!target) {
     await react(sock, msg, "❌");
-    await sendReply(sock, msg, "❌ The replied message does not contain any video, audio, image, or sticker.");
+    await sendReply(sock, msg, `❌ Reply to a video, audio, image, sticker, or document with *${CONFIG.PREFIX}todoc* [optional title]`);
     return;
   }
   await react(sock, msg, "🌀");
 
   let tmpFile = null;
   try {
-    const type = vid ? "video" : aud ? "audio" : stk ? "sticker" : "image";
+    const type = vid ? "video" : aud ? "audio" : stk ? "sticker" : doc ? "document" : "image";
     const stream = await downloadContentFromMessage(target, type);
 
-    let mimetype, fileName;
-    if (vid) { mimetype = target.mimetype || "video/mp4"; fileName = `video-${Date.now()}.mp4`; }
-    else if (aud) { mimetype = target.mimetype || "audio/mpeg"; fileName = `audio-${Date.now()}.${((target.mimetype || "").includes("ogg") ? "ogg" : "mp3")}`; }
-    else if (img) { mimetype = target.mimetype || "image/jpeg"; fileName = `image-${Date.now()}.jpg`; }
-    else { mimetype = "image/webp"; fileName = `sticker-${Date.now()}.webp`; }
+    let mimetype, defaultExt, fallbackName;
+    if (vid) {
+      mimetype = target.mimetype || "video/mp4";
+      defaultExt = mimetype.includes("mkv") ? ".mkv" : mimetype.includes("webm") ? ".webm" : mimetype.includes("quicktime") ? ".mov" : ".mp4";
+      fallbackName = `video-${Date.now()}${defaultExt}`;
+    } else if (aud) {
+      mimetype = target.mimetype || "audio/mpeg";
+      defaultExt = (mimetype.includes("ogg") || mimetype.includes("opus")) ? ".ogg" : mimetype.includes("wav") ? ".wav" : mimetype.includes("m4a") ? ".m4a" : ".mp3";
+      fallbackName = `audio-${Date.now()}${defaultExt}`;
+    } else if (img) {
+      mimetype = target.mimetype || "image/jpeg";
+      defaultExt = mimetype.includes("png") ? ".png" : mimetype.includes("webp") ? ".webp" : mimetype.includes("gif") ? ".gif" : ".jpg";
+      fallbackName = `image-${Date.now()}${defaultExt}`;
+    } else if (stk) {
+      mimetype = "image/webp";
+      defaultExt = ".webp";
+      fallbackName = `sticker-${Date.now()}.webp`;
+    } else {
+      mimetype = target.mimetype || "application/octet-stream";
+      const orig = target.fileName || "";
+      defaultExt = orig.includes(".") ? path.extname(orig) : ".bin";
+      fallbackName = orig || `document-${Date.now()}${defaultExt}`;
+    }
 
-    // Stream download directly to temporary disk file without buffer accumulation in RAM
+    const sanitizeTitle = (str) => {
+      if (!str) return "";
+      const singleLine = str.split(/\r?\n/)[0].trim();
+      return singleLine.replace(/[/\\?%*:|"<>]/g, "_").trim().slice(0, 100);
+    };
+
+    const userArg = Array.isArray(args) ? args.join(" ").trim() : (typeof args === "string" ? args.trim() : "");
+    const mediaCaption = typeof target.caption === "string" ? target.caption.trim() : "";
+
+    let fileName = "";
+    if (userArg) {
+      const cleanCustom = sanitizeTitle(userArg);
+      if (cleanCustom) {
+        fileName = path.extname(cleanCustom) ? cleanCustom : `${cleanCustom}${defaultExt}`;
+      }
+    } else if (mediaCaption) {
+      const cleanCap = sanitizeTitle(mediaCaption);
+      if (cleanCap) {
+        fileName = path.extname(cleanCap) ? cleanCap : `${cleanCap}${defaultExt}`;
+      }
+    } else if (doc && target.fileName) {
+      fileName = sanitizeTitle(target.fileName) || fallbackName;
+    }
+
+    if (!fileName) {
+      fileName = fallbackName;
+    }
+
     const workDir = path.join(process.cwd(), "pipeline-work", "tmp");
     try { fs.mkdirSync(workDir, { recursive: true }); } catch {}
-    tmpFile = path.join(workDir, `todoc_${Date.now()}_${crypto.randomBytes(4).toString("hex")}_${fileName}`);
+    tmpFile = path.join(workDir, `todoc_${Date.now()}_${crypto.randomBytes(4).toString("hex")}_${path.basename(fileName)}`);
     const outStream = fs.createWriteStream(tmpFile);
 
     await Promise.race([
@@ -33544,6 +33620,7 @@ cmd(["todoc", "todocument", "tofile"], { desc: "Convert replied audio/video/imag
     }
   }
 });
+
 
 // .tovid — convert a replied sticker (animated webp) into a video.
 cmd(["tovid", "tovideo", "stickertovid", "imgtovid", "giftomp4"], { desc: "Convert sticker/GIF/image to video", category: "MEDIA" }, async (sock, msg) => {
