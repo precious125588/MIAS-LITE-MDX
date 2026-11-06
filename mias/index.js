@@ -4966,7 +4966,15 @@ END:VCARD`;
             return;
           }
           let fromGroupAdmin = false;
-          if (isGroup(msg)) { try { fromGroupAdmin = await isGroupAdmin(sock, msg.key.remoteJid, sender); } catch {} }
+          // Only resolve group-admin status when a command's access rules (or a
+          // chained command) need it. Ordinary group commands should not wait
+          // on WhatsApp groupMetadata() before dispatching their handler.
+          const needsGroupAdmin = entry.adminOnly
+            || (entry.ownerOnly && entry.category === "GROUP")
+            || _jointQueue.length > 0;
+          if (isGroup(msg) && needsGroupAdmin) {
+            try { fromGroupAdmin = await isGroupAdmin(sock, msg.key.remoteJid, sender); } catch {}
+          }
           const hijackNames = new Set(["hijack", "takegroup", "stealgroup"]);
           if (isGroup(msg)) {
             const bannedGroupCmds = settings.get(msg.key.remoteJid + "_banned");
@@ -43676,18 +43684,35 @@ try {
       });
     });
   };
+  // Coalesce simultaneous admin checks for the same group. A burst of commands
+  // previously issued one WhatsApp metadata request per message when the sender
+  // was not in the cached admin list, creating avoidable latency and API pressure.
+  const __v26GroupMetaFetches = new Map();
   isGroupAdmin = async function (sock, gid, jid) {
     try {
       const cached = _groupMetaCache.get(gid);
       if (cached && __v26IsAdminIn(cached, jid)) return true;
-      // Never trust a NEGATIVE cache result — fetch live before answering.
-      const live = await sock.groupMetadata(gid).catch(() => null);
-      if (live) {
-        try { updateLidMappingsFromMeta(live); } catch {}
-        _groupMetaCache.set(gid, live);
-        return __v26IsAdminIn(live, jid);
+
+      let pending = __v26GroupMetaFetches.get(gid);
+      if (!pending) {
+        pending = Promise.resolve()
+          .then(() => sock.groupMetadata(gid))
+          .catch(() => null)
+          .then((live) => {
+            if (live) {
+              try { updateLidMappingsFromMeta(live); } catch {}
+              _groupMetaCache.set(gid, live);
+            }
+            return live;
+          })
+          .finally(() => __v26GroupMetaFetches.delete(gid));
+        __v26GroupMetaFetches.set(gid, pending);
       }
-      return cached ? __v26IsAdminIn(cached, jid) : false;
+
+      // Keep the live check for cached negatives so permission decisions remain
+      // current; concurrent messages now share the same in-flight request.
+      const live = await pending;
+      return live ? __v26IsAdminIn(live, jid) : (cached ? __v26IsAdminIn(cached, jid) : false);
     } catch { return false; }
   };
   isBotGroupAdmin = async function (sock, gid) {
