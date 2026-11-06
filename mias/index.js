@@ -6833,13 +6833,13 @@ const _sendPlainReply = async (sock, msg, text, mentions = []) => {
 
   // ── Shared owner settings lookup ──────────────────────────────────────────
   let _extraCtx;
+  let _quoteToUse = msg;
   try {
     const _owJ2 = getOwnerJid();
     const _owS2 = _owJ2 ? getSettings(_owJ2) : null;
 
     // Section 32 Meta AI status-reply context is independent of removed options.
     // [v36 STEP 7] Status reply context (blue verified badge + real contact card)
-    let _quoteToUse = msg;
     try {
       if (typeof globalThis.__V36_STATUS_REPLY_CTX === 'function') {
         const _v36 = await globalThis.__V36_STATUS_REPLY_CTX(sock, msg);
