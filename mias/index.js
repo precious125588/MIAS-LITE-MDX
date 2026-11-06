@@ -3366,7 +3366,26 @@ async function connectToWA(force = false) {
             }
           }
         }
-        if (ev.type && ev.type !== "notify") { __replyTrace({ key: { fromMe: (ev.messages || []).some((x) => x?.key?.fromMe) } }, "upsert-" + ev.type); return; }
+        if (ev.type && ev.type !== "notify") {
+          if (ev.type === "append") {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const liveAppendMsgs = (ev.messages || []).filter((m) => {
+              if (!m || !m.message || m.messageStubType != null) return false;
+              if (m.key?.id && _botSentMsgIds.has(m.key.id)) return false;
+              const ts = Number(m.messageTimestamp?.low ?? m.messageTimestamp ?? 0);
+              if (!ts || Math.abs(nowSec - ts) > 90) return false;
+              return true;
+            });
+            if (liveAppendMsgs.length === 0) {
+              __replyTrace({ key: { fromMe: (ev.messages || []).some((x) => x?.key?.fromMe) } }, "upsert-append-stale");
+              return;
+            }
+            ev.messages = liveAppendMsgs;
+          } else {
+            __replyTrace({ key: { fromMe: (ev.messages || []).some((x) => x?.key?.fromMe) } }, "upsert-" + ev.type);
+            return;
+          }
+        }
 
         const msgs = ev.messages || [];
         const NOW_SECS = Math.floor(Date.now() / 1000);
@@ -3426,6 +3445,7 @@ async function connectToWA(force = false) {
         const _floodNow = Date.now();
         const _safeMessages = msgs.filter(msg => {
           if (!msg || !msg.message) return false;
+          if (msg.key?.id && _botSentMsgIds.has(msg.key.id)) return false;
           const _fJid = msg.key && msg.key.remoteJid ? msg.key.remoteJid : '';
           if (!_fJid || (msg.key && msg.key.fromMe)) return true; // never block owner
           const _fEntry = globalThis._floodTracker.get(_fJid);
@@ -3444,6 +3464,7 @@ async function connectToWA(force = false) {
         for (let _bi = 0; _bi < _safeMessages.length; _bi += _PROC_BATCH) {
         await Promise.all(_safeMessages.slice(_bi, _bi + _PROC_BATCH).map(async (msg) => {
           if (!msg || !msg.message) return;
+          if (msg.key?.id && _botSentMsgIds.has(msg.key.id)) return;
 
           // ── ⚡ Drop stale messages (>60s old) — pure history replay,
           //    not a live message. Even when ev.type is "notify",
@@ -3775,8 +3796,9 @@ END:VCARD`;
           // Skip messages older than 90 seconds — prevents replaying queued msgs
           // on reconnect and flooding groups with invisible/duplicate content.
           try {
-            const _msgTs = Number(msg.messageTimestamp || 0) * 1000;
-            if (_msgTs > 0 && Date.now() - _msgTs > 90000) return;
+            const _rawTs = Number(msg.messageTimestamp?.low ?? msg.messageTimestamp ?? 0);
+            const _msgTs = _rawTs * 1000;
+            if (_msgTs > 0 && (Date.now() - _msgTs > 90000) && !msg.key?.fromMe) return;
           } catch {}
 
           let body = (typeof getBody === "function" ? getBody(msg) : "") || "";
