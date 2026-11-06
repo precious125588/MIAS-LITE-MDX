@@ -40,8 +40,9 @@ const HD_VIDEO_FILTER = "scale='if(gte(iw,ih),-2,1080)':'if(gte(iw,ih),1080,-2)'
 // - A source below that state is re-encoded to the 18398 kb/s reference, without the 10%.
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
-const HD_BOOST = 1.05;
-const HIGH_QUALITY_HD_BOOST = 1.01;
+// 0.2% boost for re-encoding (1.002) including 1.3 HD and 1.4 HD document choice
+const HD_BOOST = 1.002;
+const HIGH_QUALITY_HD_BOOST = 1.002;
 const HIGH_QUALITY_4K_BOOST = 1.015;
 const HD_MAX_KBPS = 40000;
 

@@ -502,7 +502,19 @@ async function downloadCreatorToFile(url, file) {
     return await run();
   } catch { try { fs.rmSync(file, { force: true }); } catch {} return 0; }
 }
-async function deliverItemFromDisk(sock, jid, msg, item, caption) {
+const NO_REENCODE_CATEGORIES = new Set([
+  "fyp", "foryou", "foryoupage",
+  "cruise", "cruzz", "techcruzz",
+  "feeling",
+  "discipline", "discip",
+]);
+
+function shouldSkipReencode(catKey, item) {
+  const c = String(catKey || (item && (item.category || item.catKey || item.cat)) || "").toLowerCase().trim();
+  return NO_REENCODE_CATEGORIES.has(c);
+}
+
+async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null) {
   if (!CVD) return false;
   const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mias-anime-"));
   const file = path.join(dir, "edit.mp4");
@@ -523,13 +535,29 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption) {
     }
     if (!ok) return false;
 
-    // First: re-encode to TT command 1.3 HD state (clean H.264/AAC 1080p60 faststart, 5% encode for quality, no fallback)
+    // Direct delivery without re-encoding for fyp, cruise, feeling, and discipline
+    const categoryName = String(catKey || (item && (item.category || item.catKey || item.cat)) || "").toLowerCase().trim();
+    if (shouldSkipReencode(catKey, item)) {
+      console.log(`[anime-edits][direct] sending ${categoryName || "edit"} untouched (no re-encode): ${file}`);
+      const stat = await fs.promises.stat(file).catch(() => null);
+      if (!stat || stat.size < 2048) {
+        throw new Error("Downloaded video file is empty or corrupted");
+      }
+      const maxInline = (TTD && TTD.TT_INLINE_VIDEO_MAX_BYTES) || (95 * 1024 * 1024);
+      if (stat.size > maxInline) {
+        throw new Error("Status video exceeds the 95 MiB size limit; no document was sent.");
+      }
+      await CVD.sendVideoFromDisk(sock, jid, file, caption, msg);
+      return true;
+    }
+
+    // The rest of the categories: re-encode to TT command 1.3 HD state with 0.2% boost (clean H.264/AAC 1080p60 faststart)
     let hdEncoded = null;
     if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
       const hdRun = () => TTD.reencodeHdForWhatsApp(file, {
         maxBytes: 95 * 1024 * 1024,
-        boost: 1.05,
-        sourceQualityBoost: 1.01,
+        boost: 1.002,
+        sourceQualityBoost: 1.002,
       });
       hdEncoded = (_heavyGuard && typeof _heavyGuard.runHeavy === "function")
         ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 510000 })
@@ -655,7 +683,7 @@ module.exports = {
         // Disk only: the edit is downloaded to a temp folder, sent from disk, and
         // that folder is removed after the send succeeds or fails. No RAM fallback.
         let res = false;
-        try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption); } catch { res = false; }
+        try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch { res = false; }
         if (res && res.error) {
           fourKError = res.error;
           plan.failed(c);
@@ -733,6 +761,9 @@ module.exports = {
   },
   GC,
   CATEGORIES,
+  NO_REENCODE_CATEGORIES,
+  shouldSkipReencode,
+  deliverItemFromDisk,
   pickUnseen,
   markSeen,
   contentKeyOf,

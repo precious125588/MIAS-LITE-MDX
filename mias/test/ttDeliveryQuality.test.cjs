@@ -47,3 +47,33 @@ test('high quality videos are left untouched by processVideoTo4k', async () => {
     result.cleanup();
   }
 });
+
+
+test("0.2% boost constants are configured for HD delivery", () => {
+  assert.equal(delivery.HD_BOOST, 1.002);
+  assert.equal(delivery.HIGH_QUALITY_HD_BOOST, 1.002);
+});
+
+test("HD sources at or above reference bitrate encode by 0.2%", () => {
+  const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 20000 };
+  const expectedBitrate = Math.round(20000 * 1.002); // 20040 kb/s (0.2% boost)
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), expectedBitrate);
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), expectedBitrate);
+});
+
+test("fyp, cruise, feeling, discipline bypass re-encoding while other categories do not", () => {
+  const edits = require("../precious-anime-edits.cjs");
+  assert.equal(edits.shouldSkipReencode("fyp"), true);
+  assert.equal(edits.shouldSkipReencode("cruise"), true);
+  assert.equal(edits.shouldSkipReencode("feeling"), true);
+  assert.equal(edits.shouldSkipReencode("discipline"), true);
+  assert.equal(edits.shouldSkipReencode("foryou"), true);
+  assert.equal(edits.shouldSkipReencode("cruzz"), true);
+  assert.equal(edits.shouldSkipReencode("discip"), true);
+
+  // The rest are re-encoded (e.g. naruto, jjk, bleach, onepiece)
+  assert.equal(edits.shouldSkipReencode("naruto"), false);
+  assert.equal(edits.shouldSkipReencode("jjk"), false);
+  assert.equal(edits.shouldSkipReencode("bleach"), false);
+  assert.equal(edits.shouldSkipReencode("onepiece"), false);
+});
