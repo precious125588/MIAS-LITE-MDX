@@ -1,0 +1,38 @@
+{
+  "name": "MIAS-LITE-MDX",
+  "description": "Next-Gen High-Speed WhatsApp Multi-Device Automation Bot",
+  "repository": "https://github.com/precious125588/MIAS-LITE-MDX",
+  "logo": "https://img.shields.io/badge/MIAS-BOT-25D366",
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "baileys",
+    "multi-device"
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "SESSION_ID": {
+      "description": "Your WhatsApp Pair session string (e.g. JUST_X~... or MIAS_LITE_MDX~...)",
+      "required": true
+    },
+    "OWNER_NUMBER": {
+      "description": "Owner WhatsApp phone number with country code",
+      "required": false
+    },
+    "OWNER_NAME": {
+      "description": "Bot Owner Name",
+      "value": "𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  }
+}
