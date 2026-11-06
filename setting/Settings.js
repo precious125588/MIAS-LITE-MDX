@@ -1,13 +1,35 @@
 const fs = require('fs');
-const SETTINGS_PATH = './setting.json';
+const path = require('path');
+
+// Prefer the per-session persistent volume used by the launcher. Keep the
+// historical project-relative file as a fallback for local development.
+const SETTINGS_PATH = process.env.AUTH_DIR
+  ? path.join(path.resolve(process.env.AUTH_DIR), 'database', 'legacy-settings.json')
+  : path.join(__dirname, '..', 'setting.json');
+const LEGACY_PATHS = [...new Set([
+  path.resolve(process.cwd(), 'setting.json'),
+  path.join(__dirname, 'setting.json'),
+  path.join(__dirname, '..', 'setting.json'),
+].filter(file => file !== SETTINGS_PATH))];
 
 let settings = {};
+function readSettings(file) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8') || '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch { return null; }
+}
+
 try {
-  if (fs.existsSync(SETTINGS_PATH)) {
-    settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8') || '{}');
-  } else {
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify({}, null, 2));
-    settings = {};
+  fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
+  settings = readSettings(SETTINGS_PATH) || {};
+  if (!fs.existsSync(SETTINGS_PATH)) {
+    // One-time, non-destructive migration from older relative locations.
+    for (const legacyPath of LEGACY_PATHS) {
+      const legacy = readSettings(legacyPath);
+      if (legacy) { settings = legacy; break; }
+    }
+    saveSettings();
   }
 } catch (e) {
   console.error('Failed to load settings.json', e);
@@ -15,26 +37,17 @@ try {
 }
 
 function saveSettings() {
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+  fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
+  const tempPath = `${SETTINGS_PATH}.${process.pid}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify(settings, null, 2), 'utf8');
+  fs.renameSync(tempPath, SETTINGS_PATH);
 }
 
-/**
- * Get a setting for a user, group, or bot.
- * @param {string} jid - User JID, group JID, or 'bot' for global bot settings
- * @param {string} key - Setting key
- * @param {*} defaultValue - Default value if key doesn't exist
- */
 function getSetting(jid, key, defaultValue = false) {
   if (!settings[jid]) return defaultValue;
   return settings[jid][key] !== undefined ? settings[jid][key] : defaultValue;
 }
 
-/**
- * Set a setting for a user, group, or bot.
- * @param {string} jid - User JID, group JID, or 'bot' for global bot settings
- * @param {string} key - Setting key
- * @param {*} value - Value to save
- */
 function setSetting(jid, key, value) {
   if (!settings[jid]) settings[jid] = {};
   settings[jid][key] = value;
@@ -42,4 +55,3 @@ function setSetting(jid, key, value) {
 }
 
 module.exports = { getSetting, setSetting };
-
