@@ -3,150 +3,912 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#08090d">
-  <title>MIAS MDX · Bot Status</title>
+  <meta name="theme-color" content="#04060a">
+  <title>MIAS MDX · LONER CORE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { color-scheme: dark; --green:#25d366; --mint:#3ef2c4; --muted:#9ba3b4; }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { min-height:100vh; background:#08090d; color:#f1f4f9; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; display:flex; justify-content:center; padding:24px 14px; overflow-x:hidden; }
-    .glow { position:fixed; inset:0; pointer-events:none; background:radial-gradient(circle at 15% 18%,rgba(37,211,102,.14),transparent 40%),radial-gradient(circle at 85% 80%,rgba(0,168,132,.11),transparent 44%); }
-    .page { position:relative; z-index:1; width:min(100%,760px); margin:auto; }
-    .owner-card,.bot-card { background:rgba(18,22,30,.92); border:1px solid rgba(255,255,255,.08); border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.45); text-align:center; backdrop-filter:blur(18px); }
-    .owner-card { max-width:520px; margin:0 auto; padding:40px 32px; transition:padding .25s ease,border-color .25s ease; }
-    .page.has-rentals .owner-card { padding:24px 24px; border-color:rgba(37,211,102,.24); }
-    .badge { display:inline-flex; align-items:center; gap:9px; color:var(--green); border:1px solid rgba(37,211,102,.32); background:rgba(37,211,102,.1); border-radius:99px; text-transform:uppercase; letter-spacing:.7px; font-size:12px; font-weight:750; padding:7px 14px; margin-bottom:22px; }
-    .dot { width:8px; height:8px; border-radius:50%; background:currentColor; box-shadow:0 0 12px currentColor; animation:pulse 2s infinite; }
-    @keyframes pulse { 50%{opacity:.45;transform:scale(.85)} }
-    h1 { font-size:clamp(25px,5vw,36px); line-height:1.2; letter-spacing:-.6px; margin-bottom:10px; }
-    .name { display:block; margin-top:5px; overflow-wrap:anywhere; background:linear-gradient(135deg,var(--green),var(--mint)); color:transparent; background-clip:text; -webkit-background-clip:text; }
-    .subtext { color:var(--muted); font-size:15px; line-height:1.55; margin:0 auto 28px; max-width:440px; }
-    .page.has-rentals .subtext { font-size:13px; margin-bottom:18px; }
-    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; text-align:left; }
-    .tile { min-width:0; padding:14px 16px; border-radius:13px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.065); }
-    .label { color:#788397; text-transform:uppercase; letter-spacing:.6px; font-size:10px; margin-bottom:5px; }
-    .value { color:#e2e8f0; font-size:14px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .ok { color:var(--green); }
-    .page.has-rentals .owner-card .tile { padding:10px 12px; }
-    .page.has-rentals .owner-card .value { font-size:13px; }
-    .family { display:none; max-width:680px; margin:0 auto; padding-bottom:4px; }
-    .page.has-rentals .family { display:block; }
-    .trunk { width:2px; height:30px; margin:0 auto; background:linear-gradient(var(--green),var(--mint)); box-shadow:0 0 9px rgba(62,242,196,.55); }
-    .family-title { position:relative; width:max-content; max-width:100%; margin:0 auto 18px; padding:7px 15px; border:1px solid rgba(62,242,196,.38); border-radius:30px; background:#10151c; color:var(--mint); font-size:11px; font-weight:750; letter-spacing:.65px; text-transform:uppercase; }
-    .branches { position:relative; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; padding-top:18px; }
-    .branches::before { content:""; position:absolute; top:0; left:25%; right:25%; height:16px; border-top:2px solid rgba(62,242,196,.8); border-left:2px solid rgba(62,242,196,.8); border-right:2px solid rgba(62,242,196,.8); border-radius:8px 8px 0 0; }
-    .branches.one { grid-template-columns:minmax(0,340px); justify-content:center; }
-    .branches.one::before { left:50%; right:auto; width:2px; height:18px; border:0; background:rgba(62,242,196,.8); border-radius:0; }
-    .bot-card { position:relative; padding:24px 20px; border-color:rgba(62,242,196,.22); }
-    .bot-card::before { content:""; position:absolute; top:-19px; left:50%; height:18px; width:2px; background:rgba(62,242,196,.8); }
-    .bot-card .badge { margin-bottom:14px; font-size:10px; padding:6px 12px; color:var(--mint); border-color:rgba(62,242,196,.35); background:rgba(62,242,196,.09); }
-    .bot-card h2 { font-size:21px; line-height:1.25; margin-bottom:8px; }
-    .bot-card .subtext { font-size:12px; margin-bottom:17px; }
-    .bot-card .tile { padding:10px 11px; }
-    .bot-card .value { font-size:12px; }
-    .owner-link { display:block; margin-top:16px; color:#8792a5; font-size:11px; overflow-wrap:anywhere; text-decoration:none; }
-    .owner-link:hover { color:var(--mint); }
-    .footer { max-width:520px; margin:24px auto 0; padding:18px 8px 0; border-top:1px solid rgba(255,255,255,.08); color:#64748b; text-align:center; font-size:12px; }
-    @media(max-width:580px) { body{padding:18px 12px}.owner-card{padding:30px 20px;border-radius:20px}.page.has-rentals .owner-card{padding:21px 16px}.branches{grid-template-columns:minmax(0,1fr);gap:18px;padding-top:0}.branches::before{display:none}.branches.one{grid-template-columns:minmax(0,1fr)}.bot-card{max-width:420px;width:100%;margin:0 auto}.bot-card::before{display:none}.trunk{height:23px}.family-title{margin-bottom:16px} }
+    :root {
+      color-scheme: dark;
+      --bg: #04060a;
+      --bg-surface: rgba(10, 14, 23, 0.85);
+      --bg-card: rgba(13, 19, 32, 0.7);
+      --bg-card-hover: rgba(18, 26, 44, 0.85);
+      --green: #00ff87;
+      --green-glow: rgba(0, 255, 135, 0.25);
+      --cyan: #60efff;
+      --cyan-glow: rgba(96, 239, 255, 0.25);
+      --purple: #a855f7;
+      --purple-glow: rgba(168, 85, 247, 0.25);
+      --text: #f1f5f9;
+      --text-muted: #8b9bb4;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(0, 255, 135, 0.22);
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient Background Glow */
+    .glow-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 12% 15%, rgba(0, 255, 135, 0.12), transparent 45%),
+        radial-gradient(circle at 88% 25%, rgba(168, 85, 247, 0.1), transparent 50%),
+        radial-gradient(circle at 50% 85%, rgba(96, 239, 255, 0.08), transparent 45%);
+    }
+
+    /* Subtle grid line overlay */
+    .grid-lines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 780px);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Header Nav */
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      backdrop-filter: blur(20px);
+    }
+
+    .brand-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #04060a;
+      font-family: var(--font-mono);
+      font-size: 15px;
+      box-shadow: 0 0 16px var(--green-glow);
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text);
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--green);
+      letter-spacing: 0.3px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Soundwave Visualizer */
+    .soundwave {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 16px;
+    }
+
+    .soundwave-bar {
+      width: 3px;
+      background: var(--green);
+      border-radius: 2px;
+      animation: soundwave-jump 1.2s ease-in-out infinite alternate;
+    }
+
+    .soundwave-bar:nth-child(1) { height: 35%; animation-delay: 0.1s; }
+    .soundwave-bar:nth-child(2) { height: 75%; animation-delay: 0.3s; }
+    .soundwave-bar:nth-child(3) { height: 100%; animation-delay: 0.0s; }
+    .soundwave-bar:nth-child(4) { height: 50%; animation-delay: 0.4s; }
+    .soundwave-bar:nth-child(5) { height: 80%; animation-delay: 0.2s; }
+
+    @keyframes soundwave-jump {
+      0% { height: 20%; opacity: 0.4; }
+      100% { height: 100%; opacity: 1; }
+    }
+
+    /* Main Loner Hero Card */
+    .loner-hero {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-accent);
+      border-radius: 26px;
+      padding: 36px 30px;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 255, 135, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loner-hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--green), var(--cyan), transparent);
+    }
+
+    .status-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .loner-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 15px;
+      border-radius: 99px;
+      background: rgba(0, 255, 135, 0.09);
+      border: 1px solid rgba(0, 255, 135, 0.35);
+      color: var(--green);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+      animation: pulse-dot 1.8s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .loner-quote-pill {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .hero-title {
+      font-size: clamp(26px, 4.8vw, 36px);
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.8px;
+      margin-bottom: 10px;
+    }
+
+    .hero-name {
+      background: linear-gradient(135deg, var(--green) 0%, var(--cyan) 50%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .hero-desc {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+      max-width: 580px;
+      margin-bottom: 26px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-tile {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 18px;
+      transition: all 0.25s ease;
+    }
+
+    .stat-tile:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.14);
+      transform: translateY(-2px);
+    }
+
+    .stat-label {
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stat-val.ok {
+      color: var(--green);
+      text-shadow: 0 0 12px var(--green-glow);
+    }
+
+    /* Direct DM Pairing Section */
+    .pairing-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 30px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .card-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .dm-only-tag {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      background: rgba(96, 239, 255, 0.1);
+      border: 1px solid rgba(96, 239, 255, 0.3);
+      color: var(--cyan);
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-weight: 600;
+    }
+
+    /* Pairing Form */
+    .pair-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .phone-input-wrap {
+      flex: 1;
+      min-width: 240px;
+      position: relative;
+    }
+
+    .phone-input {
+      width: 100%;
+      height: 52px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0 18px;
+      color: #fff;
+      font-size: 16px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .phone-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 16px var(--green-glow);
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    .phone-input::placeholder {
+      color: #4b5568;
+      font-size: 14px;
+    }
+
+    .btn-submit {
+      height: 52px;
+      padding: 0 28px;
+      background: linear-gradient(135deg, var(--green), #00d26a);
+      color: #04060a;
+      border: none;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+      box-shadow: 0 8px 24px var(--green-glow);
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(0, 255, 135, 0.4);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Result Code Card */
+    .code-display-box {
+      display: none;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--green);
+      border-radius: 18px;
+      padding: 24px;
+      margin-top: 16px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 0 25px var(--green-glow);
+    }
+
+    .code-display-box.active {
+      display: block;
+      animation: fade-in 0.3s ease;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .code-title {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+    }
+
+    .code-digits {
+      font-size: clamp(32px, 7vw, 44px);
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: 6px;
+      color: #ffffff;
+      text-shadow: 0 0 20px var(--green-glow);
+      user-select: all;
+      margin-bottom: 16px;
+    }
+
+    .code-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-copy {
+      padding: 9px 20px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-copy:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .stage-status {
+      margin-top: 14px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    /* Steps Guide */
+    .steps-guide {
+      margin-top: 20px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .step-num {
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--green);
+    }
+
+    .step-text {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Rented Family Tree */
+    .family-section {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .family-section.has-rentals {
+      display: flex;
+    }
+
+    .family-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 99px;
+      background: rgba(96, 239, 255, 0.08);
+      border: 1px solid rgba(96, 239, 255, 0.25);
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      align-self: center;
+    }
+
+    .branches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .bot-card {
+      background: var(--bg-surface);
+      border: 1px solid rgba(96, 239, 255, 0.2);
+      border-radius: 20px;
+      padding: 22px;
+      backdrop-filter: blur(18px);
+    }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 8px;
+      color: #64748b;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-ticker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 18px 12px; }
+      .loner-hero { padding: 26px 20px; }
+      .pairing-card { padding: 22px 18px; }
+      .steps-guide { grid-template-columns: 1fr; }
+      .code-digits { font-size: 32px; letter-spacing: 4px; }
+    }
   </style>
 </head>
 <body>
-  <div class="glow" aria-hidden="true"></div>
-  <main class="page" id="page">
-    <section class="owner-card" aria-label="Main bot status">
-      <div class="badge"><span class="dot"></span><span id="badge-text">CHECKING STATUS…</span></div>
-      <h1>Bot Status: <span class="name" id="bot-username">Connecting…</span></h1>
-      <p class="subtext" id="status-desc">Connected via Session ID. WhatsApp services and auto-responders are running.</p>
-      <div class="grid">
-        <div class="tile"><div class="label">Mode</div><div class="value" id="val-mode">SESSION ID</div></div>
-        <div class="tile"><div class="label">Status</div><div class="value" id="val-status">Checking…</div></div>
-        <div class="tile"><div class="label">Uptime</div><div class="value" id="val-uptime">Active</div></div>
-        <div class="tile"><div class="label">WhatsApp ID</div><div class="value" id="val-jid">Checking…</div></div>
+  <div class="glow-bg" aria-hidden="true"></div>
+  <div class="grid-lines" aria-hidden="true"></div>
+
+  <main class="container">
+    <!-- Top Bar -->
+    <header class="top-nav">
+      <div class="brand-meta">
+        <div class="brand-logo">M</div>
+        <div>
+          <div class="brand-title">MIAS LITE MDX</div>
+          <div class="brand-sub">LONER CORE // ACTIVE</div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <div class="soundwave" title="Audio engine active">
+          <div class="soundwave-bar"></div>
+          <div class="soundwave-bar"></div>
+          <div class="soundwave-bar"></div>
+          <div class="soundwave-bar"></div>
+          <div class="soundwave-bar"></div>
+        </div>
+        <a class="nav-link" href="/admin">
+          <span>⚡</span> Admin
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Hero Live Status Card -->
+    <section class="loner-hero">
+      <div class="status-badge-row">
+        <div class="loner-badge">
+          <span class="pulse-dot"></span>
+          <span id="badge-text">LIVE &amp; UNTOUCHED</span>
+        </div>
+        <div class="loner-quote-pill">
+          SOLO RUNTIME // SILENCE IN THE NOISE
+        </div>
+      </div>
+
+      <h1 class="hero-title">Bot is live for <span class="hero-name" id="bot-username">Connecting…</span></h1>
+      <p class="hero-desc" id="status-desc">Autonomous WhatsApp companion engine with high-speed response delivery, direct DM isolation, and zero-stall session persistence.</p>
+
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <div class="stat-label"><span>🟢</span> Status</div>
+          <div class="stat-val ok" id="val-status">Online</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label"><span>⏱️</span> Uptime</div>
+          <div class="stat-val" id="val-uptime">Active</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label"><span>💬</span> Mode</div>
+          <div class="stat-val" id="val-mode">DM ONLY</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label"><span>📱</span> WhatsApp ID</div>
+          <div class="stat-val" id="val-jid">Connected</div>
+        </div>
       </div>
     </section>
-    <section class="family" id="family" aria-label="Rented bot family tree">
-      <div class="trunk" aria-hidden="true"></div>
-      <div class="family-title" id="family-title">🌿 Bot family · rented bots</div>
-      <div class="branches" id="branches"></div>
+
+    <!-- Direct DM Pairing Section -->
+    <section class="pairing-card" id="pairing-section">
+      <div class="card-header">
+        <div class="card-title-group">
+          <h2 class="card-title"><span>🔗</span> Instant Session Link</h2>
+          <p class="card-sub">Generate a direct 8-digit linking code for your WhatsApp account.</p>
+        </div>
+        <div class="dm-only-tag">DIRECT DM LINK</div>
+      </div>
+
+      <form class="pair-form" id="pairForm" onsubmit="event.preventDefault(); requestPairingCode();">
+        <div class="input-row">
+          <div class="phone-input-wrap">
+            <input
+              type="tel"
+              id="phoneInput"
+              class="phone-input"
+              placeholder="e.g. 2349068551055 (with country code)"
+              autocomplete="tel"
+              required
+            >
+          </div>
+          <button type="submit" class="btn-submit" id="pairBtn">
+            <span>⚡</span> Get 8-Digit Code
+          </button>
+        </div>
+      </form>
+
+      <!-- Code Result Card -->
+      <div class="code-display-box" id="codeBox">
+        <div class="code-title">YOUR WHATSAPP PAIRING CODE</div>
+        <div class="code-digits" id="pairingCode">••••••••</div>
+        <div class="code-actions">
+          <button type="button" class="btn-copy" id="copyBtn" onclick="copyPairCode()">
+            <span id="copyIcon">📋</span> <span id="copyLabel">Copy Code</span>
+          </button>
+        </div>
+        <div class="stage-status" id="stageStatus">
+          <span>⏳</span> Waiting for you to enter code on WhatsApp...
+        </div>
+      </div>
+
+      <!-- Quick Steps -->
+      <div class="steps-guide">
+        <div class="step-item">
+          <div class="step-num">STEP 01</div>
+          <div class="step-text">Open WhatsApp on your phone and tap Settings.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">STEP 02</div>
+          <div class="step-text">Select <strong>Linked Devices</strong> &gt; <strong>Link a device</strong>.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">STEP 03</div>
+          <div class="step-text">Choose <strong>Link with phone number instead</strong>.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">STEP 04</div>
+          <div class="step-text">Type the 8-digit code above. Linked instantly!</div>
+        </div>
+      </div>
     </section>
-    <footer class="footer">MIAS-LITE-MDX · Powered by JUST X</footer>
+
+    <!-- Bot Family (Rented Bots) -->
+    <section class="family-section" id="family">
+      <div class="family-header" id="family-title">🌿 BOT FAMILY · RENTED BOTS</div>
+      <div class="branches-grid" id="branches"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-ticker">
+        <span>⚡</span> MIAS-LITE-MDX · LONER PROTOCOL · SPEED VERIFIED
+      </div>
+      <div>MADE WITH PRECISION</div>
+    </footer>
   </main>
+
   <script>
     const $ = id => document.getElementById(id);
     const safeText = value => String(value ?? '');
-    function renderRentals(bots) {
-      const active = Array.isArray(bots) ? bots.slice(0, 2) : [];
-      const page = $('page'), branches = $('branches');
-      page.classList.toggle('has-rentals', active.length > 0);
-      if (!active.length) { branches.replaceChildren(); return; }
-      $('family-title').textContent = `🌿 BOT FAMILY · RENTED BOTS (${active.length}/2)`;
-      branches.classList.toggle('one', active.length === 1);
-      branches.replaceChildren(...active.map((bot, index) => {
-        const card = document.createElement('article');
-        card.className = 'bot-card';
-        const badge = document.createElement('div'); badge.className = 'badge';
-        const dot = document.createElement('span'); dot.className = 'dot';
-        const badgeLabel = document.createElement('span'); badgeLabel.textContent = `RENTED BOT ${index + 1} · ${bot.status === 'live' ? 'LIVE' : 'STARTING'}`;
-        badge.append(dot, badgeLabel);
-        const heading = document.createElement('h2'); heading.textContent = 'Bot is live for';
-        const name = document.createElement('span'); name.className = 'name'; name.textContent = `@${safeText(bot.username || bot.number || `Bot ${index + 1}`)}`;
-        heading.append(name);
-        const sub = document.createElement('p'); sub.className = 'subtext'; sub.textContent = 'Rented bot connected via Session ID.';
-        const grid = document.createElement('div'); grid.className = 'grid';
-        const rentedAt = bot.rentedAt ? new Date(bot.rentedAt).toLocaleString('en-US', { timeZone:'Africa/Lagos', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Active';
-        for (const [label, value, isOk] of [['Mode','RENTED BOT',false],['Status',bot.status === 'live' ? 'Online' : 'Starting',true],['Rented At',rentedAt,false],['WhatsApp ID',bot.number ? `+${bot.number}` : 'Connected',false]]) {
-          const tile = document.createElement('div'); tile.className = 'tile';
-          const l = document.createElement('div'); l.className = 'label'; l.textContent = label;
-          const v = document.createElement('div'); v.className = `value${isOk && bot.status === 'live' ? ' ok' : ''}`; v.textContent = value;
-          tile.append(l, v); grid.append(tile);
-        }
-        card.append(badge, heading, sub, grid);
-        if (bot.ownerUrl) { const owner = document.createElement('a'); owner.className='owner-link'; owner.href=bot.ownerUrl; owner.textContent='Owner contact'; owner.rel='noopener noreferrer'; card.append(owner); }
-        return card;
-      }));
-    }
-    function escapeHtml(s) { return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    let sseSource = null;
+
+    // Status sync loop
     async function refreshStatus() {
       try {
-        const res = await fetch('/api/bot-info', { cache:'no-store' });
+        const res = await fetch('/api/bot-info', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
-          const isLive = Boolean(data.live);
-          const displayName = (data.pushName && !/^\d+$/.test(data.pushName)) ? data.pushName : (data.username && data.username !== 'User' ? data.username : (data.jid ? '+' + data.jid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '') : 'Owner'));
+          const displayName = (data.pushName && !/^\d+$/.test(data.pushName)) ? data.pushName : data.username;
           if (displayName) $('bot-username').textContent = displayName;
-
-          const heading = document.querySelector('.owner-card h1');
-          if (heading) {
-            heading.innerHTML = isLive
-              ? `Bot is live for <span class="name" id="bot-username">${escapeHtml(displayName)}</span>`
-              : `Bot is offline <span class="name" id="bot-username" style="font-size:0.85em; opacity:0.85;">(${escapeHtml(displayName)})</span>`;
-          }
-
-          const badgeText = $('badge-text');
-          const badgeDot = document.querySelector('.badge .dot');
-          if (badgeText) badgeText.textContent = isLive ? 'LIVE & ACTIVE' : 'OFFLINE';
-          if (badgeDot) {
-            badgeDot.style.background = isLive ? 'var(--neon-green, #10b981)' : '#ef4444';
-            badgeDot.style.boxShadow = isLive ? '0 0 10px #10b981' : 'none';
-          }
-
-          if (data.jid) {
-            const digits = data.jid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
-            $('val-jid').textContent = digits ? `+${digits}` : data.jid.split('@')[0];
-          } else {
-            $('val-jid').textContent = 'Not connected';
-          }
-          if (data.mode) $('val-mode').textContent = data.mode.replaceAll('_',' ');
-          $('val-status').textContent = isLive ? 'Online' : 'Offline';
-          $('val-status').classList.toggle('ok', isLive);
+          if (data.jid) $('val-jid').textContent = '+' + data.jid.split('@')[0].split(':')[0];
+          if (data.mode) $('val-mode').textContent = data.mode.toUpperCase().replaceAll('_', ' ');
+          $('val-status').textContent = data.live ? 'Online' : 'Offline';
+          $('val-status').classList.toggle('ok', !!data.live);
           if (Array.isArray(data.rentedBots)) renderRentals(data.rentedBots);
         }
       } catch (_) {}
+
       try {
-        const res = await fetch('/api/ready', { cache:'no-store' });
-        if (res.ok) { const data = await res.json(); if (data.uptime) { const mins=Math.floor(data.uptime/60),hrs=Math.floor(mins/60); $('val-uptime').textContent=hrs ? `${hrs}h ${mins%60}m` : `${mins}m`; } }
+        const res = await fetch('/api/ready', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.uptime) {
+            const mins = Math.floor(data.uptime / 60);
+            const hrs = Math.floor(mins / 60);
+            $('val-uptime').textContent = hrs ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+          }
+        }
       } catch (_) {}
     }
-    refreshStatus(); setInterval(refreshStatus, 8000);
+
+    function renderRentals(bots) {
+      const active = Array.isArray(bots) ? bots.slice(0, 4) : [];
+      const family = $('family'), branches = $('branches');
+      family.classList.toggle('has-rentals', active.length > 0);
+      if (!active.length) { branches.replaceChildren(); return; }
+      $('family-title').textContent = `🌿 BOT FAMILY · RENTED BOTS (${active.length})`;
+      branches.replaceChildren(...active.map((bot, index) => {
+        const card = document.createElement('article');
+        card.className = 'bot-card';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--cyan);">RENTED BOT ${index + 1}</div>
+            <div class="loner-badge" style="padding:4px 10px;font-size:10px;">${bot.status === 'live' ? 'ONLINE' : 'LINKING'}</div>
+          </div>
+          <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${safeText(bot.username || bot.number || 'Rented')}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;font-family:var(--font-mono);">+${safeText(bot.number || '')}</div>
+        `;
+        return card;
+      }));
+    }
+
+    // Direct Pairing Code Logic
+    async function requestPairingCode() {
+      const input = $('phoneInput');
+      let num = input.value.replace(/[^0-9]/g, '');
+      if (!num) return;
+      if (num.length === 11 && num.startsWith('0')) num = '234' + num.slice(1);
+
+      const btn = $('pairBtn');
+      const box = $('codeBox');
+      const codeDigits = $('pairingCode');
+      const stage = $('stageStatus');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Requesting...';
+      box.classList.add('active');
+      codeDigits.textContent = '••••••••';
+      stage.innerHTML = '<span>⚡</span> Initializing secure pairing session...';
+
+      if (sseSource) {
+        try { sseSource.close(); } catch {}
+        sseSource = null;
+      }
+
+      try {
+        const res = await fetch('/api/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: num, mode: 'code', force: true })
+        });
+        const data = await res.json();
+
+        if (data.ok && data.code) {
+          codeDigits.textContent = data.code;
+          stage.innerHTML = '<span>✅</span> Code generated! Enter it on WhatsApp now.';
+          startStream(num);
+        } else {
+          stage.innerHTML = `<span>⚠️</span> ${data.error || 'Could not generate code. Please retry.'}`;
+        }
+      } catch (err) {
+        stage.innerHTML = `<span>❌</span> Connection failed: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡</span> Get 8-Digit Code';
+      }
+    }
+
+    function startStream(number) {
+      try {
+        sseSource = new EventSource(`/api/pair/stream/${number}`);
+        sseSource.onmessage = e => {
+          try {
+            const ev = JSON.parse(e.data);
+            if (ev.event === 'code' && ev.data?.code) {
+              $('pairingCode').textContent = ev.data.code;
+            } else if (ev.event === 'linking') {
+              $('stageStatus').innerHTML = '<span>🔄</span> Phone accepted code! Finalizing link...';
+            } else if (ev.event === 'paired' || ev.event === 'linked') {
+              $('stageStatus').innerHTML = '<span style="color:var(--green)">🎉 Successfully linked! Starting MIAS MDX...</span>';
+              if (sseSource) sseSource.close();
+              setTimeout(refreshStatus, 4000);
+            }
+          } catch (_) {}
+        };
+      } catch (_) {}
+    }
+
+    function copyPairCode() {
+      const code = $('pairingCode').textContent.trim();
+      if (!code || code.includes('•')) return;
+      navigator.clipboard.writeText(code).then(() => {
+        $('copyLabel').textContent = 'COPIED!';
+        $('copyIcon').textContent = '✅';
+        setTimeout(() => {
+          $('copyLabel').textContent = 'Copy Code';
+          $('copyIcon').textContent = '📋';
+        }, 2500);
+      });
+    }
+
+    refreshStatus();
+    setInterval(refreshStatus, 8000);
   </script>
 </body>
 </html>
