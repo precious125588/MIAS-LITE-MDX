@@ -23,12 +23,32 @@ app.get('/api/bot-info', (_req, res) => {
       }
     } catch {}
   }
+
+  // Return only public display fields. Never expose session paths or renter JIDs.
+  let rentedBots = [];
+  try {
+    const registryPath = path.join(NEXSTORE, 'rented_bots.json');
+    if (fs.existsSync(registryPath)) {
+      const stored = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+      const records = Array.isArray(stored) ? stored : stored?.rentedBots;
+      if (Array.isArray(records)) {
+        rentedBots = records.slice(0, 2).map(bot => ({
+          number: String(bot.number || '').replace(/[^0-9]/g, ''),
+          username: String(bot.username || bot.number || 'Rented bot').slice(0, 40),
+          rentedAt: Number(bot.rentedAt) || null,
+          status: bot.status === 'live' ? 'live' : 'starting'
+        }));
+      }
+    }
+  } catch {}
+
   return res.json({
     ok: true,
     live: isLive || !!activeUser,
     username: activeUser || 'User',
     jid: jid || null,
     mode: 'SESSION_ID',
+    rentedBots,
     message: activeUser ? `Bot is live for ${activeUser}` : 'Bot is active via SESSION_ID'
   });
 });
