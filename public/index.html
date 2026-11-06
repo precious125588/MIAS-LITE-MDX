@@ -111,7 +111,10 @@
           const data = await res.json();
           const displayName = (data.pushName && !/^\d+$/.test(data.pushName)) ? data.pushName : data.username;
           if (displayName) $('bot-username').textContent = displayName;
-          if (data.jid) $('val-jid').textContent = data.jid.split('@')[0];
+          if (data.jid) {
+            const digits = data.jid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+            $('val-jid').textContent = digits ? `+${digits}` : data.jid.split('@')[0];
+          }
           if (data.mode) $('val-mode').textContent = data.mode.replaceAll('_',' ');
           $('val-status').textContent = data.live ? 'Online' : 'Offline';
           $('val-status').classList.toggle('ok', !!data.live);

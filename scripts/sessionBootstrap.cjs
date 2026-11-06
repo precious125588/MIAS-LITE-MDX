@@ -40,12 +40,127 @@ function makeGetRequest(urlStr, timeoutMs = 2500) {
   });
 }
 
+function tryDecodeJsonPayload(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const str = raw.trim();
+  if (str.startsWith('{') && str.endsWith('}')) {
+    try {
+      const p = JSON.parse(str);
+      if (p && (p.noiseKey || p.me || p.creds || p.registrationId || p.signedIdentityKey)) {
+        return p.creds || p;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function tryDecodeBase64String(candidate) {
+  if (!candidate || typeof candidate !== 'string') return null;
+  let clean = candidate.trim().replace(/^["']+|["']+$/g, '');
+  if (!clean || clean.length < 20) return null;
+
+  // Handle URL-safe base64
+  clean = clean.replace(/-/g, '+').replace(/_/g, '/');
+  // Pad if missing "="
+  const pad = clean.length % 4;
+  if (pad) {
+    clean += '='.repeat(4 - pad);
+  }
+
+  try {
+    const decoded = Buffer.from(clean, 'base64').toString('utf8');
+    if (!decoded.includes('{')) return null;
+    const parsed = JSON.parse(decoded);
+    if (parsed && (parsed.noiseKey || parsed.me || parsed.creds || parsed.registrationId || parsed.signedIdentityKey)) {
+      return parsed.creds || parsed;
+    }
+  } catch {}
+  return null;
+}
+
+function extractCredsFromRawSessionId(rawSessionId) {
+  if (!rawSessionId) return null;
+  const raw = String(rawSessionId).trim();
+
+  // 1. Direct JSON check
+  const directJson = tryDecodeJsonPayload(raw);
+  if (directJson) return directJson;
+
+  // 2. Direct base64 decode
+  const directB64 = tryDecodeBase64String(raw);
+  if (directB64) return directB64;
+
+  // 3. Candidates from splitting by delimiter (~, _, -, :)
+  const candidates = [];
+  if (raw.includes('~')) {
+    candidates.push(raw.slice(raw.lastIndexOf('~') + 1));
+    candidates.push(raw.slice(raw.indexOf('~') + 1));
+  }
+  if (raw.includes(':')) {
+    candidates.push(raw.slice(raw.lastIndexOf(':') + 1));
+    candidates.push(raw.slice(raw.indexOf(':') + 1));
+  }
+
+  // 4. Known prefixes (case-insensitive)
+  const prefixes = [
+    'JUST_X', 'JUST-X', 'JUSTX',
+    'MIAS-LITE-MDX', 'MIAS_LITE_MDX', 'MIAS_MDX', 'MIAS-MDX',
+    'MIAS-LITE', 'MIAS_LITE', 'MIASLITE', 'MIAS',
+    'MAIS-LITE-MDX', 'MAIS_MDX', 'MAIS-LITE', 'MAIS',
+    'SESSION'
+  ];
+  for (const p of prefixes) {
+    if (raw.toUpperCase().startsWith(p)) {
+      const stripped = raw.slice(p.length).replace(/^[~_\-:\s]+/, '');
+      candidates.push(stripped);
+    }
+  }
+
+  // 5. Generic regex: strip any prefix before the first separator [~_:]
+  const genericMatch = raw.match(/^[A-Za-z0-9_-]+[~_:\s]+(.+)$/);
+  if (genericMatch && genericMatch[1]) {
+    candidates.push(genericMatch[1]);
+  }
+
+  for (const cand of candidates) {
+    const jsonAttempt = tryDecodeJsonPayload(cand);
+    if (jsonAttempt) return jsonAttempt;
+    const b64Attempt = tryDecodeBase64String(cand);
+    if (b64Attempt) return b64Attempt;
+  }
+
+  return null;
+}
+
+function resolveConfiguredOwnerName() {
+  if (process.env.OWNER_NAME && !/^\d+$/.test(process.env.OWNER_NAME.trim())) {
+    return process.env.OWNER_NAME.trim();
+  }
+  if (process.env.BOT_ACTIVE_USER && process.env.BOT_ACTIVE_USER !== 'User' && !/^\d+$/.test(process.env.BOT_ACTIVE_USER.trim())) {
+    return process.env.BOT_ACTIVE_USER.trim();
+  }
+  try {
+    const configPath = path.join(__dirname, '..', 'setting', 'config.js');
+    if (fs.existsSync(configPath)) {
+      delete require.cache[require.resolve(configPath)];
+      require(configPath);
+      if (global.OWNER_NAME && typeof global.OWNER_NAME === 'string' && !/^\d+$/.test(global.OWNER_NAME.trim())) {
+        return global.OWNER_NAME.trim();
+      }
+      if (global.ownername && typeof global.ownername === 'string' && !/^\d+$/.test(global.ownername.trim())) {
+        return global.ownername.trim();
+      }
+    }
+  } catch {}
+  return null;
+}
+
 async function fetchSessionCreds(sessionId, serverUrl) {
   const cleanBase = String(serverUrl || '').trim().replace(/\/+$/, '');
   if (!cleanBase) return null;
 
   const idCandidates = [sessionId];
-  const stripped = sessionId.replace(/^(?:JUST[-_ ]?X|MIAS[-_ ]?LITE)[~_ -]/i, '');
+  const stripped = sessionId.replace(/^(?:JUST[-_ ]?X|MIAS[-_ ]?(?:LITE[-_ ]?)?MDX|MIAS[-_ ]?LITE|MIAS|MAIS)[~_ -]/i, '');
   if (stripped && stripped !== sessionId) {
     idCandidates.push(stripped);
   }
@@ -86,7 +201,7 @@ function resolveCandidateServerUrls(embeddedUrl) {
     } catch {}
   };
 
-  // 1. Embedded URL from session ID (e.g. JUST_X~https://mysession.com~token)
+  // 1. Embedded URL from session ID
   if (embeddedUrl) add(embeddedUrl);
 
   // 2. Explicit environment variables
@@ -99,24 +214,32 @@ function resolveCandidateServerUrls(embeddedUrl) {
   if (process.env.RAILWAY_STATIC_URL) add(process.env.RAILWAY_STATIC_URL);
   if (process.env.RAILWAY_PUBLIC_DOMAIN) add(process.env.RAILWAY_PUBLIC_DOMAIN);
 
-  // 4. Railway private networking (multi-service internal DNS across common service names and ports)
+  // 4. Railway private networking
   const internalHosts = [
     'mias-lite-mdx-session.railway.internal',
+    'mias-session.railway.internal',
     'session.railway.internal',
     'session-service.railway.internal',
     'pairing.railway.internal',
     'pair.railway.internal',
     'session-generator.railway.internal',
-    'generator.railway.internal'
+    'generator.railway.internal',
+    'web.railway.internal',
+    'server.railway.internal',
+    'app.railway.internal'
   ];
-  const commonPorts = ['3000', '8080', '80'];
+  const commonPorts = ['3000', '8080', '5000', '80'];
   for (const host of internalHosts) {
     for (const p of commonPorts) {
       add(`http://${host}:${p}`);
     }
   }
 
-  // 5. Localhost fallbacks (single-container or local dev)
+  // 5. Common public service hostnames
+  add('https://mias-lite-mdx-session.up.railway.app');
+  add('https://mias-session.up.railway.app');
+
+  // 6. Localhost fallbacks
   add('http://localhost:3000');
   add('http://localhost:8080');
   add('http://127.0.0.1:3000');
@@ -134,25 +257,21 @@ async function bootstrapSessionFromEnv() {
   let credsObj = null;
   let phone = '';
 
-  // 1. Check if it's a self-contained base64-encoded creds payload (prefixed or raw)
-  const stripped = rawSessionId.replace(/^(?:JUST[-_ ]?X|MIAS[-_ ]?LITE)[~_ -]/i, '');
-  try {
-    const decoded = Buffer.from(stripped, 'base64').toString('utf8');
-    const parsed = JSON.parse(decoded);
-    if (parsed && (parsed.noiseKey || parsed.me || parsed.registrationId)) {
-      credsObj = parsed;
-      phone = parsed.me?.id ? String(parsed.me.id).split(':')[0].replace(/[^0-9]/g, '') : '';
-      console.log(`[JUST-X bootstrap] Successfully decoded self-contained base64 credentials!`);
-    }
-  } catch {}
+  // 1. Check if it is a self-contained base64 or JSON creds payload
+  const decodedCreds = extractCredsFromRawSessionId(rawSessionId);
+  if (decodedCreds) {
+    credsObj = decodedCreds;
+    phone = credsObj.me?.id ? String(credsObj.me.id).split(':')[0].replace(/[^0-9]/g, '') : '';
+    console.log(`[JUST-X bootstrap] Successfully decoded self-contained base64 credentials!`);
+  }
 
-  // 2. If not raw base64, check for embedded server URL or resolve from candidate session servers
+  // 2. If not decoded, check for embedded server URL or resolve from candidate session servers
   if (!credsObj) {
     let lookupId = rawSessionId;
     let embeddedUrl = null;
 
-    // Pattern: JUST_X~https://my-session.up.railway.app~TOKEN
-    const embeddedMatch = rawSessionId.match(/^(?:JUST[-_ ]?X|MIAS[-_ ]?LITE)[~_ -](https?:\/\/[^~_ -]+)[~_ -](.+)$/i);
+    // Pattern: [PREFIX~]https://my-session.up.railway.app~TOKEN
+    const embeddedMatch = rawSessionId.match(/^(?:[A-Za-z0-9_-]+[~_ -])?(https?:\/\/[^~_ -]+)[~_ -](.+)$/i);
     if (embeddedMatch) {
       embeddedUrl = embeddedMatch[1];
       lookupId = embeddedMatch[2];
@@ -177,7 +296,7 @@ async function bootstrapSessionFromEnv() {
     }
 
     if (!credsObj && candidates.length > 0) {
-      console.warn(`[JUST-X bootstrap] Automatic resolution could not contact an active session service at: ${candidates.join(', ')}`);
+      console.warn(`[JUST-X bootstrap] Automatic resolution could not contact an active session service at: ${candidates.slice(0, 6).join(', ')}...`);
       console.warn(`[JUST-X bootstrap] If your session generator is hosted on another Railway service or public domain, set SESSION_SERVER_URL=https://your-service.up.railway.app or use a self-contained base64 session ID.`);
     }
   }
@@ -187,17 +306,40 @@ async function bootstrapSessionFromEnv() {
     return null;
   }
 
+  // Ensure registered is true so Baileys / pair.js credsAreComplete treats it as ready
+  if (credsObj.registered !== false) {
+    credsObj.registered = true;
+  }
+
   const rawJid = credsObj.me?.id || (phone ? `${phone}@s.whatsapp.net` : 'bot@s.whatsapp.net');
   const digits = String(rawJid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
   const canonicalJid = digits ? `${digits}@s.whatsapp.net` : rawJid;
   const pushNameCandidate = (credsObj.me?.name || credsObj.me?.verifiedName || credsObj.me?.notify || '').trim();
-  const sessionUserName = (pushNameCandidate && !/^\d+$/.test(pushNameCandidate))
-    ? pushNameCandidate
-    : (phone || digits || 'User').trim();
+  const configuredOwner = resolveConfiguredOwnerName();
+
+  let sessionUserName = 'User';
+  if (pushNameCandidate && !/^\d+$/.test(pushNameCandidate)) {
+    sessionUserName = pushNameCandidate;
+  } else if (configuredOwner) {
+    sessionUserName = configuredOwner;
+  } else if (digits) {
+    sessionUserName = `+${digits}`;
+  }
 
   console.log(`[JUST-X bootstrap] Session authenticated for ${canonicalJid}!`);
   console.log(`BOT LIVE for ${sessionUserName}`);
-  return { canonicalJid, digits, credsObj, sessionUserName, pushName: pushNameCandidate || null };
+  return {
+    canonicalJid,
+    digits,
+    credsObj,
+    sessionUserName,
+    pushName: (pushNameCandidate && !/^\d+$/.test(pushNameCandidate)) ? pushNameCandidate : configuredOwner || null
+  };
 }
 
-module.exports = { bootstrapSessionFromEnv, fetchSessionCreds, resolveCandidateServerUrls };
+module.exports = {
+  bootstrapSessionFromEnv,
+  fetchSessionCreds,
+  resolveCandidateServerUrls,
+  extractCredsFromRawSessionId
+};
