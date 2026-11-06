@@ -1,60 +1,99 @@
-const fs = require('fs');
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ *  MIAS LITE MDX — Master Configuration
+ * ═══════════════════════════════════════════════════════════════════════
+ *  Engineered with precision for multi-device stability & rapid deployment.
+ *  Dynamic environment variable bindings with robust fallback defaults.
+ * 
+ *  @author Precious
+ *  @version 2.0.0
+ *  @license MIT
+ * ═══════════════════════════════════════════════════════════════════════
+ */
 
-global.owner = [process.env.OWNER_NUMBER ? process.env.OWNER_NUMBER.replace(/[^0-9]/g, '') : "234"];
-global.footer = process.env.BOT_NAME || "MIAS MDX";
-global.status = false;
-global.prefa = ['', '!', '.', ',', '🐤', '🗿'];
-global.xprefix = process.env.PREFIX || '.';
-global.gambar = "https://i.ibb.co/hRxLvCWb/RD32333335343832373039383440732e77686174736170702e6e6574-499562.jpg";
-global.OWNER_NAME = process.env.OWNER_NAME || process.env.BOT_ACTIVE_USER || "Owner";
-global.DEVELOPER = [process.env.OWNER_NUMBER ? process.env.OWNER_NUMBER.replace(/[^0-9]/g, '') : ""];
-global.BOT_NAME = process.env.BOT_NAME || "MIAS MDX";
-global.bankowner = process.env.BOT_NAME || "MIAS MDX";
-global.creatorName = process.env.OWNER_NAME || "Owner";
-global.ownernumber = process.env.OWNER_NUMBER ? process.env.OWNER_NUMBER.replace(/[^0-9]/g, '') : '';
-global.location = "Nigeria";
-global.prefa = ['', '!', '.', '#', '&'];
-//================DO NOT CHANGE OR YOU'LL GET AN ERROR=============global.link = "https://chat.whatsapp.com/Bnrx29Li2mZDS2LKxI9LYM";
-global.autobio = true;
-global.botName = process.env.BOT_NAME || "MIAS MDX";
-global.version = "1.0.1";
-global.botname = process.env.BOT_NAME || "MIAS MDX";
-global.author = process.env.BOT_NAME || "DEV MAIS";
-global.themeemoji = "🥷";
-global.wagc = 'https://chat.whatsapp.com/Bnrx29Li2mZDS2LKxI9LYMt';
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+
+// ── 1. Core Bot & Owner Identity ──────────────────────────────────────────
+const rawOwnerNumber = (process.env.OWNER_NUMBER || process.env.OWNER || '').replace(/[^0-9]/g, '');
+const ownerNumber = rawOwnerNumber || '234';
+const ownerName = process.env.OWNER_NAME || process.env.BOT_ACTIVE_USER || 'Precious';
+const botName = process.env.BOT_NAME || 'MIAS LITE MDX';
+
+global.BOT_NAME = botName;
+global.botName = botName;
+global.botname = botName;
+global.bankowner = botName;
+global.footer = botName;
+global.author = botName;
+
+global.OWNER_NAME = ownerName;
+global.ownername = ownerName;
+global.creatorName = ownerName;
+global.ownernumber = ownerNumber;
+global.owner = [ownerNumber];
+global.DEVELOPER = [ownerNumber];
+global.creator = (ownerNumber ? ownerNumber : '234') + '@s.whatsapp.net';
+
+// ── 2. Branding & Media Assets ────────────────────────────────────────────
+global.location = 'Nigeria';
+global.themeemoji = '🥷';
 global.thumbnail = 'https://i.ibb.co/hRxLvCWb/RD32333335343832373039383440732e77686174736170702e6e6574-499562.jpg';
+global.gambar = global.thumbnail;
 global.richpp = ' ';
-global.packname = "Sticker By " + (process.env.BOT_NAME || "MIAS MDX");
-global.creator = (process.env.OWNER_NUMBER ? process.env.OWNER_NUMBER.replace(/[^0-9]/g, '') : '') + "@s.whatsapp.net";
-global.ownername = process.env.OWNER_NAME || process.env.BOT_ACTIVE_USER || "Owner";
-global.onlyowner = `Only the bot owner can use this command 🥶🥷`;
-global.database = `*To Exist In The Database Contact The Owner of this bot*`;
+global.packname = 'Sticker By ' + botName;
+global.version = '2.0.0';
+
+// ── 3. Command Prefixes & Navigation ──────────────────────────────────────
+const configuredPrefix = (process.env.PREFIX || '.').trim();
+global.xprefix = configuredPrefix;
+global.prefa = ['', '!', '.', '#', '&'];
+
+// ── 4. Social & Community Links ───────────────────────────────────────────
+global.link = 'https://chat.whatsapp.com/Bnrx29Li2mZDS2LKxI9LYM';
+global.wagc = global.link;
+
+// ── 5. Automation & Event Triggers ────────────────────────────────────────
+global.status = false;
+global.hituet = 0;
+global.autobio = true;
+global.autoread = false;
+global.autoviewstatus = true;
+global.autoswview = true;
+global.anti92 = true;
+
+// ── 6. System & Permission Messages ───────────────────────────────────────
+global.onlyowner = 'Only the bot owner can use this command 🥶🥷';
+global.database = '*To exist in the database, contact the bot owner*';
+
 global.mess = {
-  wait: "*Configurating.......*",
-  success: "*Successfully acknowledged ☑️*",
-  on: "*Activated ✅*", 
-  prem: "*Feature For Premium Users only*", 
-  off: "*Deactivated 📛*",
+  wait: '⚡ *Processing your request...*',
+  success: '✅ *Successfully acknowledged*',
+  on: '🟢 *Activated*',
+  off: '🔴 *Deactivated*',
+  prem: '💎 *This feature is reserved for premium users only*',
   query: {
-    text: "*Please, Provide A Text Query 📑*",
-    link: "Please, provide a valid link 🔗*",
+    text: '📑 *Please provide a valid text query*',
+    link: '🔗 *Please provide a valid link*',
   },
   error: {
-    fitur: "*Status 🌐: Feature Or Command error ❌*",
+    fitur: '❌ *Status: Feature or command execution error*',
   },
   only: {
-    group: "*Group only feature ❌*",
-    private: "*Private chat feature only ❌*",
-    owner: "*Owner feature only ❌*",
-    admin: "*bot owner feature only ❌*",
-    badmin: "*Seek admin privilege's to use this command ❌*",
-    premium: "*Availabe for premium users only ❌*",
-  }
+    group: '👥 *This command is available in groups only*',
+    private: '💬 *This command is available in private chats only*',
+    owner: '👑 *This command is restricted to the bot owner*',
+    admin: '🛡️ *This command is restricted to group admins*',
+    badmin: '⚠️ *Bot requires administrative privileges to execute this command*',
+    premium: '💎 *Available for premium subscribers only*',
+  },
 };
 
-global.hituet = 0;
-global.autoviewstatus = false;
-global.autoread = false;
-global.autobio = true;
-global.anti92 = true;
-global.autoswview = true;
+module.exports = {
+  ownerNumber,
+  ownerName,
+  botName,
+  prefix: configuredPrefix,
+};
