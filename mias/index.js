@@ -24178,7 +24178,11 @@ cmd(["pick", "p"], { desc: "Pick randomly from options (A|B|C) OR download adult
         }
         mediaFile = sourceResult.file;
         const { processVideoTo4k } = require("./lib/tt4kVideo.cjs");
-        const processed4k = await processVideoTo4k(mediaFile.path, { timeoutMs: 420000, maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024 });
+        const processed4k = await processVideoTo4k(mediaFile.path, {
+          timeoutMs: 420000,
+          maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024,
+          sourceQualityBoost: 1.015,
+        });
         if (typeof mediaFile.cleanup === "function") {
           try { mediaFile.cleanup(); } catch {}
         }
@@ -24289,6 +24293,7 @@ cmd(["pick", "p"], { desc: "Pick randomly from options (A|B|C) OR download adult
         // No fallback: if the HD re-encode fails, the error reaches the picker's catch and nothing is sent.
         const _hdEncoded = await _ttdHd.reencodeHdForWhatsApp(mediaFile, {
           maxBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : _ttdHd.TT_INLINE_VIDEO_MAX_BYTES,
+          sourceQualityBoost: ttMode.id === "1.3" || ttMode.id === "1.4" ? 1.01 : null,
         });
         try { await mediaFile.cleanup(); } catch {}
         mediaFile = _hdEncoded;
@@ -44280,7 +44285,11 @@ Please wait.`);
         }
         mediaFile = sourceResult.file;
         const { processVideoTo4k } = require("./lib/tt4kVideo.cjs");
-        const processed4k = await processVideoTo4k(mediaFile.path, { timeoutMs: 420000, maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024 });
+        const processed4k = await processVideoTo4k(mediaFile.path, {
+          timeoutMs: 420000,
+          maxOutputBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : 95 * 1024 * 1024,
+          sourceQualityBoost: 1.015,
+        });
         if (typeof mediaFile.cleanup === "function") {
           try { mediaFile.cleanup(); } catch {}
         }
@@ -44294,6 +44303,7 @@ Please wait.`);
         if (!ttMode.document || ttMode.id === "1.4" || (ttMode.quality === "hd" && ttMode.document)) {
           const _encoded = await _ttd.reencodeHdForWhatsApp(mediaFile, {
             maxBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : _ttd.TT_INLINE_VIDEO_MAX_BYTES,
+            sourceQualityBoost: ttMode.id === "1.3" || ttMode.id === "1.4" ? 1.01 : null,
           });
           try { await mediaFile.cleanup(); } catch {}
           mediaFile = _encoded;
