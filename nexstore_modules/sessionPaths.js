@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = __dirname;
 
 function configuredVolumeRoot() {
   const raw = String(process.env.RAILWAY_VOLUME_MOUNT_PATH || '').trim();
@@ -103,6 +103,52 @@ function sessionDirFor(numberOrJid, root) {
   return path.join(r, jid);
 }
 
+function credsAreComplete(creds) {
+  if (!creds || creds.registered === false) return false;
+  if (creds.registered === true && creds.me && creds.me.id) return true;
+  return !!(creds.me && creds.me.id && (creds.noiseKey || creds.signedIdentityKey || creds.account));
+}
+
+/**
+ * Move a complete legacy pairing/<digits> session into the canonical
+ * pairing/<digits>@s.whatsapp.net directory. Incomplete auth state is left
+ * untouched because it may belong to a phone that is currently approving a
+ * pairing code.
+ */
+function migrateLegacySessionDir(numberOrJid, root) {
+  const raw = String(numberOrJid || '').trim();
+  const digits = raw.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+  if (!digits) return { migrated: false, reason: 'invalid_number' };
+
+  const sessionRoot = ensureSessionRoot(root);
+  const jid = `${digits}@s.whatsapp.net`;
+  const targetDir = path.join(sessionRoot, jid);
+  const targetCreds = path.join(targetDir, 'creds.json');
+  const legacyDir = path.join(sessionRoot, digits);
+  const legacyCreds = path.join(legacyDir, 'creds.json');
+  if (fs.existsSync(targetCreds) || !fs.existsSync(legacyCreds)) {
+    if (fs.existsSync(targetCreds) && fs.existsSync(legacyDir)) {
+      try { fs.rmSync(legacyDir, { recursive: true, force: true }); } catch {}
+    }
+    return { migrated: false, reason: 'not_needed' };
+  }
+
+  try {
+    const creds = JSON.parse(fs.readFileSync(legacyCreds, 'utf8'));
+    if (!credsAreComplete(creds)) return { migrated: false, reason: 'incomplete' };
+    fs.cpSync(legacyDir, targetDir, { recursive: true, force: false, errorOnExist: true });
+    const copied = JSON.parse(fs.readFileSync(targetCreds, 'utf8'));
+    if (!credsAreComplete(copied)) {
+      quarantineDir(targetDir, 'incomplete legacy session migration');
+      return { migrated: false, reason: 'verification_failed' };
+    }
+    try { fs.rmSync(legacyDir, { recursive: true, force: true }); } catch {}
+    return { migrated: true, from: legacyDir, to: targetDir };
+  } catch (error) {
+    return { migrated: false, reason: 'migration_failed', error: error.message };
+  }
+}
+
 /**
  * Rename a session folder aside instead of deleting it.
  * Never throws, never removes data — the pairing survives a false logout.
@@ -136,13 +182,7 @@ function quarantineDir(target, why) {
 function purgeSession(target, why) {
   try {
     let persistence;
-    try { persistence = require('../mias/sessionPersistence.cjs'); } catch {}
-    if (!persistence) {
-      try { persistence = require('./mias/sessionPersistence.cjs'); } catch {}
-    }
-    if (!persistence) {
-      try { persistence = require('../sessionPersistence.cjs'); } catch {}
-    }
+    try { persistence = require('./mias/sessionPersistence.cjs'); } catch {}
     if (persistence && typeof persistence.deleteSessionCompletely === 'function') {
       return persistence.deleteSessionCompletely({ sessionDir: target, reason: why || 'purge' });
     }
@@ -170,6 +210,7 @@ module.exports = {
   resolveSessionRoot: resolveSessionRoot,
   ensureSessionRoot: ensureSessionRoot,
   sessionDirFor: sessionDirFor,
+  migrateLegacySessionDir: migrateLegacySessionDir,
   quarantineDir: quarantineDir,
   purgeSession: purgeSession,
   legacySessionDirs: legacySessionDirs,
