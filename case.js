@@ -7796,7 +7796,7 @@ case '.settings': {
   if (!isCreator) return reply("🚫 Owner only command.");
   if (!text) {
     const fp = getSetting('bot', 'setting_19_1_forcePrivate', false);
-    const adl = getSetting('bot', 'setting_19_2_autoDownload', 'off');
+    const adl = getSetting('bot', 'setting_19_2_autoDownload', 'dm');
     const sfDest = getSetting('bot', 'setting_19_3_statusFwdDest', null);
     const sfOn = getSetting('bot', 'setting_19_3_statusFwdEnabled', false);
     return reply(`⚙️ *Bot Settings*

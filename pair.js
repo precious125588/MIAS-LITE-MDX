@@ -2625,19 +2625,18 @@ let sessionIsYoung = false;
                 const syncResult = await waitForCompanionSync({
                     eventEmitter: nexus.ev,
                     saveCreds: _safeSaveCreds,
-                    minMs: 15000,
-                    maxMs: 180000,
-                    // Large accounts keep writing app-state keys for minutes. While the account is
-                    // still syncing, the window extends up to this hard ceiling, never past it.
-                    hardMaxMs: COMPANION_SYNC_HARD_MAX_MS,
-                    saveTimeoutMs: 30000,
-                    isReady: () => nexus.__pendingNotificationsReceived
-                        && pendingKeyWrites === 0
-                        && Date.now() - nexus.__lastAuthActivityAt >= 5000,
-                    // Progress means auth writes or backlog notifications are still arriving. An open
-                    // socket that has gone quiet is a stall, and it fails at the normal ceiling.
+                    minMs: 3000,
+                    maxMs: 25000,
+                    hardMaxMs: 40000,
+                    saveTimeoutMs: 15000,
+                    isReady: () => {
+                        const credsReady = credsAreComplete(state?.creds);
+                        const writesIdle = pendingKeyWrites === 0;
+                        const quietForAbit = (Date.now() - (nexus.__lastAuthActivityAt || 0)) >= 2500;
+                        return credsReady && writesIdle && (nexus.__pendingNotificationsReceived === true || quietForAbit);
+                    },
                     isProgressing: () => socketIsOpen(nexus)
-                        && Date.now() - nexus.__lastAuthActivityAt < 30000,
+                        && Date.now() - (nexus.__lastAuthActivityAt || 0) < 20000,
                     isActive: () => ownsSocket() && !tracker.disconnected && socketIsOpen(nexus),
                 });
                 console.log(chalk.green(
@@ -2697,6 +2696,44 @@ let sessionIsYoung = false;
                 if (rentbotTracker.get(nexusDevNumber) !== tracker || sessionResets.has(nexusDevNumber)) return;
                 const cleanDigits = String(nexusDevNumber).split('@')[0].replace(/[^0-9]/g, '');
                 const cleanJid = `${cleanDigits}@s.whatsapp.net`;
+
+                // ── SESSION REPLACEMENT GUARD ──
+                // When an existing session was present before and a new number links,
+                // cleanly stop the old bot and purge the old session from disk and database
+                // so the new number takes over seamlessly in the same project without duplicate sockets.
+                try {
+                    const _sp = require('./sessionPaths');
+                    const _sPersist = require('./mias/sessionPersistence.cjs');
+                    const _sRoot = _sp.resolveSessionRoot();
+                    if (fs.existsSync(_sRoot)) {
+                        for (const _ent of fs.readdirSync(_sRoot)) {
+                            const _entDigits = String(_ent).split('@')[0].replace(/[^0-9]/g, '');
+                            if (_entDigits && _entDigits !== cleanDigits) {
+                                const _oldJid = `${_entDigits}@s.whatsapp.net`;
+                                const _oldDir = path.join(_sRoot, _ent);
+                                console.log(chalk.cyan(`🔄 Replacing existing session ${_ent} with newly linked session ${cleanJid}...`));
+                                try { await launcher.stopForReset(_oldJid); } catch {
+                                    try { launcher.stop(_oldJid); } catch {}
+                                }
+                                try { ownership.release(_oldJid); } catch {}
+                                try { ownership.release(_entDigits); } catch {}
+                                try {
+                                    await _sPersist.deleteSessionCompletely({
+                                        number: _entDigits,
+                                        jid: _oldJid,
+                                        explicitDir: _oldDir,
+                                        reason: 'replaced_by_new_session',
+                                    });
+                                } catch (_delErr) {
+                                    console.warn(`[pair] Session purge warning for ${_ent}:`, _delErr?.message);
+                                    try { fs.rmSync(_oldDir, { recursive: true, force: true }); } catch {}
+                                }
+                            }
+                        }
+                    }
+                } catch (_replaceErr) {
+                    console.warn('[pair] Session replacement check skipped:', _replaceErr?.message);
+                }
                 const launchOptions = {
                     BOT_ENTRY: 'mias/index.js',
                     BOT_ID: 'mias-mdx',
