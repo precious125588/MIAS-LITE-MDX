@@ -628,4 +628,31 @@ module.exports = function installV36(ctx) {
   } catch (_e37) {}
 
   console.log('[MIAX MDX][boot-verify] creator=@precious125588 anime-edits=ACTIVE ' + parts.join(' | '));
+
+  // ── 12. SYNC ACTIVE BOT IDENTITY — ensure real WhatsApp username on dashboard ───
+  function trySyncActiveUsername(sock) {
+    try {
+      const name = (sock?.user?.name || sock?.user?.notify || sock?.user?.verifiedName || sock?.authState?.creds?.me?.name || sock?.authState?.creds?.me?.notify || '').trim();
+      if (!name || /^\d+$/.test(name)) return;
+      const fs = require('fs');
+      const path = require('path');
+      const sessionPaths = require('../sessionPaths.js');
+      const activeFile = path.join(sessionPaths.nexstoreRoot(), 'active_bot.json');
+      let cur = {};
+      if (fs.existsSync(activeFile)) {
+        try { cur = JSON.parse(fs.readFileSync(activeFile, 'utf8')) || {}; } catch {}
+      }
+      if (!cur.username || /^\d+$/.test(cur.username) || cur.username !== name) {
+        fs.writeFileSync(activeFile, JSON.stringify({
+          ...cur,
+          live: true,
+          username: name,
+          pushName: name,
+          updatedAt: new Date().toISOString()
+        }, null, 2), 'utf8');
+        process.env.BOT_ACTIVE_USER = name;
+      }
+    } catch {}
+  }
+
 };

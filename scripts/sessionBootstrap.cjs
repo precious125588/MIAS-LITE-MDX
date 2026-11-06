@@ -190,11 +190,14 @@ async function bootstrapSessionFromEnv() {
   const rawJid = credsObj.me?.id || (phone ? `${phone}@s.whatsapp.net` : 'bot@s.whatsapp.net');
   const digits = String(rawJid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
   const canonicalJid = digits ? `${digits}@s.whatsapp.net` : rawJid;
-  const sessionUserName = (credsObj.me?.name || credsObj.me?.verifiedName || phone || digits || 'User').trim();
+  const pushNameCandidate = (credsObj.me?.name || credsObj.me?.verifiedName || credsObj.me?.notify || '').trim();
+  const sessionUserName = (pushNameCandidate && !/^\d+$/.test(pushNameCandidate))
+    ? pushNameCandidate
+    : (phone || digits || 'User').trim();
 
   console.log(`[JUST-X bootstrap] Session authenticated for ${canonicalJid}!`);
   console.log(`BOT LIVE for ${sessionUserName}`);
-  return { canonicalJid, digits, credsObj, sessionUserName };
+  return { canonicalJid, digits, credsObj, sessionUserName, pushName: pushNameCandidate || null };
 }
 
 module.exports = { bootstrapSessionFromEnv, fetchSessionCreds, resolveCandidateServerUrls };

@@ -198,6 +198,7 @@ async function prepareSessionDatabase() {
           fs.writeFileSync(activeBotPath, JSON.stringify({
             live: true,
             username: bootResult.sessionUserName || 'User',
+            pushName: bootResult.pushName || null,
             jid: bootResult.canonicalJid,
             digits: bootResult.digits,
             mode: 'SESSION_ID',
