@@ -1,0 +1,237 @@
+================================================================================
+                    MIAS LITE MDX — DEPLOYMENT TUTORIAL & GUIDE
+================================================================================
+
+This document contains step-by-step instructions to deploy MIAS LITE MDX
+across all supported cloud hosting platforms and servers.
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. Prerequisites & Getting Session ID
+2. Deploy on Railway
+3. Deploy on Heroku
+4. Deploy on Koyeb
+5. Deploy on Render
+6. Deploy on Pterodactyl Panel
+7. Deploy on VPS / Linux (Ubuntu / Debian)
+8. Deploy on Replit
+9. Deploy with Docker
+10. Environment Variables Reference
+11. Troubleshooting & Logs
+
+
+================================================================================
+1. PREREQUISITES & GETTING YOUR SESSION ID
+================================================================================
+
+Before deploying to any platform, you must obtain your unique WhatsApp pairing
+session string:
+
+Step 1: Open the Pairing Server:
+        https://web-production-0a742.up.railway.app/
+
+Step 2: Enter your WhatsApp phone number including your country code (e.g., 234xxxxxxxxxx).
+Step 3: Click "Pair with Phone". A notification with an 8-character pairing code
+        will arrive on your WhatsApp.
+Step 4: Tap the notification or open WhatsApp -> Linked Devices -> Link with Phone Number.
+Step 5: Type in the 8-character pairing code.
+Step 6: Once connected, your browser will display your Session ID string:
+        (starts with JUST_X~ or MIAS_LITE_MDX~).
+Step 7: Copy the full string and save it safely. You will provide this as the
+        SESSION_ID environment variable on your host.
+
+
+================================================================================
+2. DEPLOY ON RAILWAY (RECOMMENDED)
+================================================================================
+
+1. Fork or open the repository: https://github.com/precious125588/MIAS-LITE-MDX
+2. Click the "Deploy on Railway" button in README.md, or create a new Railway project:
+   - Select "Deploy from GitHub repo" -> choose your repository.
+3. Once created, go to the project dashboard and click on your service.
+4. Open the "Variables" tab and add:
+   - SESSION_ID = <your copied session ID string>
+   - OWNER_NUMBER = <your WhatsApp number with country code, e.g. 234xxxxxxxxxx> (optional)
+   - OWNER_NAME = 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x (optional)
+5. Under "Settings", verify the Start Command is empty (Railway uses Dockerfile / Procfile).
+6. Click "Deploy" or trigger redeploy.
+7. Open "Deployments" -> "View Logs". You should see:
+   🟢 [BOT ALIVE] WHATSAPP BOT IS ONLINE & CONNECTED!
+
+
+================================================================================
+3. DEPLOY ON HEROKU
+================================================================================
+
+1. Click the "Deploy to Heroku" button in README.md.
+2. Sign in to your Heroku account.
+3. Enter an App Name (e.g. my-mias-bot).
+4. Fill in Config Vars:
+   - SESSION_ID: Paste your copied session string.
+   - OWNER_NUMBER: Your WhatsApp number with country code.
+   - OWNER_NAME: 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x
+5. Click "Deploy app".
+6. Once the build finishes, open the "Resources" tab in Heroku Dashboard.
+7. Ensure the "web" dyno (defined in Procfile) is turned ON.
+8. View logs under "More" -> "View logs" to confirm connection.
+
+
+================================================================================
+4. DEPLOY ON KOYEB
+================================================================================
+
+1. Sign up / Log in to https://app.koyeb.com/
+2. Click "Create App" -> Select "GitHub".
+3. Choose your repository: precious125588/MIAS-LITE-MDX.
+4. Builder: Select "Dockerfile" or "Buildpack" (Node.js 22).
+5. In "Environment Variables", add:
+   - SESSION_ID = <your copied session string>
+   - OWNER_NUMBER = <your WhatsApp number>
+   - OWNER_NAME = 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x
+6. Choose your Region and Instance size (Nano or Micro is sufficient).
+7. Click "Deploy".
+
+
+================================================================================
+5. DEPLOY ON RENDER
+================================================================================
+
+1. Log in to https://dashboard.render.com/
+2. Click "New +" -> "Web Service".
+3. Connect your GitHub repository: precious125588/MIAS-LITE-MDX.
+4. Settings:
+   - Environment: Node
+   - Build Command: npm install --legacy-peer-deps
+   - Start Command: node scripts/start-with-session-migration.cjs
+5. Add Environment Variables:
+   - SESSION_ID = <your copied session string>
+   - OWNER_NUMBER = <your WhatsApp number>
+   - OWNER_NAME = 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x
+6. Click "Create Web Service".
+
+
+================================================================================
+6. DEPLOY ON PTERODACTYL PANEL
+================================================================================
+
+1. Log in to your Pterodactyl game/bot hosting panel.
+2. Create a server using the generic Node.js egg (Node.js 20 or Node.js 22).
+3. In File Manager, clone or upload the repository files.
+4. In "Startup" tab:
+   - Startup Command: node scripts/start-with-session-migration.cjs
+   - Main File: scripts/start-with-session-migration.cjs
+5. Under Environment / Variables in Pterodactyl:
+   - Add SESSION_ID with your session string.
+   - Add OWNER_NUMBER with your phone number.
+6. Open the Console tab and run:
+   npm install --legacy-peer-deps
+   cd mias && npm install --legacy-peer-deps && cd ..
+7. Click "Start" on your server.
+
+
+================================================================================
+7. DEPLOY ON VPS / LINUX (UBUNTU / DEBIAN)
+================================================================================
+
+1. Connect to your VPS via SSH:
+   ssh root@<your-vps-ip>
+
+2. Install Node.js (v22 recommended) and required tools:
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+   sudo apt-get update
+   sudo apt-get install -y nodejs git ffmpeg libvips-dev build-essential
+
+3. Clone the repository:
+   git clone https://github.com/precious125588/MIAS-LITE-MDX.git
+   cd MIAS-LITE-MDX
+
+4. Install dependencies:
+   npm install --legacy-peer-deps
+   cd mias && npm install --legacy-peer-deps && cd ..
+
+5. Create your environment configuration file (.env):
+   cat << 'EOT' > .env
+   SESSION_ID=YOUR_SESSION_ID_HERE
+   OWNER_NUMBER=234xxxxxxxxxx
+   OWNER_NAME=𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x
+   PORT=3000
+   EOT
+
+6. Run using PM2 for 24/7 background uptime:
+   npm install -g pm2
+   pm2 start scripts/start-with-session-migration.cjs --name "mias-bot"
+   pm2 save
+   pm2 startup
+
+7. Check logs anytime:
+   pm2 logs mias-bot
+
+
+================================================================================
+8. DEPLOY ON REPLIT
+================================================================================
+
+1. Go to https://replit.com/
+2. Click "Create Repl" -> "Import from GitHub".
+3. Paste repository URL: https://github.com/precious125588/MIAS-LITE-MDX
+4. In Tools -> Secrets (Environment Variables), add:
+   - Key: SESSION_ID, Value: <your copied session string>
+   - Key: OWNER_NUMBER, Value: <your WhatsApp number>
+   - Key: OWNER_NAME, Value: 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x
+5. Click the green "Run" button at the top.
+
+
+================================================================================
+9. DEPLOY WITH DOCKER
+================================================================================
+
+1. Build the Docker image:
+   docker build -t mias-lite-mdx .
+
+2. Run the container:
+   docker run -d \
+     --name mias-bot \
+     --restart unless-stopped \
+     -p 3000:3000 \
+     -e SESSION_ID="YOUR_SESSION_ID_HERE" \
+     -e OWNER_NUMBER="234xxxxxxxxxx" \
+     -e OWNER_NAME="𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x" \
+     mias-lite-mdx
+
+3. Monitor container logs:
+   docker logs -f mias-bot
+
+
+================================================================================
+10. ENVIRONMENT VARIABLES REFERENCE
+================================================================================
+
+Variable        Required    Description
+--------------------------------------------------------------------------------
+SESSION_ID      YES         Universal pair session string from pairing dashboard
+OWNER_NUMBER    NO          Bot owner WhatsApp number with country code
+OWNER_NAME      NO          Owner display name (default: 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x)
+PORT            NO          HTTP server port (default: 3000 or assigned by host)
+NODE_ENV        NO          Set to production on live hosts
+GKTW_PACKAGE    NO          Optional helper package override (defaults to Baileys)
+
+
+================================================================================
+11. TROUBLESHOOTING & COMMON ISSUES
+================================================================================
+
+Q: Error: Invalid or expired SESSION_ID
+A: If WhatsApp logged out the linked device or the session string was truncated,
+   visit https://web-production-0a742.up.railway.app/ again and generate a fresh
+   session string, then update the SESSION_ID variable on your host.
+
+Q: Memory issues on free-tier containers:
+A: The bot automatically manages upload cache and streams heavy media (videos,
+   documents, audio) through disk temp files to maintain low RAM usage.
+
+Q: Port binding errors:
+A: The bot automatically detects the PORT environment variable provided by your
+   host (Railway, Heroku, Render, Koyeb). Do not hardcode port 3000 if your host
+   assigns a dynamic port.
+================================================================================
