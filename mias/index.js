@@ -2715,13 +2715,16 @@ async function connectToWA(force = false) {
           const _cmErr = String(e?.message || e || "");
           const _needsResync = /app.?state.?key.?not.?present|not.?synced|not synced|sync/i.test(_cmErr);
           if (_needsResync && typeof sock.resyncAppState === "function") {
-            // Full re-sync then wait 6s before retrying — less is not enough
+            // Full re-sync then wait 4s before retrying
             await sock.resyncAppState(["critical_block", "critical_unblock_low", "regular", "regular_low", "regular_high"], true).catch(() => {});
-            await new Promise(r => setTimeout(r, 6000));
+            await new Promise(r => setTimeout(r, 4000));
             try { return await _rawChatModify(mod, jid); } catch (_e2) {
-              // One last try with a stripped lastMessages to avoid hash mismatch
-              const modNoMsgs = { ...mod, lastMessages: undefined };
-              return await _rawChatModify(modNoMsgs, jid);
+              // Only strip lastMessages if not an archive/pin op (archive requires lastMessages in Baileys)
+              if (!("archive" in mod) && !("pin" in mod)) {
+                const modNoMsgs = { ...mod, lastMessages: undefined };
+                return await _rawChatModify(modNoMsgs, jid);
+              }
+              throw _e2;
             }
           }
           throw e;
@@ -3644,12 +3647,36 @@ async function connectToWA(force = false) {
                 } catch {}
                 // Notify the last person who pinged while owner was AFK
                 try {
-                  const _lastPing = _afkLastPinger.get(_ownerAfkJid);
+                  const _lastPing = _afkLastPinger.get(_ownerAfkJid) || _afkLastPinger.get(_ownerAfkCheck);
                   if (_lastPing && _lastPing.senderJid && _lastPing.chatJid) {
                     _afkLastPinger.delete(_ownerAfkJid);
-                    await sock.sendMessage(_lastPing.chatJid, {
-                      text: `👋 *Hey ${_lastPing.senderName || "there"}!*\n\nJust letting you know — the owner is *back online* now and will reply to you shortly! 🎉`
-                    }, { quoted: null });
+                    _afkLastPinger.delete(_ownerAfkCheck);
+
+                    const _lastPingerClean = _cleanNum(_lastPing.senderJid);
+                    const _ownerNum = _cleanNum(_ownerAfkJid) || _cleanNum(_ownerAfkCheck) || _cleanNum(CONFIG.OWNER_NUMBER);
+                    const _botNum = _cleanNum(sock?.user?.id) || _cleanNum(_botJid);
+
+                    // Strictly verify that the pinger was an actual external contact (not owner or bot)
+                    if (_lastPingerClean && _lastPingerClean !== _ownerNum && _lastPingerClean !== _botNum) {
+                      let pingerName = String(_lastPing.senderName || "").trim();
+                      const botName = String(sock?.user?.name || CONFIG?.BOT_NAME || "PHANTOM x").trim();
+                      const ownerName = String(getOwnerDisplayName() || "").trim();
+
+                      if (!pingerName || pingerName.toLowerCase() === botName.toLowerCase() || pingerName.toLowerCase() === ownerName.toLowerCase()) {
+                        try {
+                          if (typeof getDisplayName === "function") {
+                            pingerName = await getDisplayName(sock, _lastPing.senderJid, _lastPing.chatJid);
+                          }
+                        } catch {}
+                      }
+                      if (!pingerName || pingerName.toLowerCase() === botName.toLowerCase() || pingerName.toLowerCase() === ownerName.toLowerCase() || pingerName === "Unknown") {
+                        pingerName = _lastPingerClean ? `+${_lastPingerClean}` : "there";
+                      }
+
+                      await sock.sendMessage(_lastPing.chatJid, {
+                        text: `👋 *Hey ${pingerName}!*\n\nJust letting you know — the owner is *back online* now and will reply to you shortly! 🎉`
+                      }, { quoted: null });
+                    }
                   }
                 } catch {}
               }
@@ -4107,36 +4134,46 @@ END:VCARD`;
 
           // ── AFK NOTIFICATION: someone messaged while owner is AFK ────────────
           try {
-            if (!msg.key.fromMe && msg.key.remoteJid !== "status@broadcast") {
+            const _isFromOwnerOrBot = (msg.key.fromMe || isOwner(getSender(msg)) || _cleanNum(getSender(msg)) === _cleanNum(getOwnerJid())) || _botSentMsgIds.has(msg.key.id);
+            if (!_isFromOwnerOrBot && msg.key.remoteJid !== "status@broadcast") {
               const _ownerJ = getOwnerJid();
               const _ownerAfkCheck = toStandardJid(resolveLid(_ownerJ || "")) || _ownerJ;
               const _afkInfo = afkUsers.get(_ownerAfkCheck) || afkUsers.get(_ownerJ) || (sock?.user?.id ? afkUsers.get(toStandardJid(sock.user.id)) : null);
               if (_afkInfo) {
-                const _afkInfo = afkUsers.get(_ownerAfkCheck);
                 const _afkSender = toStandardJid(getSender(msg) || "");
-                const _afkSenderName = String(msg.pushName || "").trim() || `+${_cleanNum(_afkSender)}`;
+                const _afkSenderNum = _cleanNum(_afkSender);
+                const _ownerNum = _cleanNum(_ownerAfkCheck) || _cleanNum(_ownerJ) || _cleanNum(CONFIG.OWNER_NUMBER);
+                const _botNum = _cleanNum(sock?.user?.id || _botJid || "");
+
                 // In groups, only notify when someone chats/mentions or replies to the owner
                 const _afkIsGroup = String(msg.key.remoteJid || "").endsWith("@g.us");
                 let _shouldNotifyAfk = !_afkIsGroup;
                 if (_afkIsGroup) {
                   const _afkMentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
                   const _afkQuotedPart = msg.message?.extendedTextMessage?.contextInfo?.participant;
-                  const _afkOwnerNum = _cleanNum(_ownerAfkCheck);
-                  const _mentionedOwner = _afkMentions.some(m => _cleanNum(m) === _afkOwnerNum);
-                  const _repliedToOwner = _afkQuotedPart && _cleanNum(_afkQuotedPart) === _afkOwnerNum;
+                  const _mentionedOwner = _afkMentions.some(m => _cleanNum(m) === _ownerNum);
+                  const _repliedToOwner = _afkQuotedPart && _cleanNum(_afkQuotedPart) === _ownerNum;
                   if (_mentionedOwner || _repliedToOwner) {
                     _shouldNotifyAfk = true;
                   }
                 }
 
-                if (_afkSender && !isOwner(_afkSender) && _shouldNotifyAfk) {
-                  const _afkMs = Date.now() - (_afkInfo?.time || Date.now());
-                  const _afkSecT = Math.floor(_afkMs / 1000);
-                  const _afkMins = Math.floor(_afkSecT / 60);
-                  const _afkHrs  = Math.floor(_afkMins / 60);
-                  const _afkDur  = _afkHrs > 0 ? `${_afkHrs}h ${_afkMins % 60}m` : _afkMins > 0 ? `${_afkMins}m ${_afkSecT % 60}s` : `${_afkSecT} second${_afkSecT !== 1 ? "s" : ""}`;
+                // Strictly ensure sender is NOT the owner or bot
+                if (_afkSender && _afkSenderNum !== _ownerNum && _afkSenderNum !== _botNum && !isOwner(_afkSender) && _shouldNotifyAfk) {
+                  let _afkSenderName = String(msg.pushName || "").trim();
+                  const ownerName = String(getOwnerDisplayName() || "").trim();
+                  const botName = String(sock?.user?.name || CONFIG?.BOT_NAME || "PHANTOM x").trim();
+
+                  // If pushName matches owner or bot, resolve from cache or phone number
+                  if (!_afkSenderName || _afkSenderName.toLowerCase() === ownerName.toLowerCase() || _afkSenderName.toLowerCase() === botName.toLowerCase()) {
+                    _afkSenderName = senderProfileName(_afkSender) || (typeof pushNameCache !== "undefined" && pushNameCache?.get(_afkSenderNum)) || `+${_afkSenderNum}`;
+                  }
+
                   // Store this sender as last pinger (owner will be notified when they return)
-                  _afkLastPinger.set(_ownerAfkCheck, { senderJid: _afkSender, senderName: _afkSenderName, chatJid: msg.key.remoteJid, time: Date.now() });
+                  const pingerData = { senderJid: _afkSender, senderName: _afkSenderName, chatJid: msg.key.remoteJid, time: Date.now() };
+                  _afkLastPinger.set(_ownerAfkCheck, pingerData);
+                  if (_ownerJ) _afkLastPinger.set(_ownerJ, pingerData);
+
                   if (!globalThis.__afkNoticeThrottle) globalThis.__afkNoticeThrottle = new Map();
                   const _afkThrottleKey = `${_ownerAfkCheck}|${msg.key.remoteJid}`;
                   const _afkLastNotice = globalThis.__afkNoticeThrottle.get(_afkThrottleKey) || 0;
@@ -16353,9 +16390,17 @@ cmd("calendar", { desc: "Show calendar for current month (image)", category: "TO
 });
 
 cmd("afk", { desc: "Set AFK status — .afk [reason]", category: "TOOLS" }, async (sock, msg, args) => {
-  const jid = toStandardJid(resolveLid(msg.key.fromMe || isOwner(getSender(msg)) ? getOwnerJid() : getSender(msg)));
+  const isOwnerSender = msg.key.fromMe || isOwner(getSender(msg));
+  const jid = toStandardJid(resolveLid(isOwnerSender ? getOwnerJid() : getSender(msg)));
   const reason = args.join(" ") || "No reason";
-  afkUsers.set(jid, { reason, time: Date.now() });
+  const afkData = { reason, time: Date.now() };
+  afkUsers.set(jid, afkData);
+  if (isOwnerSender) {
+    const rawOwner = getOwnerJid();
+    if (rawOwner && rawOwner !== jid) afkUsers.set(rawOwner, afkData);
+    _afkLastPinger.delete(jid);
+    if (rawOwner) _afkLastPinger.delete(rawOwner);
+  }
   const senderName = msg.pushName || "You";
   await sendReply(sock, msg,
     `😴 *AFK Activated!*\n\n` +
@@ -16365,9 +16410,14 @@ cmd("afk", { desc: "Set AFK status — .afk [reason]", category: "TOOLS" }, asyn
     `_I'll notify senders that you're away._`);
 });
 cmd("unafk", { desc: "Remove AFK status", category: "TOOLS" }, async (sock, msg) => {
-  const jid = toStandardJid(resolveLid(msg.key.fromMe || isOwner(getSender(msg)) ? getOwnerJid() : getSender(msg)));
-  const afk = afkUsers.get(jid);
+  const isOwnerSender = msg.key.fromMe || isOwner(getSender(msg));
+  const jid = toStandardJid(resolveLid(isOwnerSender ? getOwnerJid() : getSender(msg)));
+  const rawOwner = getOwnerJid();
+  const afk = afkUsers.get(jid) || (rawOwner ? afkUsers.get(rawOwner) : null);
   afkUsers.delete(jid);
+  if (rawOwner) afkUsers.delete(rawOwner);
+  _afkLastPinger.delete(jid);
+  if (rawOwner) _afkLastPinger.delete(rawOwner);
   const senderName = msg.pushName || "You";
   let durStr = "just now";
   if (afk) {
@@ -34213,17 +34263,30 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
 //     long as the phone is online.
 
 (() => {
-  const _onceKeyMap = new WeakMap();  // sock → bool (forced-bootstrap done)
-
-  // ── force-bootstrap app-state key (no manual phone steps) ───────────────
+  // ── force-bootstrap app-state key (auto-recovers missing sync key) ──────
   async function __miasForceAppStateBootstrap(sock) {
-    if (_onceKeyMap.get(sock)) return !!sock?.authState?.creds?.myAppStateKeyId;
-    _onceKeyMap.set(sock, true);
+    // 1) First check if creds is missing myAppStateKeyId but the key file exists on disk
     try {
-      // 1) Mark presence available — WA gates app-state pushes on this.
+      if (!sock?.authState?.creds?.myAppStateKeyId) {
+        const authPath = (typeof AUTH_DIR === "string" && AUTH_DIR) ? AUTH_DIR : "./auth";
+        const fsMod = typeof fs !== "undefined" ? fs : require("fs");
+        if (fsMod.existsSync(authPath)) {
+          const files = fsMod.readdirSync(authPath).filter(f => f.startsWith("app-state-sync-key-") && f.endsWith(".json"));
+          if (files.length > 0) {
+            const match = files[0].match(/^app-state-sync-key-(.+)\.json$/);
+            if (match && match[1]) {
+              sock.authState.creds.myAppStateKeyId = match[1];
+              try { if (typeof saveCreds === "function") saveCreds(); } catch {}
+              return true;
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 2) Request WhatsApp to push the app-state key snapshot
+    try {
       try { await sock.sendPresenceUpdate("available"); } catch {}
-      // 2) Force full resync of every app-state collection — `true` flag
-      //    asks WA to push the missing key snapshot.
       if (typeof sock.resyncAppState === "function") {
         try {
           await sock.resyncAppState(
@@ -34232,10 +34295,25 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
           );
         } catch {}
       }
-      // 3) Wait up to 6 s for the key-share event from the phone.
+      // 3) Wait up to 6s for the key-share event
       const deadline = Date.now() + 6000;
+      const fsMod = typeof fs !== "undefined" ? fs : require("fs");
+      const authPath = (typeof AUTH_DIR === "string" && AUTH_DIR) ? AUTH_DIR : "./auth";
       while (Date.now() < deadline) {
         if (sock?.authState?.creds?.myAppStateKeyId) return true;
+        try {
+          if (fsMod.existsSync(authPath)) {
+            const files = fsMod.readdirSync(authPath).filter(f => f.startsWith("app-state-sync-key-") && f.endsWith(".json"));
+            if (files.length > 0) {
+              const match = files[0].match(/^app-state-sync-key-(.+)\.json$/);
+              if (match && match[1]) {
+                sock.authState.creds.myAppStateKeyId = match[1];
+                try { if (typeof saveCreds === "function") saveCreds(); } catch {}
+                return true;
+              }
+            }
+          }
+        } catch {}
         await new Promise(r => setTimeout(r, 250));
       }
     } catch {}
@@ -34245,7 +34323,7 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
   // Retry helper for chatModify-based commands.
   // msgObj (optional): the incoming WhatsApp message — used to build REAL lastMessages.
   // WA silently drops chatModify calls with synthetic/fake message IDs; always pass real keys.
-    async function __miasResilientChatModify(sock, payload, jid, { tries = 5, baseDelay = 600 } = {}, msgObj = null) {
+  async function __miasResilientChatModify(sock, payload, jid, { tries = 5, baseDelay = 600 } = {}, msgObj = null) {
     let realLastMsgs = null;
     if (msgObj?.key) {
       try {
@@ -34261,6 +34339,23 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
         realLastMsgs = [{ key: msgObj.key, messageTimestamp: ts }];
       } catch {}
     }
+    // If msgObj was not for target jid, find the latest real message in _msgRetryStore
+    if (!realLastMsgs && typeof _msgRetryStore !== "undefined") {
+      try {
+        for (const [k, v] of _msgRetryStore.entries()) {
+          if (k.startsWith(`${jid}|`) && v?._ts) {
+            const id = k.slice(k.lastIndexOf("|") + 1);
+            if (id) {
+              realLastMsgs = [{
+                key: { remoteJid: jid, fromMe: !!v._fromMe, id },
+                messageTimestamp: Math.floor(v._ts / 1000)
+              }];
+              break;
+            }
+          }
+        }
+      } catch {}
+    }
     if (!realLastMsgs) {
       const crypto = require("crypto");
       realLastMsgs = [{
@@ -34272,22 +34367,26 @@ if (typeof __miasApplyDynamicOwnerName === "function") {
         messageTimestamp: Math.floor(Date.now() / 1000)
       }];
     }
-const variants = realLastMsgs
-      ? [{ ...payload, lastMessages: realLastMsgs }, { ...payload, lastMessages: undefined }]
-      : [{ ...payload, lastMessages: undefined }, { ...payload }];
+    // In Baileys, archive and pin operations REQUIRE lastMessages (omitting it throws TypeError)
+    const isArchiveOrPin = Object.prototype.hasOwnProperty.call(payload, "archive") || Object.prototype.hasOwnProperty.call(payload, "pin");
+    const variants = isArchiveOrPin
+      ? [{ ...payload, lastMessages: realLastMsgs }]
+      : (realLastMsgs
+          ? [{ ...payload, lastMessages: realLastMsgs }, { ...payload, lastMessages: undefined }]
+          : [{ ...payload, lastMessages: undefined }, { ...payload }]);
     let lastErr = "";
     for (let i = 0; i < tries; i++) {
       for (const v of variants) {
         try { await sock.chatModify(v, jid); return { ok: true }; }
         catch (e) { lastErr = e?.message || String(e); }
       }
-      // After the first failed pass, force-bootstrap the app-state key and wait.
-      if (i === 0) {
+      // If app-state key is missing or not synced, actively bootstrap it
+      if (/app.?state.?key.?not.?present|not.?synced/i.test(lastErr) || !sock?.authState?.creds?.myAppStateKeyId) {
         try { await __miasForceAppStateBootstrap(sock); } catch {}
       } else {
         try {
           if (typeof sock.resyncAppState === "function") {
-            await sock.resyncAppState(["regular_high","regular_low","regular"], false);
+            await sock.resyncAppState(["regular_high", "regular_low", "regular"], false);
           }
         } catch {}
       }
@@ -34598,14 +34697,27 @@ const variants = realLastMsgs
   // ".archive 234 906 855 1855" into multiple args, so parse the leading
   // numeric span as one phone number.
   const __miasArchiveTarget = (msg, args = []) => {
+    // 1) Mentioned JID
+    const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+    if (Array.isArray(mentioned) && mentioned.length > 0 && mentioned[0]) {
+      return toStandardJid(resolveLid(mentioned[0]));
+    }
+    // 2) Quoted participant in DM
+    const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
+    if (quotedParticipant && !String(msg.key.remoteJid || "").endsWith("@g.us")) {
+      return toStandardJid(resolveLid(quotedParticipant));
+    }
+    // 3) Digits from args
     const input = Array.isArray(args) ? args.join(" ").trim() : String(args || "").trim();
     const match = input.match(/^\+?[\d][\d\s().-]*/);
     const digits = String(match?.[0] || "").replace(/\D/g, "");
     if (digits.length >= 7) return `${digits}@s.whatsapp.net`;
+    // 4) Current chat
     return msg?.key?.remoteJid || "";
   };
   const __miasArchive = async (sock, msg, args = []) => {
     const targetJid = __miasArchiveTarget(msg, args);
+    if (!targetJid) { await sendReply(sock, msg, "❌ Target chat not specified."); return; }
     await react(sock, msg, "⏳");
     let targetName = targetJid.split("@")[0];
     try {
@@ -34616,11 +34728,21 @@ const variants = realLastMsgs
     } catch {}
     const contextMsg = targetJid === msg.key.remoteJid ? msg : null;
     const res = await __miasResilientChatModify(sock, { archive: true }, targetJid, {}, contextMsg);
-    if (res.ok) { await react(sock, msg, "📦"); await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat archived!*" : `📦 *Archived ${targetName}!*`); }
-    else        { await react(sock, msg, "❌"); await sendReply(sock, msg, `❌ Archive failed.\n_${res.err}_\n\n💡 Open WhatsApp on your phone once, then retry.`); }
+    if (res.ok) {
+      await react(sock, msg, "📦");
+      await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat archived!*" : `📦 *Archived ${targetName}!*`);
+    } else {
+      await react(sock, msg, "❌");
+      const isKeyErr = /app.?state.?key.?not.?present/i.test(res.err);
+      const advice = isKeyErr
+        ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry."
+        : "Open WhatsApp on your phone once, then retry.";
+      await sendReply(sock, msg, `❌ Archive failed.\n_${res.err}_\n\n💡 ${advice}`);
+    }
   };
   const __miasUnarchive = async (sock, msg, args = []) => {
     const targetJid = __miasArchiveTarget(msg, args);
+    if (!targetJid) { await sendReply(sock, msg, "❌ Target chat not specified."); return; }
     await react(sock, msg, "⏳");
     let targetName = targetJid.split("@")[0];
     try {
@@ -34631,8 +34753,17 @@ const variants = realLastMsgs
     } catch {}
     const contextMsg = targetJid === msg.key.remoteJid ? msg : null;
     const res = await __miasResilientChatModify(sock, { archive: false }, targetJid, {}, contextMsg);
-    if (res.ok) { await react(sock, msg, "📦"); await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat unarchived!*" : `📦 *Unarchived ${targetName}!*`); }
-    else        { await react(sock, msg, "❌"); await sendReply(sock, msg, `❌ Unarchive failed.\n_${res.err}_\n\n💡 Open WhatsApp on your phone once, then retry.`); }
+    if (res.ok) {
+      await react(sock, msg, "📦");
+      await sendReply(sock, msg, targetJid === msg.key.remoteJid ? "📦 *Chat unarchived!*" : `📦 *Unarchived ${targetName}!*`);
+    } else {
+      await react(sock, msg, "❌");
+      const isKeyErr = /app.?state.?key.?not.?present/i.test(res.err);
+      const advice = isKeyErr
+        ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry."
+        : "Open WhatsApp on your phone once, then retry.";
+      await sendReply(sock, msg, `❌ Unarchive failed.\n_${res.err}_\n\n💡 ${advice}`);
+    }
   };
   { const ex = commands.get("archive")   || { desc: "Archive this chat or a DM — .archive <number>",   category: "WHATSAPP", ownerOnly: true }; ex.desc = "Archive this chat or a DM — .archive <number>"; ex.handler = __miasArchive;   commands.set("archive", ex); }
   { const ex = commands.get("unarchive") || { desc: "Unarchive this chat or a DM — .unarchive <number>", category: "WHATSAPP", ownerOnly: true }; ex.desc = "Unarchive this chat or a DM — .unarchive <number>"; ex.handler = __miasUnarchive; commands.set("unarchive", ex); }
