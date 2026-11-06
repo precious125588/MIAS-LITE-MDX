@@ -657,28 +657,8 @@ export function getMp4DurationSeconds(buffer) {
 }
 
 async function applyGentleSourceQualityBoost(buffer) {
-  if (!Buffer.isBuffer(buffer) || buffer.length < 2048) return buffer;
-  const ttd = require("./ttDelivery.cjs");
-  const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mias-status-source-quality-"));
-  const input = path.join(dir, "input.mp4");
-  let encoded = null;
-  try {
-    await fs.promises.writeFile(input, buffer);
-    const probe = await ttd.probeSourceVideo(input).catch(() => null);
-    if (!ttd.isHighQualitySource(probe)) return buffer;
-    encoded = await ttd.reencodeHdForWhatsApp(input, {
-      maxBytes: 95 * 1024 * 1024,
-      sourceQualityBoost: 1.01,
-    });
-    return await fs.promises.readFile(encoded.path);
-  } catch (error) {
-    // Keep the established status output if optional quality processing fails.
-    try { console.warn("[status] gentle source-quality encode skipped:", error?.message || error); } catch {}
-    return buffer;
-  } finally {
-    try { await encoded?.cleanup?.(); } catch {}
-    await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
-  }
+  // High-quality source videos are left untouched with zero re-encoding to preserve pristine audio and playback.
+  return buffer;
 }
 
 async function trimVideo(buffer) {

@@ -225,6 +225,15 @@ async function reencodeHdForWhatsApp(input, {
   const out = tempPath("hd", ".mp4");
   const cleanup = async () => { await fsp.rm(out, { force: true }).catch(() => {}); };
   const probe = await probeSourceVideo(inPath).catch(() => null);
+
+  // If the video already has original high quality (native 1080p+), leave it untouched.
+  // Sending the untouched original avoids audio cracking / distortion and playback lag.
+  if (isHighQualitySource(probe)) {
+    await fsp.copyFile(inPath, out);
+    const stat = await fsp.stat(out);
+    return { path: out, bytes: stat.size, cleanup, untouched: true };
+  }
+
   const kbps = pickHdBitrate(probe, boost, sourceQualityBoost);
   const deadline = Date.now() + timeoutMs;
   let run = await runFfmpeg(HD_ARGS(inPath, out, kbps), timeoutMs);
