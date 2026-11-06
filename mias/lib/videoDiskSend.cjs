@@ -2,26 +2,28 @@
 /*
  * Disk-backed media delivery for every socket the bot creates.
  *
- * Any sock.sendMessage() call whose payload carries a Buffer in video,
- * document or audio is written to a temporary file and sent from disk:
- * Baileys receives { url: <local path> } and streams the file itself. The
- * temporary file is deleted in `finally`, after the send either delivered or
- * failed. Payloads without such buffers (text, images, stickers, URLs) pass
- * through untouched. If the temporary file cannot be written, the original
- * buffer is sent as before so a full disk never blocks delivery.
+ * Any sock.sendMessage() call whose payload carries a Buffer or remote URL in
+ * video, document, audio, image, or sticker is streamed to a temporary file
+ * and sent from disk: Baileys receives { url: <local path> } and streams the
+ * file itself. The temporary file is deleted in `finally`, after the send
+ * either delivered or failed. If a temporary file cannot be written, the original
+ * payload is sent as before so a full disk or transient error never blocks delivery.
  *
  * Video notes ({ video, ptv: true }) take the same path: the temp file is sent
  * as a round video note (ptvMessage) and removed afterwards.
  */
 
 const fs = require("fs");
+const fsp = require("fs/promises");
 const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
+const { Readable } = require("stream");
 
-const DISK_KEYS = ["video", "document", "audio"];
+const DISK_KEYS = ["video", "document", "audio", "image", "sticker"];
 const TMP_PREFIX = "mais_vd_";
 const STALE_MS = 60 * 60 * 1000;
+const BUFFER_SPILL_MIN_BYTES = 512 * 1024; // 512 KB: small stickers/icons stay in memory, heavy media spills to disk
 
 function defaultDir() {
   const p = path.join(process.cwd(), "pipeline-work", "tmp");
@@ -54,6 +56,12 @@ function extensionFor(key, mimetype) {
     if (mt.includes("mp4") || mt.includes("m4a") || mt.includes("aac")) return ".m4a";
     return ".mp3";
   }
+  if (key === "image") {
+    if (mt.includes("png")) return ".png";
+    if (mt.includes("webp")) return ".webp";
+    return ".jpg";
+  }
+  if (key === "sticker") return ".webp";
   return ".bin";
 }
 
@@ -66,6 +74,26 @@ function unlinkQuiet(file) {
   try { fs.unlinkSync(file); } catch {}
 }
 
+function extractRemoteUrl(val) {
+  if (typeof val === "string" && /^https?:\/\//i.test(val)) return val;
+  if (val && typeof val === "object" && typeof val.url === "string" && /^https?:\/\//i.test(val.url)) return val.url;
+  return null;
+}
+
+async function streamRemoteUrlToDisk(url, targetPath, timeoutMs = 60000) {
+  const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} streaming media`);
+  const out = fs.createWriteStream(targetPath);
+  const nodeStream = typeof Readable.fromWeb === "function" ? Readable.fromWeb(res.body) : res.body;
+  await new Promise((resolve, reject) => {
+    nodeStream.pipe(out);
+    nodeStream.on("error", reject);
+    out.on("finish", resolve);
+    out.on("error", reject);
+  });
+  return targetPath;
+}
+
 function installVideoDiskSend(sock, { dir = null } = {}) {
   if (!sock || typeof sock.sendMessage !== "function" || sock.__miasVideoDiskSend) return sock;
   const workDir = dir || defaultDir();
@@ -76,32 +104,53 @@ function installVideoDiskSend(sock, { dir = null } = {}) {
     if (!content || typeof content !== "object" || Buffer.isBuffer(content)) {
       return rawSend(jid, content, options);
     }
-    const keys = DISK_KEYS.filter((k) => Buffer.isBuffer(content[k]) && content[k].length > 0);
-    if (!keys.length) return rawSend(jid, content, options);
 
     const written = [];
     const payload = { ...content };
     if (isVideoNote(content)) {
-      // Round video notes: keep ptv so Baileys builds ptvMessage, and make sure the MIME type is video/mp4.
       payload.ptv = true;
       if (!payload.mimetype) payload.mimetype = "video/mp4";
       delete payload.gifPlayback;
     }
-    try {
-      for (const key of keys) {
-        const file = path.join(workDir, `${TMP_PREFIX}${crypto.randomBytes(8).toString("hex")}${extensionFor(key, content.mimetype)}`);
-        fs.writeFileSync(file, content[key]);
-        written.push(file);
-        payload[key] = { url: file };
-      }
-    } catch (error) {
-      for (const file of written) unlinkQuiet(file);
-      console.error(`[disk-send] could not write temp file, sending from memory: ${error?.message || error}`);
-      return rawSend(jid, content, options);
-    }
 
     try {
+      for (const key of DISK_KEYS) {
+        const val = content[key];
+        if (!val) continue;
+
+        // 1. In-memory Buffer: write to disk if > BUFFER_SPILL_MIN_BYTES or if it's video/document/audio
+        if (Buffer.isBuffer(val)) {
+          const mustSpill = (key === "video" || key === "document" || key === "audio") || val.length >= BUFFER_SPILL_MIN_BYTES;
+          if (mustSpill && val.length > 0) {
+            const ext = content.fileName ? path.extname(content.fileName) || extensionFor(key, content.mimetype) : extensionFor(key, content.mimetype);
+            const file = path.join(workDir, `${TMP_PREFIX}${crypto.randomBytes(8).toString("hex")}${ext}`);
+            fs.writeFileSync(file, val);
+            written.push(file);
+            payload[key] = { url: file };
+          }
+        }
+        // 2. Remote URL: stream straight to disk
+        else {
+          const remoteUrl = extractRemoteUrl(val);
+          if (remoteUrl) {
+            try {
+              const ext = content.fileName ? path.extname(content.fileName) || extensionFor(key, content.mimetype) : extensionFor(key, content.mimetype);
+              const file = path.join(workDir, `${TMP_PREFIX}${crypto.randomBytes(8).toString("hex")}${ext}`);
+              await streamRemoteUrlToDisk(remoteUrl, file, 90000);
+              written.push(file);
+              payload[key] = { url: file };
+            } catch (dlErr) {
+              // If remote fetch fails here, let Baileys handle the original URL or fail gracefully
+              console.warn(`[disk-send] remote stream fallback: ${dlErr?.message || dlErr}`);
+            }
+          }
+        }
+      }
+
       return await rawSend(jid, payload, options);
+    } catch (error) {
+      console.error(`[disk-send] send error: ${error?.message || error}`);
+      throw error;
     } finally {
       for (const file of written) unlinkQuiet(file);
     }
@@ -111,4 +160,4 @@ function installVideoDiskSend(sock, { dir = null } = {}) {
   return sock;
 }
 
-module.exports = { installVideoDiskSend, isVideoNote, DISK_KEYS, TMP_PREFIX };
+module.exports = { installVideoDiskSend, isVideoNote, DISK_KEYS, TMP_PREFIX, defaultDir, sweepStale };
