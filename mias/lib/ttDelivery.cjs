@@ -41,7 +41,15 @@ const HD_VIDEO_FILTER = "scale='if(gte(iw,ih),-2,1080)':'if(gte(iw,ih),1080,-2)'
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
 const HD_BOOST = 1.05;
+const HIGH_QUALITY_HD_BOOST = 1.01;
+const HIGH_QUALITY_4K_BOOST = 1.015;
 const HD_MAX_KBPS = 40000;
+
+// Only native 1080p+ sources use the gentle source-relative boost. Smaller
+// sources keep the established HD path and bitrate behavior unchanged.
+function isHighQualitySource(probe) {
+  return Boolean(probe && probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps > 0);
+}
 
 // Encoder threads scale with the host (2 to 4). Output settings are unchanged.
 const HD_THREADS = Math.max(2, Math.min(4, (os.cpus() || []).length || 2));
@@ -191,8 +199,11 @@ async function probeSourceVideo(inPath) {
 }
 
 // Picks the H.264 bitrate for the 1.3 encode from the source probe. Unknown source = reference rate.
-function pickHdBitrate(probe, boost = HD_BOOST) {
+function pickHdBitrate(probe, boost = HD_BOOST, sourceQualityBoost = null) {
   if (!probe || !probe.shortSide || !probe.videoKbps) return HD_REFERENCE_KBPS;
+  if (sourceQualityBoost && isHighQualitySource(probe)) {
+    return Math.min(Math.round(probe.videoKbps * sourceQualityBoost), HD_MAX_KBPS);
+  }
   const alreadyAtHdState = probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps >= HD_REFERENCE_KBPS;
   if (!alreadyAtHdState) return HD_REFERENCE_KBPS;
   return Math.min(Math.round(probe.videoKbps * boost), HD_MAX_KBPS);
@@ -203,20 +214,28 @@ function pickHdBitrate(probe, boost = HD_BOOST) {
  * The input is never deleted here; the caller owns it.
  * @returns {Promise<{path: string, bytes: number, cleanup: () => Promise<void>}>}
  */
-async function reencodeHdForWhatsApp(input, { timeoutMs = HD_ENCODE_TIMEOUT_MS, maxBytes = TT_INLINE_VIDEO_MAX_BYTES, boost = HD_BOOST } = {}) {
+async function reencodeHdForWhatsApp(input, {
+  timeoutMs = HD_ENCODE_TIMEOUT_MS,
+  maxBytes = TT_INLINE_VIDEO_MAX_BYTES,
+  boost = HD_BOOST,
+  sourceQualityBoost = null,
+} = {}) {
   const inPath = typeof input === "string" ? input : input.path;
   ensureWorkDir();
   const out = tempPath("hd", ".mp4");
   const cleanup = async () => { await fsp.rm(out, { force: true }).catch(() => {}); };
   const probe = await probeSourceVideo(inPath).catch(() => null);
-  const kbps = pickHdBitrate(probe, boost);
+  const kbps = pickHdBitrate(probe, boost, sourceQualityBoost);
   const deadline = Date.now() + timeoutMs;
   let run = await runFfmpeg(HD_ARGS(inPath, out, kbps), timeoutMs);
   // Killed by the kernel (usually out of memory), not by our timeout: the same encode once more with the low-memory settings.
   if (!run.error && run.signal === "SIGKILL" && !run.timedOut) {
     await fsp.rm(out, { force: true }).catch(() => {});
     const remaining = deadline - Date.now();
-    if (remaining > 0) run = await runFfmpeg(HD_ARGS(inPath, out, Math.min(kbps, HD_REFERENCE_KBPS), { lowMemory: true }), remaining);
+    const retryKbps = sourceQualityBoost && isHighQualitySource(probe)
+      ? kbps
+      : Math.min(kbps, HD_REFERENCE_KBPS);
+    if (remaining > 0) run = await runFfmpeg(HD_ARGS(inPath, out, retryKbps, { lowMemory: true }), remaining);
   }
   if (run.error || run.timedOut || run.code !== 0) {
     await cleanup();
@@ -311,9 +330,15 @@ async function deliverTikTokFile({
 
   // 1.8 / 1.9: the 4K encoder the picker uses. 1.3 and the rest: 1080p HD re-encode.
   const encoded = mode && mode.upscale4k
-    ? await processVideoTo4k(file.path, { timeoutMs: TT4K_TIMEOUT_MS })
+    ? await processVideoTo4k(file.path, {
+        timeoutMs: TT4K_TIMEOUT_MS,
+        sourceQualityBoost: HIGH_QUALITY_4K_BOOST,
+      })
     : await reencodeHdForWhatsApp(file, {
         maxBytes: mode && mode.document ? disk.WHATSAPP_DOC_MAX_BYTES : TT_INLINE_VIDEO_MAX_BYTES,
+        sourceQualityBoost: mode && (mode.id === "1.3" || mode.id === "1.4")
+          ? HIGH_QUALITY_HD_BOOST
+          : null,
       });
   try {
     if (mode && mode.document) {
@@ -336,7 +361,10 @@ module.exports = {
   HD_ARGS,
   HD_REFERENCE_KBPS,
   HD_BOOST,
+  HIGH_QUALITY_HD_BOOST,
+  HIGH_QUALITY_4K_BOOST,
   HD_MAX_KBPS,
+  isHighQualitySource,
   pickHdBitrate,
   probeSourceVideo,
   TT_INLINE_VIDEO_MAX_BYTES,
