@@ -439,20 +439,31 @@ function buildQuoteCard({ jid, quote, name, random = Math.random }) {
   return { text, mentions };
 }
 
+const GMT_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+function gmtParts(date = new Date()) {
+  const p = {};
+  for (const part of GMT_FORMAT.formatToParts(date)) p[part.type] = part.value;
+  return { dateKey: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) % 24, minute: Number(p.minute) };
+}
+
 const LAGOS_FORMAT = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
 });
-function lagosParts(date) {
+function lagosParts(date = new Date()) {
   const p = {};
   for (const part of LAGOS_FORMAT.formatToParts(date)) p[part.type] = part.value;
   return { dateKey: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) % 24, minute: Number(p.minute) };
 }
 
-// True once per Lagos calendar day, during the 00:xx hour (12am).
+// True once per GMT calendar day, ONLY during the 12:xx hour (12 GMT / 12:00 UTC).
+// Must never trigger on connection or outside 12 GMT.
 function shouldSendDailyQuote(date, lastSentDate) {
-  const { dateKey, hour } = lagosParts(date);
-  return hour === 0 && dateKey !== lastSentDate;
+  const { dateKey, hour } = gmtParts(date);
+  return hour === 12 && dateKey !== lastSentDate;
 }
 
 module.exports = {
@@ -465,6 +476,7 @@ module.exports = {
   footerOptions,
   pickFooter,
   buildQuoteCard,
+  gmtParts,
   lagosParts,
   shouldSendDailyQuote,
   digitsOf,
