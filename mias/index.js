@@ -24124,7 +24124,7 @@ cmd(["pick", "p"], { desc: "Pick randomly from options (A|B|C) OR download adult
       const streamLargeTikTokVideo = ttMode.kind === "video" && !ttMode.videoNote;
       // 1.3 and the other inline videos stay on disk at every size, so the HD re-encode always runs
       // and the send streams from the file. (Documents 1.4 keep their existing path.)
-      const ttInlineOnDisk = streamLargeTikTokVideo && !ttMode.document && !ttMode.upscale4k;
+      const ttInlineOnDisk = streamLargeTikTokVideo && (!ttMode.document || ttMode.id === "1.4" || (ttMode.quality === "hd" && ttMode.document)) && !ttMode.upscale4k;
       const diskVideoPipeline = streamLargeTikTokVideo ? require("./lib/mediaPipeline.cjs") : null;
       tiktokDiskDelivery = ttMode.kind === "video" ? require("./lib/tiktokDiskDelivery.cjs") : null;
       // A TikWM URL can expire between the preview and the user's choice.
@@ -24220,10 +24220,12 @@ cmd(["pick", "p"], { desc: "Pick randomly from options (A|B|C) OR download adult
       // Inline videos over 92 MB are no longer rejected here: they are sent as documents below.
       // Every inline TikTok video (1.3 and the rest) is re-encoded to WhatsApp-compatible HD before sending.
       // Documents, 4K and video notes keep their own paths.
-      if (ttMode.kind === "video" && mediaFile && !ttMode.document && !ttMode.videoNote && !ttMode.upscale4k) {
+      if (ttMode.kind === "video" && mediaFile && (!ttMode.document || ttMode.id === "1.4" || (ttMode.quality === "hd" && ttMode.document)) && !ttMode.videoNote && !ttMode.upscale4k) {
         const _ttdHd = require("./lib/ttDelivery.cjs");
         // No fallback: if the HD re-encode fails, the error reaches the picker's catch and nothing is sent.
-        const _hdEncoded = await _ttdHd.reencodeHdForWhatsApp(mediaFile);
+        const _hdEncoded = await _ttdHd.reencodeHdForWhatsApp(mediaFile, {
+          maxBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : _ttdHd.TT_INLINE_VIDEO_MAX_BYTES,
+        });
         try { await mediaFile.cleanup(); } catch {}
         mediaFile = _hdEncoded;
       }
@@ -44225,8 +44227,10 @@ Please wait.`);
         const _ttd = require("./lib/ttDelivery.cjs");
         // Every inline video is re-encoded to high quality; documents keep the provider's original file.
         mediaFile = await _ttd.fetchTikTokToDisk(PIPE, mediaUrl, { kind: "video", cap: maxBytes, timeout: 120000 });
-        if (!ttMode.document) {
-          const _encoded = await _ttd.reencodeHdForWhatsApp(mediaFile);
+        if (!ttMode.document || ttMode.id === "1.4" || (ttMode.quality === "hd" && ttMode.document)) {
+          const _encoded = await _ttd.reencodeHdForWhatsApp(mediaFile, {
+            maxBytes: ttMode.document ? TIKTOK_DOCUMENT_MAX_BYTES : _ttd.TT_INLINE_VIDEO_MAX_BYTES,
+          });
           try { await mediaFile.cleanup(); } catch {}
           mediaFile = _encoded;
         }
