@@ -1,1 +1,1 @@
-web: node server.js
+web: node scripts/start-with-session-migration.cjs

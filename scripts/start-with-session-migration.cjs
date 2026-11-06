@@ -209,6 +209,7 @@ async function prepareSessionDatabase() {
         process.env.BOT_ACTIVE_USER = bootResult.sessionUserName || 'User';
         process.env.BOT_ACTIVE_JID = bootResult.canonicalJid;
         process.env.BOT_IS_LIVE = 'true';
+        if (bootResult.pushName) process.env.BOT_PUSH_NAME = bootResult.pushName;
 
         console.log(`[session-bootstrap] Injected credentials for ${bootResult.canonicalJid}`);
       }
