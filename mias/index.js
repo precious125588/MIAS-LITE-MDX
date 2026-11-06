@@ -2973,6 +2973,14 @@ async function connectToWA(force = false) {
         }, 60000);
         conflictStableTimer.unref?.();
         const me = sock.user?.id || "unknown";
+          console.log(`\n=============================================================`);
+          console.log(`🟢 [BOT ALIVE] WHATSAPP BOT IS ONLINE & CONNECTED!`);
+          console.log(`   Bot Name    : ${CONFIG.BOT_NAME || "MIAS LITE MDX"}`);
+          console.log(`   Connected ID: ${me}`);
+          console.log(`   Active JID  : ${sock.user?.id || me}`);
+          console.log(`   Owner       : ${CONFIG.OWNER_NAME || "Owner"}`);
+          console.log(`   Status      : 🟢 ONLINE (Active & ready for WhatsApp commands)`);
+          console.log(`=============================================================\n`);
           console.log(`✅ ${CONFIG.BOT_NAME} Connected → ${me}`);
           console.log(`🤖 ${CONFIG.BOT_NAME} v${CONFIG.VERSION} ready — ${getPrimaryCommandCount()}+ commands loaded via ${BAILEYS_PACKAGE}.`);
           // ── FIX: set owner name immediately from WhatsApp session pushName ───────────
