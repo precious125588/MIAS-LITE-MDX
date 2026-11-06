@@ -127,6 +127,9 @@ function migrateLegacySessionDir(numberOrJid, root) {
   const legacyDir = path.join(sessionRoot, digits);
   const legacyCreds = path.join(legacyDir, 'creds.json');
   if (fs.existsSync(targetCreds) || !fs.existsSync(legacyCreds)) {
+    if (fs.existsSync(targetCreds) && fs.existsSync(legacyDir)) {
+      try { fs.rmSync(legacyDir, { recursive: true, force: true }); } catch {}
+    }
     return { migrated: false, reason: 'not_needed' };
   }
 
@@ -139,6 +142,7 @@ function migrateLegacySessionDir(numberOrJid, root) {
       quarantineDir(targetDir, 'incomplete legacy session migration');
       return { migrated: false, reason: 'verification_failed' };
     }
+    try { fs.rmSync(legacyDir, { recursive: true, force: true }); } catch {}
     return { migrated: true, from: legacyDir, to: targetDir };
   } catch (error) {
     return { migrated: false, reason: 'migration_failed', error: error.message };
