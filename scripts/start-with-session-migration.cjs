@@ -160,6 +160,15 @@ async function prepareSessionDatabase() {
     // Bootstrap session from SESSION_ID environment variable if provided
     try {
       const { bootstrapSessionFromEnv } = require('./sessionBootstrap.cjs');
+      if (!process.env.SESSION_ID) {
+        console.log("\n=============================================================");
+        console.log("⚠️  [BOT STATUS: WAITING FOR SESSION_ID]");
+        console.log("   SESSION_ID is not configured in Railway Environment Variables.");
+        console.log("   The web dashboard will run, but the WhatsApp bot stays offline.");
+        console.log("   👉 To connect: Pair at https://web-production-0a742.up.railway.app/");
+        console.log("   👉 Then add SESSION_ID in Railway Variables and redeploy.");
+        console.log("=============================================================\n");
+      }
       const bootResult = await bootstrapSessionFromEnv();
       if (bootResult && bootResult.canonicalJid && bootResult.credsObj) {
         const sessionRoot = sessionPaths.resolveSessionRoot();
@@ -212,6 +221,10 @@ async function prepareSessionDatabase() {
         if (bootResult.pushName) process.env.BOT_PUSH_NAME = bootResult.pushName;
 
         console.log(`[session-bootstrap] Injected credentials for ${bootResult.canonicalJid}`);
+        console.log(`\n=============================================================`);
+        console.log(`🟢 [SESSION BOOTSTRAP] Credentials ready for ${bootResult.canonicalJid}!`);
+        console.log(`   Owner: ${bootResult.sessionUserName || "Owner"}`);
+        console.log(`=============================================================\n`);
       }
     } catch (bootErr) {
       console.warn('[session-bootstrap] Notice:', bootErr.message);
