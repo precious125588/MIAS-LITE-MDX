@@ -134,24 +134,13 @@ function extractCredsFromRawSessionId(rawSessionId) {
 
 function resolveConfiguredOwnerName() {
   if (process.env.OWNER_NAME && !/^\d+$/.test(process.env.OWNER_NAME.trim())) {
-    return process.env.OWNER_NAME.trim();
+    const clean = process.env.OWNER_NAME.trim();
+    if (!/^(?:zuko|𝕫𝕦𝕜𝕠)$/i.test(clean)) return clean;
   }
   if (process.env.BOT_ACTIVE_USER && process.env.BOT_ACTIVE_USER !== 'User' && !/^\d+$/.test(process.env.BOT_ACTIVE_USER.trim())) {
-    return process.env.BOT_ACTIVE_USER.trim();
+    const clean = process.env.BOT_ACTIVE_USER.trim();
+    if (!/^(?:zuko|𝕫𝕦𝕜𝕠)$/i.test(clean)) return clean;
   }
-  try {
-    const configPath = path.join(__dirname, '..', 'setting', 'config.js');
-    if (fs.existsSync(configPath)) {
-      delete require.cache[require.resolve(configPath)];
-      require(configPath);
-      if (global.OWNER_NAME && typeof global.OWNER_NAME === 'string' && !/^\d+$/.test(global.OWNER_NAME.trim())) {
-        return global.OWNER_NAME.trim();
-      }
-      if (global.ownername && typeof global.ownername === 'string' && !/^\d+$/.test(global.ownername.trim())) {
-        return global.ownername.trim();
-      }
-    }
-  } catch {}
   return null;
 }
 
@@ -317,10 +306,10 @@ async function bootstrapSessionFromEnv() {
   const pushNameCandidate = (credsObj.me?.name || credsObj.me?.verifiedName || credsObj.me?.notify || '').trim();
   const configuredOwner = resolveConfiguredOwnerName();
 
-  let sessionUserName = 'User';
-  if (pushNameCandidate && !/^\d+$/.test(pushNameCandidate)) {
+  let sessionUserName = 'Owner';
+  if (pushNameCandidate && !/^\d+$/.test(pushNameCandidate) && !/^(?:zuko|𝕫𝕦𝕜𝕠)$/i.test(pushNameCandidate)) {
     sessionUserName = pushNameCandidate;
-  } else if (configuredOwner) {
+  } else if (configuredOwner && !/^(?:zuko|𝕫𝕦𝕜𝕠)$/i.test(configuredOwner)) {
     sessionUserName = configuredOwner;
   } else if (digits) {
     sessionUserName = `+${digits}`;

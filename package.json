@@ -16,7 +16,8 @@
     "deps:update": "node scripts/update-dependencies.cjs --apply",
     "deps:update:major": "node scripts/update-dependencies.cjs --apply --major",
     "update:all": "node scripts/update-dependencies.cjs --apply",
-    "server": "node server.js"
+    "server": "node server.js",
+    "postinstall": "node -e \"if(require('fs').existsSync('mias') && !require('fs').existsSync('mias/node_modules')){console.log('[postinstall] Installing mias dependencies...'); try { require('child_process').execSync('npm install --prefix mias --no-audit --no-fund', {stdio:'inherit'}); } catch(e){ console.warn('[postinstall] mias install note:', e.message); }}\""
   },
   "author": "MAIS",
   "license": "MIT",
