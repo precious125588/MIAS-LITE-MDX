@@ -3,199 +3,126 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MIAS MDX · Status</title>
+  <meta name="theme-color" content="#08090d">
+  <title>MIAS MDX · Bot Status</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      min-height: 100vh;
-      background: #08090d;
-      color: #f1f4f9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      overflow-x: hidden;
-      position: relative;
-    }
-    .background-glow {
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(37, 211, 102, 0.15), transparent 40%),
-        radial-gradient(circle at 80% 80%, rgba(0, 168, 132, 0.12), transparent 45%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .card {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 520px;
-      background: rgba(18, 22, 30, 0.85);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 24px;
-      padding: 40px 32px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
-      text-align: center;
-    }
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(37, 211, 102, 0.12);
-      border: 1px solid rgba(37, 211, 102, 0.3);
-      color: #25d366;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 100px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 24px;
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #25d366;
-      box-shadow: 0 0 12px #25d366;
-      animation: pulse 2s infinite ease-in-out;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-    }
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      color: #ffffff;
-      margin-bottom: 8px;
-      line-height: 1.25;
-    }
-    .username-highlight {
-      background: linear-gradient(135deg, #25d366 0%, #3ef2c4 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      word-break: break-word;
-    }
-    p.subtext {
-      color: #9ba3b4;
-      font-size: 15px;
-      line-height: 1.5;
-      margin-bottom: 32px;
-    }
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 28px;
-      text-align: left;
-    }
-    .info-tile {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 14px;
-      padding: 14px 16px;
-    }
-    .info-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: #717b8f;
-      margin-bottom: 4px;
-    }
-    .info-val {
-      font-size: 14px;
-      font-weight: 600;
-      color: #e2e8f0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .footer-note {
-      font-size: 12px;
-      color: #64748b;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding-top: 20px;
-    }
+    :root { color-scheme: dark; --green:#25d366; --mint:#3ef2c4; --muted:#9ba3b4; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { min-height:100vh; background:#08090d; color:#f1f4f9; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; display:flex; justify-content:center; padding:24px 14px; overflow-x:hidden; }
+    .glow { position:fixed; inset:0; pointer-events:none; background:radial-gradient(circle at 15% 18%,rgba(37,211,102,.14),transparent 40%),radial-gradient(circle at 85% 80%,rgba(0,168,132,.11),transparent 44%); }
+    .page { position:relative; z-index:1; width:min(100%,760px); margin:auto; }
+    .owner-card,.bot-card { background:rgba(18,22,30,.92); border:1px solid rgba(255,255,255,.08); border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.45); text-align:center; backdrop-filter:blur(18px); }
+    .owner-card { max-width:520px; margin:0 auto; padding:40px 32px; transition:padding .25s ease,border-color .25s ease; }
+    .page.has-rentals .owner-card { padding:24px 24px; border-color:rgba(37,211,102,.24); }
+    .badge { display:inline-flex; align-items:center; gap:9px; color:var(--green); border:1px solid rgba(37,211,102,.32); background:rgba(37,211,102,.1); border-radius:99px; text-transform:uppercase; letter-spacing:.7px; font-size:12px; font-weight:750; padding:7px 14px; margin-bottom:22px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:currentColor; box-shadow:0 0 12px currentColor; animation:pulse 2s infinite; }
+    @keyframes pulse { 50%{opacity:.45;transform:scale(.85)} }
+    h1 { font-size:clamp(25px,5vw,36px); line-height:1.2; letter-spacing:-.6px; margin-bottom:10px; }
+    .name { display:block; margin-top:5px; overflow-wrap:anywhere; background:linear-gradient(135deg,var(--green),var(--mint)); color:transparent; background-clip:text; -webkit-background-clip:text; }
+    .subtext { color:var(--muted); font-size:15px; line-height:1.55; margin:0 auto 28px; max-width:440px; }
+    .page.has-rentals .subtext { font-size:13px; margin-bottom:18px; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; text-align:left; }
+    .tile { min-width:0; padding:14px 16px; border-radius:13px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.065); }
+    .label { color:#788397; text-transform:uppercase; letter-spacing:.6px; font-size:10px; margin-bottom:5px; }
+    .value { color:#e2e8f0; font-size:14px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ok { color:var(--green); }
+    .page.has-rentals .owner-card .tile { padding:10px 12px; }
+    .page.has-rentals .owner-card .value { font-size:13px; }
+    .family { display:none; max-width:680px; margin:0 auto; padding-bottom:4px; }
+    .page.has-rentals .family { display:block; }
+    .trunk { width:2px; height:30px; margin:0 auto; background:linear-gradient(var(--green),var(--mint)); box-shadow:0 0 9px rgba(62,242,196,.55); }
+    .family-title { position:relative; width:max-content; max-width:100%; margin:0 auto 18px; padding:7px 15px; border:1px solid rgba(62,242,196,.38); border-radius:30px; background:#10151c; color:var(--mint); font-size:11px; font-weight:750; letter-spacing:.65px; text-transform:uppercase; }
+    .branches { position:relative; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; padding-top:18px; }
+    .branches::before { content:""; position:absolute; top:0; left:25%; right:25%; height:16px; border-top:2px solid rgba(62,242,196,.8); border-left:2px solid rgba(62,242,196,.8); border-right:2px solid rgba(62,242,196,.8); border-radius:8px 8px 0 0; }
+    .branches.one { grid-template-columns:minmax(0,340px); justify-content:center; }
+    .branches.one::before { left:50%; right:auto; width:2px; height:18px; border:0; background:rgba(62,242,196,.8); border-radius:0; }
+    .bot-card { position:relative; padding:24px 20px; border-color:rgba(62,242,196,.22); }
+    .bot-card::before { content:""; position:absolute; top:-19px; left:50%; height:18px; width:2px; background:rgba(62,242,196,.8); }
+    .bot-card .badge { margin-bottom:14px; font-size:10px; padding:6px 12px; color:var(--mint); border-color:rgba(62,242,196,.35); background:rgba(62,242,196,.09); }
+    .bot-card h2 { font-size:21px; line-height:1.25; margin-bottom:8px; }
+    .bot-card .subtext { font-size:12px; margin-bottom:17px; }
+    .bot-card .tile { padding:10px 11px; }
+    .bot-card .value { font-size:12px; }
+    .owner-link { display:block; margin-top:16px; color:#8792a5; font-size:11px; overflow-wrap:anywhere; text-decoration:none; }
+    .owner-link:hover { color:var(--mint); }
+    .footer { max-width:520px; margin:24px auto 0; padding:18px 8px 0; border-top:1px solid rgba(255,255,255,.08); color:#64748b; text-align:center; font-size:12px; }
+    @media(max-width:580px) { body{padding:18px 12px}.owner-card{padding:30px 20px;border-radius:20px}.page.has-rentals .owner-card{padding:21px 16px}.branches{grid-template-columns:minmax(0,1fr);gap:18px;padding-top:0}.branches::before{display:none}.branches.one{grid-template-columns:minmax(0,1fr)}.bot-card{max-width:420px;width:100%;margin:0 auto}.bot-card::before{display:none}.trunk{height:23px}.family-title{margin-bottom:16px} }
   </style>
 </head>
 <body>
-  <div class="background-glow"></div>
-  <div class="card">
-    <div class="status-badge">
-      <span class="status-dot"></span>
-      <span id="badge-text">LIVE &amp; ACTIVE</span>
-    </div>
-
-    <h1>
-      Bot is live for <br>
-      <span id="bot-username" class="username-highlight">Connecting...</span>
-    </h1>
-
-    <p class="subtext" id="status-desc">
-      Connected directly via Session ID. All WhatsApp services and auto-responders are running.
-    </p>
-
-    <div class="info-grid">
-      <div class="info-tile">
-        <div class="info-label">Mode</div>
-        <div class="info-val" id="val-mode">SESSION ID</div>
+  <div class="glow" aria-hidden="true"></div>
+  <main class="page" id="page">
+    <section class="owner-card" aria-label="Main bot status">
+      <div class="badge"><span class="dot"></span><span id="badge-text">LIVE &amp; ACTIVE</span></div>
+      <h1>Bot is live for <span class="name" id="bot-username">Connecting…</span></h1>
+      <p class="subtext" id="status-desc">Connected via Session ID. WhatsApp services and auto-responders are running.</p>
+      <div class="grid">
+        <div class="tile"><div class="label">Mode</div><div class="value" id="val-mode">SESSION ID</div></div>
+        <div class="tile"><div class="label">Status</div><div class="value ok" id="val-status">Online</div></div>
+        <div class="tile"><div class="label">Uptime</div><div class="value" id="val-uptime">Active</div></div>
+        <div class="tile"><div class="label">WhatsApp ID</div><div class="value" id="val-jid">Connected</div></div>
       </div>
-      <div class="info-tile">
-        <div class="info-label">Status</div>
-        <div class="info-val" style="color: #25d366;" id="val-status">Online</div>
-      </div>
-      <div class="info-tile">
-        <div class="info-label">Uptime</div>
-        <div class="info-val" id="val-uptime">Active</div>
-      </div>
-      <div class="info-tile">
-        <div class="info-label">WhatsApp ID</div>
-        <div class="info-val" id="val-jid">Connected</div>
-      </div>
-    </div>
-
-    <div class="footer-note">
-      MIAS-LITE-MDX &bull; Powered by JUST X
-    </div>
-  </div>
-
+    </section>
+    <section class="family" id="family" aria-label="Rented bot family tree">
+      <div class="trunk" aria-hidden="true"></div>
+      <div class="family-title" id="family-title">🌿 Bot family · rented bots</div>
+      <div class="branches" id="branches"></div>
+    </section>
+    <footer class="footer">MIAS-LITE-MDX · Powered by JUST X</footer>
+  </main>
   <script>
+    const $ = id => document.getElementById(id);
+    const safeText = value => String(value ?? '');
+    function renderRentals(bots) {
+      const active = Array.isArray(bots) ? bots.slice(0, 2) : [];
+      const page = $('page'), branches = $('branches');
+      page.classList.toggle('has-rentals', active.length > 0);
+      if (!active.length) { branches.replaceChildren(); return; }
+      $('family-title').textContent = `🌿 BOT FAMILY · RENTED BOTS (${active.length}/2)`;
+      branches.classList.toggle('one', active.length === 1);
+      branches.replaceChildren(...active.map((bot, index) => {
+        const card = document.createElement('article');
+        card.className = 'bot-card';
+        const badge = document.createElement('div'); badge.className = 'badge';
+        const dot = document.createElement('span'); dot.className = 'dot';
+        const badgeLabel = document.createElement('span'); badgeLabel.textContent = `RENTED BOT ${index + 1} · ${bot.status === 'live' ? 'LIVE' : 'STARTING'}`;
+        badge.append(dot, badgeLabel);
+        const heading = document.createElement('h2'); heading.textContent = 'Bot is live for';
+        const name = document.createElement('span'); name.className = 'name'; name.textContent = `@${safeText(bot.username || bot.number || `Bot ${index + 1}`)}`;
+        heading.append(name);
+        const sub = document.createElement('p'); sub.className = 'subtext'; sub.textContent = 'Rented bot connected via Session ID.';
+        const grid = document.createElement('div'); grid.className = 'grid';
+        const rentedAt = bot.rentedAt ? new Date(bot.rentedAt).toLocaleString('en-US', { timeZone:'Africa/Lagos', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Active';
+        for (const [label, value, isOk] of [['Mode','RENTED BOT',false],['Status',bot.status === 'live' ? 'Online' : 'Starting',true],['Rented At',rentedAt,false],['WhatsApp ID',bot.number ? `+${bot.number}` : 'Connected',false]]) {
+          const tile = document.createElement('div'); tile.className = 'tile';
+          const l = document.createElement('div'); l.className = 'label'; l.textContent = label;
+          const v = document.createElement('div'); v.className = `value${isOk && bot.status === 'live' ? ' ok' : ''}`; v.textContent = value;
+          tile.append(l, v); grid.append(tile);
+        }
+        card.append(badge, heading, sub, grid);
+        if (bot.ownerUrl) { const owner = document.createElement('a'); owner.className='owner-link'; owner.href=bot.ownerUrl; owner.textContent='Owner contact'; owner.rel='noopener noreferrer'; card.append(owner); }
+        return card;
+      }));
+    }
     async function refreshStatus() {
       try {
-        const res = await fetch('/api/bot-info');
+        const res = await fetch('/api/bot-info', { cache:'no-store' });
         if (res.ok) {
           const data = await res.json();
-          if (data && data.username) {
-            document.getElementById('bot-username').textContent = data.username;
-            if (data.jid) {
-              document.getElementById('val-jid').textContent = data.jid.split('@')[0];
-            }
-            document.getElementById('val-status').textContent = 'Online';
-            return;
-          }
+          if (data.username) $('bot-username').textContent = data.username;
+          if (data.jid) $('val-jid').textContent = data.jid.split('@')[0];
+          if (data.mode) $('val-mode').textContent = data.mode.replaceAll('_',' ');
+          $('val-status').textContent = data.live ? 'Online' : 'Offline';
+          $('val-status').classList.toggle('ok', !!data.live);
+          if (Array.isArray(data.rentedBots)) renderRentals(data.rentedBots);
         }
-      } catch (e) {}
-
+      } catch (_) {}
       try {
-        const readyRes = await fetch('/api/ready');
-        if (readyRes.ok) {
-          const r = await readyRes.json();
-          if (r.uptime) {
-            const mins = Math.floor(r.uptime / 60);
-            const hrs = Math.floor(mins / 60);
-            document.getElementById('val-uptime').textContent = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
-          }
-        }
-      } catch (e) {}
+        const res = await fetch('/api/ready', { cache:'no-store' });
+        if (res.ok) { const data = await res.json(); if (data.uptime) { const mins=Math.floor(data.uptime/60),hrs=Math.floor(mins/60); $('val-uptime').textContent=hrs ? `${hrs}h ${mins%60}m` : `${mins}m`; } }
+      } catch (_) {}
     }
-
-    refreshStatus();
-    setInterval(refreshStatus, 8000);
+    refreshStatus(); setInterval(refreshStatus, 8000);
   </script>
 </body>
 </html>
