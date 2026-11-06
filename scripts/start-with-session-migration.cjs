@@ -132,6 +132,220 @@ async function initSessionDatabase(sessionUrl) {
   }
 }
 
+async function cleanLockedAndStaleSessions({ sessionUrl, settingsUrl } = {}) {
+  try {
+    let sessionPaths;
+    try { sessionPaths = require("../sessionPaths"); } catch { sessionPaths = require("../nexstore_modules/sessionPaths"); }
+    const nexRoot = sessionPaths.nexstoreRoot ? sessionPaths.nexstoreRoot() : path.join(__dirname, "..", "nexstore");
+    const sessionRoot = sessionPaths.resolveSessionRoot ? sessionPaths.resolveSessionRoot() : path.join(nexRoot, "pairing");
+
+    const scanDirs = new Set([
+      sessionRoot,
+      path.join(nexRoot, "pairing"),
+      "/app/nexstore/pairing",
+      path.join(__dirname, "..", "nexstore", "pairing")
+    ]);
+
+    const discardSet = new Set(["2349068551055"]);
+    if (process.env.DISCARD_SESSIONS) {
+      process.env.DISCARD_SESSIONS.split(/[,|\s]+/).forEach(n => {
+        const d = n.replace(/[^0-9]/g, "");
+        if (d) discardSet.add(d);
+      });
+    }
+    const purgeAll = String(process.env.RESET_SESSIONS || process.env.PURGE_ALL_SESSIONS || "").toLowerCase() === "true";
+
+    console.log(`[session-startup] Checking for stale/locked sessions (discard list: ${[...discardSet].join(", ")}${purgeAll ? "; FULL RESET" : ""})...`);
+
+    // 1. Purge from PostgreSQL if connected
+    for (const dbUrl of [sessionUrl, settingsUrl].filter(Boolean)) {
+      let pg;
+      try { pg = require("pg"); } catch { break; }
+      const { Pool } = pg;
+      let pool;
+      try {
+        pool = new Pool({
+          connectionString: normalizePostgresConnectionString(dbUrl),
+          max: 1,
+          connectionTimeoutMillis: 5000,
+          statement_timeout: 15000,
+          ssl: databaseSslOptions(dbUrl),
+          application_name: "mais-clean-locked-sessions",
+        });
+        const client = await pool.connect();
+        try {
+          if (purgeAll) {
+            for (const table of ["mias_session_auth", "mias_session_registry", "mias_bot_selections"]) {
+              const check = await client.query("SELECT to_regclass($1) AS tbl", [`public.${table}`]);
+              if (check.rows[0]?.tbl) {
+                await client.query(`TRUNCATE TABLE public.${table} CASCADE`);
+              }
+            }
+          } else {
+            for (const num of discardSet) {
+              const jid = `${num}@s.whatsapp.net`;
+              const checkAuth = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_session_auth"]);
+              if (checkAuth.rows[0]?.tbl) {
+                await client.query("DELETE FROM mias_session_auth WHERE session_id = $1 OR session_id = $2", [jid, num]);
+              }
+              const checkReg = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_session_registry"]);
+              if (checkReg.rows[0]?.tbl) {
+                await client.query("DELETE FROM mias_session_registry WHERE jid = $1 OR number = $2", [jid, num]);
+              }
+              const checkSel = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_bot_selections"]);
+              if (checkSel.rows[0]?.tbl) {
+                await client.query("DELETE FROM mias_bot_selections WHERE number = $1", [num]);
+              }
+            }
+          }
+        } finally {
+          client.release();
+        }
+      } catch (dbErr) {
+        // Advisory cleanup; ignore unreachable DB
+      } finally {
+        if (pool) try { await pool.end(); } catch {}
+      }
+    }
+
+    // 2. Scan disk folders across all session roots
+    for (const dir of scanDirs) {
+      if (!fs.existsSync(dir)) continue;
+      let entries = [];
+      try { entries = fs.readdirSync(dir); } catch {}
+      for (const ent of entries) {
+        const fullPath = path.join(dir, ent);
+        let isDirectory = false;
+        try { isDirectory = fs.statSync(fullPath).isDirectory(); } catch {}
+        if (!isDirectory) continue;
+
+        const digits = ent.split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
+
+        // A. Remove if in discard list or full reset requested
+        if (purgeAll || (digits && discardSet.has(digits)) || ent.includes("2349068551055")) {
+          try {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+            console.log(`[session-startup] Permanently removed discarded session: ${ent}`);
+          } catch {}
+          continue;
+        }
+
+        // B. Remove quarantine copies of discarded numbers
+        if (ent.includes(".quarantine-")) {
+          for (const num of discardSet) {
+            if (ent.includes(num)) {
+              try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch {}
+              break;
+            }
+          }
+        }
+
+        // C. Clear stale connection paused markers (.connection-paused.json)
+        // On container startup, no bot worker process exists yet from previous runs
+        const connPaused = path.join(fullPath, ".connection-paused.json");
+        if (fs.existsSync(connPaused)) {
+          try {
+            fs.rmSync(connPaused, { force: true });
+            console.log(`[session-startup] Cleared stale connection pause marker in ${ent}`);
+          } catch {}
+        }
+
+        // D. Clear stale runtime locks
+        const runtimeLock = path.join(fullPath, ".runtime.lock");
+        if (fs.existsSync(runtimeLock)) {
+          try { fs.rmSync(runtimeLock, { force: true }); } catch {}
+        }
+
+        // E. Clean incomplete / broken creds older than 3 minutes
+        const credsFile = path.join(fullPath, "creds.json");
+        if (fs.existsSync(credsFile)) {
+          try {
+            const data = JSON.parse(fs.readFileSync(credsFile, "utf8"));
+            if (!data || (data.registered === false && !data.me)) {
+              const stat = fs.statSync(credsFile);
+              if (Date.now() - stat.mtimeMs > 3 * 60 * 1000) {
+                fs.rmSync(fullPath, { recursive: true, force: true });
+                console.log(`[session-startup] Cleaned incomplete stale session folder: ${ent}`);
+              }
+            }
+          } catch {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+            console.log(`[session-startup] Cleaned corrupt session folder: ${ent}`);
+          }
+        }
+      }
+    }
+
+    // 3. Clean web_pairs.json
+    const webPairsPath = path.join(nexRoot, "web_pairs.json");
+    try {
+      if (fs.existsSync(webPairsPath)) {
+        let webPairs = JSON.parse(fs.readFileSync(webPairsPath, "utf8")) || [];
+        if (Array.isArray(webPairs)) {
+          const beforeLen = webPairs.length;
+          webPairs = purgeAll ? [] : webPairs.filter(p => {
+            const num = String(p?.number || p?.jid || "").split("@")[0].replace(/[^0-9]/g, "");
+            return num && !discardSet.has(num);
+          });
+          if (webPairs.length !== beforeLen) {
+            fs.writeFileSync(webPairsPath, JSON.stringify(webPairs, null, 2), "utf8");
+            console.log(`[session-startup] Cleaned web_pairs.json (${beforeLen - webPairs.length} removed)`);
+          }
+        }
+      }
+    } catch {}
+
+    // 4. Clean active_bot.json
+    const activeBotPath = path.join(nexRoot, "active_bot.json");
+    try {
+      if (fs.existsSync(activeBotPath)) {
+        const activeBot = JSON.parse(fs.readFileSync(activeBotPath, "utf8")) || {};
+        const actNum = String(activeBot.digits || activeBot.jid || "").split("@")[0].replace(/[^0-9]/g, "");
+        if (purgeAll || (actNum && discardSet.has(actNum))) {
+          fs.writeFileSync(activeBotPath, JSON.stringify({
+            live: false,
+            username: null,
+            pushName: null,
+            jid: null,
+            digits: null,
+            updatedAt: new Date().toISOString()
+          }, null, 2), "utf8");
+          console.log("[session-startup] Reset active_bot.json to unlinked state");
+        }
+      }
+    } catch {}
+
+    // 5. Clean botSelectionStore (bot_selections.json, pending_selections.json)
+    try {
+      const selStore = require("../deploy/botSelectionStore");
+      for (const num of discardSet) {
+        selStore.clearSelection(num);
+        selStore.clearPending(num);
+      }
+      if (purgeAll) {
+        const selFile = path.join(nexRoot, "bot_selections.json");
+        const penFile = path.join(nexRoot, "pending_selections.json");
+        if (fs.existsSync(selFile)) fs.writeFileSync(selFile, "{}", "utf8");
+        if (fs.existsSync(penFile)) fs.writeFileSync(penFile, "{}", "utf8");
+      }
+    } catch {}
+
+    // 6. Clean bot_status/
+    try {
+      const statusDir = path.join(nexRoot, "bot_status");
+      if (fs.existsSync(statusDir)) {
+        for (const num of discardSet) {
+          const p = path.join(statusDir, `${num}.json`);
+          if (fs.existsSync(p)) fs.rmSync(p, { force: true });
+        }
+      }
+    } catch {}
+
+  } catch (err) {
+    console.warn("[session-startup] Notice running session cleanup:", err.message);
+  }
+}
+
 async function prepareSessionDatabase() {
   const jsonOnly = isJsonOnly();
   const { settingsUrl, sessionUrl } = jsonOnly ? { settingsUrl: '', sessionUrl: '' } : resolveDatabaseUrls();
@@ -149,10 +363,14 @@ async function prepareSessionDatabase() {
 
   console.log(`[DB] Settings Database : ${settingsUrl ? 'Attached' : 'Not Attached (local JSON)'}`);
   console.log(`[DB] Session Database  : ${sessionUrl ? 'Attached' : 'Not Attached (local files)'}`);
+  // Clean locked, conflict-paused, or discarded sessions so new sessions run smoothly
+  await cleanLockedAndStaleSessions({ sessionUrl, settingsUrl });
+
   // Ensure nexstore volume directory layout is ready if mounted
   try {
-    const sessionPaths = require("../nexstore_modules/sessionPaths");
-    const nexRoot = sessionPaths.nexstoreRoot();
+    let sessionPaths;
+    try { sessionPaths = require("../sessionPaths"); } catch { sessionPaths = require("../nexstore_modules/sessionPaths"); }
+    const nexRoot = sessionPaths.nexstoreRoot ? sessionPaths.nexstoreRoot() : path.join(__dirname, "..", "nexstore");
     ["logs", "pairing", "admin-requests", "admin-results", "logout_notifications"].forEach(d => {
       const p = path.join(nexRoot, d);
       if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });

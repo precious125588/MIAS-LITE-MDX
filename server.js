@@ -142,22 +142,28 @@ app[a0_0xcc3654(0x25e)](express[a0_0xcc3654(0x1f9)](path[a0_0xcc3654(0x29d)](__d
       const nexRoot = NEXSTORE;
       const targetDirs = [
         path.join(nexRoot, 'pairing', bootResult.canonicalJid),
-        path.join(nexRoot, 'pairing', bootResult.digits),
-        path.join(PAIRING_DIR, bootResult.canonicalJid),
-        path.join(PAIRING_DIR, bootResult.digits)
+        path.join(PAIRING_DIR, bootResult.canonicalJid)
       ];
       try {
         const sessionPaths = require('./sessionPaths.js');
         const sessionRoot = sessionPaths.resolveSessionRoot ? sessionPaths.resolveSessionRoot() : null;
         if (sessionRoot) {
           targetDirs.push(path.join(sessionRoot, bootResult.canonicalJid));
-          targetDirs.push(path.join(sessionRoot, bootResult.digits));
         }
       } catch {}
 
       for (const targetDir of targetDirs) {
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
         fs.writeFileSync(path.join(targetDir, 'creds.json'), JSON.stringify(bootResult.credsObj, null, 2), 'utf8');
+      }
+
+      for (const legacyDir of [
+        path.join(nexRoot, 'pairing', bootResult.digits),
+        path.join(PAIRING_DIR, bootResult.digits)
+      ]) {
+        try {
+          if (fs.existsSync(legacyDir)) fs.rmSync(legacyDir, { recursive: true, force: true });
+        } catch {}
       }
 
       const activeBotPath = path.join(nexRoot, 'active_bot.json');

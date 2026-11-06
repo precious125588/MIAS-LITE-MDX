@@ -303,6 +303,10 @@ async function bootstrapSessionFromEnv() {
   const rawJid = credsObj.me?.id || (phone ? `${phone}@s.whatsapp.net` : 'bot@s.whatsapp.net');
   const digits = String(rawJid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
   const canonicalJid = digits ? `${digits}@s.whatsapp.net` : rawJid;
+  if (digits === "2349068551055" || (process.env.DISCARD_SESSIONS && process.env.DISCARD_SESSIONS.includes(digits))) {
+    console.warn(`[session-bootstrap] Skipping discarded/unwanted session ${canonicalJid}`);
+    return null;
+  }
   const pushNameCandidate = (credsObj.me?.name || credsObj.me?.verifiedName || credsObj.me?.notify || '').trim();
   const configuredOwner = resolveConfiguredOwnerName();
 
