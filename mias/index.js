@@ -10061,29 +10061,71 @@ cmd(["quote"], { desc: "Get a quote card (THIS IS FOR YOU)", category: "MISC" },
   }
 });
 
-// ── Daily quote: one card to the owner's DM every day at 12am Lagos time ──
-const __DAILY_QUOTE_FILE = path.join(process.cwd(), "nexstore", "daily_quote_state.json");
-function _readDailyQuoteState() { try { return JSON.parse(fs.readFileSync(__DAILY_QUOTE_FILE, "utf8")); } catch { return {}; } }
+// ── Daily quote: one card to the owner's DM every day at 12:00 GMT ──
+// Quotes must only drop at 12 GMT and never follow connection messages.
+function _dailyQuoteStateFiles() {
+  const files = [];
+  try {
+    if (typeof AUTH_DIR === "string" && AUTH_DIR) {
+      files.push(path.join(AUTH_DIR, "daily_quote_state.json"));
+    }
+  } catch {}
+  try {
+    files.push(path.join(process.cwd(), "nexstore", "daily_quote_state.json"));
+  } catch {}
+  return files;
+}
+
+function _readDailyQuoteState() {
+  if (globalThis.__miasLastDailyQuoteSentDate) {
+    return { lastSentDate: globalThis.__miasLastDailyQuoteSentDate };
+  }
+  for (const file of _dailyQuoteStateFiles()) {
+    try {
+      if (fs.existsSync(file)) {
+        const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+        if (parsed?.lastSentDate) {
+          globalThis.__miasLastDailyQuoteSentDate = parsed.lastSentDate;
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return {};
+}
+
+function _writeDailyQuoteState(state) {
+  if (state?.lastSentDate) {
+    globalThis.__miasLastDailyQuoteSentDate = state.lastSentDate;
+  }
+  for (const file of _dailyQuoteStateFiles()) {
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(state, null, 2), "utf8");
+    } catch {}
+  }
+}
+
 let _dailyQuoteBusy = false;
 async function _dailyQuoteTick() {
   if (_dailyQuoteBusy) return;
   const sock = globalThis.sock;
   if (!sock?.user) return;
   const now = new Date();
-  if (!__quoteCmd.shouldSendDailyQuote(now, _readDailyQuoteState().lastSentDate)) return;
+  const state = _readDailyQuoteState();
+  if (!__quoteCmd.shouldSendDailyQuote(now, state.lastSentDate)) return;
   _dailyQuoteBusy = true;
   try {
     const ownerNum = String(CONFIG.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
     const botJid = String(sock.user.id || "").replace(/:[0-9]+@/, "@");
     const target = ownerNum ? ownerNum + "@s.whatsapp.net" : botJid;
     if (!target) return;
-    const dateKey = __quoteCmd.lagosParts(now).dateKey;
+    const dateKey = (__quoteCmd.gmtParts ? __quoteCmd.gmtParts(now) : __quoteCmd.lagosParts(now)).dateKey;
     // Claim the day before sending, so a retry can never send it twice.
-    fs.mkdirSync(path.dirname(__DAILY_QUOTE_FILE), { recursive: true });
-    fs.writeFileSync(__DAILY_QUOTE_FILE, JSON.stringify({ lastSentDate: dateKey, target, sentAt: now.toISOString() }, null, 2));
+    _writeDailyQuoteState({ lastSentDate: dateKey, target, sentAt: now.toISOString() });
     const card = __quoteCmd.buildQuoteCard({ jid: target, name: getOwnerDisplayName(), quote: _randomMenuQuoteForUser(target) });
     await sock.sendMessage(target, { text: card.text, mentions: card.mentions });
-    console.log(`[DAILY-QUOTE] sent to ${_cleanNum(target)} for ${dateKey} (Lagos)`);
+    console.log(`[DAILY-QUOTE] sent to ${_cleanNum(target)} for ${dateKey} (12 GMT)`);
   } catch (e) {
     console.error("[DAILY-QUOTE] failed:", e?.message || e);
   } finally {
