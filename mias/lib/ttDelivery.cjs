@@ -302,8 +302,9 @@ async function deliverTikTokFile({
     return { type: "audio", bytes: file.bytes, sent };
   }
 
-  // 1.4: the provider's original file, as a document, untouched.
-  if (mode && mode.document && !mode.upscale4k) {
+  // 1.4 now re-encodes like 1.3 HD and sends as a document.
+  // Other document modes (such as 1.2 SD document) keep the provider's original file untouched.
+  if (mode && mode.document && !mode.upscale4k && mode.id !== "1.4" && mode.quality !== "hd") {
     const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, caption, quoted);
     return { type: "document", bytes: file.bytes, sent };
   }
@@ -311,7 +312,9 @@ async function deliverTikTokFile({
   // 1.8 / 1.9: the 4K encoder the picker uses. 1.3 and the rest: 1080p HD re-encode.
   const encoded = mode && mode.upscale4k
     ? await processVideoTo4k(file.path, { timeoutMs: TT4K_TIMEOUT_MS })
-    : await reencodeHdForWhatsApp(file);
+    : await reencodeHdForWhatsApp(file, {
+        maxBytes: mode && mode.document ? disk.WHATSAPP_DOC_MAX_BYTES : TT_INLINE_VIDEO_MAX_BYTES,
+      });
   try {
     if (mode && mode.document) {
       const sent = await disk.sendDocumentFromDisk(
