@@ -241,7 +241,7 @@ async function bootstrapSessionFromEnv() {
   const rawSessionId = String(process.env.SESSION_ID || '').trim();
   if (!rawSessionId) return null;
 
-  console.log(`[JUST-X bootstrap] Detected SESSION_ID: ${rawSessionId.slice(0, 15)}...`);
+  console.log('[session-bootstrap] SESSION_ID configured (value redacted)');
 
   let credsObj = null;
   let phone = '';
@@ -260,7 +260,7 @@ async function bootstrapSessionFromEnv() {
     let embeddedUrl = null;
 
     // Pattern: [PREFIX~]https://my-session.up.railway.app~TOKEN
-    const embeddedMatch = rawSessionId.match(/^(?:[A-Za-z0-9_-]+[~_ -])?(https?:\/\/[^~_ -]+)[~_ -](.+)$/i);
+    const embeddedMatch = rawSessionId.match(/^(?:[A-Za-z0-9_-]+~)?(https?:\/\/[^~\s]+)~(.+)$/i);
     if (embeddedMatch) {
       embeddedUrl = embeddedMatch[1];
       lookupId = embeddedMatch[2];
@@ -295,6 +295,12 @@ async function bootstrapSessionFromEnv() {
     return null;
   }
 
+  const identity = String(credsObj?.me?.id || '');
+  if (!/^\d+(?::\d+)?@s\.whatsapp\.net$/.test(identity) || credsObj.registered === false ||
+      !credsObj.noiseKey || !credsObj.signedIdentityKey) {
+    throw new Error('SESSION_ID is incomplete or unpaired; existing sessions were not changed');
+  }
+
   // Ensure registered is true so Baileys / pair.js credsAreComplete treats it as ready
   if (credsObj.registered !== false) {
     credsObj.registered = true;
@@ -319,7 +325,7 @@ async function bootstrapSessionFromEnv() {
   }
 
   console.log(`[JUST-X bootstrap] Session authenticated for ${canonicalJid}!`);
-  console.log(`BOT LIVE for ${sessionUserName}`);
+  console.log('[session-bootstrap] Credentials decoded; waiting for a real WhatsApp connection');
   return {
     canonicalJid,
     digits,
@@ -329,7 +335,40 @@ async function bootstrapSessionFromEnv() {
   };
 }
 
+async function prepareBootSession(targetDir, bootResult) {
+  const { initializeSessionDirectory } = require('./sessionPolicy.cjs');
+  const canonicalDir = path.resolve(targetDir);
+  const legacyDir = path.join(path.dirname(canonicalDir), bootResult.digits);
+  // Move an entire legacy snapshot; never delete its keys and replace just creds.
+  if (!fs.existsSync(canonicalDir) && legacyDir !== canonicalDir && fs.existsSync(path.join(legacyDir, 'creds.json'))) {
+    const legacy = JSON.parse(fs.readFileSync(path.join(legacyDir, 'creds.json'), 'utf8'));
+    if (require('./sessionPolicy.cjs').sessionDigits(legacy?.me?.id) !== bootResult.digits) {
+      throw new Error('Legacy auth identity mismatch; session preserved');
+    }
+    fs.renameSync(legacyDir, canonicalDir);
+  }
+  if (!fs.existsSync(path.join(canonicalDir, 'creds.json'))) {
+    const store = require('../mias/sessionPersistence.cjs');
+    const restored = await store.restoreSessionDirFromDb(bootResult.canonicalJid, canonicalDir);
+    if (!restored.ok && restored.reason !== 'db_not_configured') {
+      throw new Error('Session backup unavailable; refusing stale SESSION_ID fallback');
+    }
+  }
+  const prepared = initializeSessionDirectory(canonicalDir, bootResult);
+  bootResult.credsObj = prepared.credsObj;
+  const me = prepared.credsObj.me;
+  const savedName = [me?.name, me?.verifiedName, me?.notify].find(value =>
+    typeof value === 'string' && value.trim() && !/^\+?\d+$/.test(value.trim()) &&
+    !/^(?:Bot Owner|User|Owner|null|undefined)$/i.test(value.trim()));
+  if (savedName) {
+    bootResult.sessionUserName = savedName.trim();
+    bootResult.pushName = savedName.trim();
+  }
+  return { ...prepared, sessionDir: canonicalDir };
+}
+
 module.exports = {
+  prepareBootSession,
   bootstrapSessionFromEnv,
   fetchSessionCreds,
   resolveCandidateServerUrls,
