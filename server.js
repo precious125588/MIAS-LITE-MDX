@@ -187,7 +187,8 @@ app[a0_0xcc3654(0x25e)](express[a0_0xcc3654(0x1f9)](path[a0_0xcc3654(0x29d)](__d
         const running = _launcher.list().some(b => (b.number === bootResult.canonicalJid || b.number === bootResult.digits) && b.alive);
         if (!running) {
           console.log(`[bootstrap] Explicitly launching bot for ${bootResult.canonicalJid}...`);
-          await _launcher.launch(bootResult.canonicalJid, primaryDir);
+          if (typeof _launcher.clearPaused === 'function') { try { _launcher.clearPaused(bootResult.canonicalJid); _launcher.clearPaused(bootResult.digits); } catch {} }
+          await _launcher.launch(bootResult.canonicalJid, primaryDir, { isResume: true });
           console.log(`[bootstrap] Bot process started for ${bootResult.canonicalJid}!`);
         }
       }
