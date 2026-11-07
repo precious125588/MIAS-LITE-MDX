@@ -423,7 +423,7 @@ function printStartupBanner() {
     lines.push('🎬 GC route animes: CONNECTED');
     lines.push('🎯 New-link discovery: ACTIVE');
   } else {
-    lines.push(`⚠️ GC route animes isn't connected`);
+    lines.push(`⚠️ GC route animes isn't connected: no paired session for ${LIBRARY_NUMBER} on this volume. Pair that number to turn them on.`);
     lines.push(`📞 Library number: ${LIBRARY_NUMBER}`);
   }
   try { console.log(lines.join('\n')); } catch {}
@@ -453,7 +453,7 @@ function statusText() {
     lines.push('🎬 GC route animes: CONNECTED');
     lines.push(...routeHealthLines());
   } else {
-    lines.push(`⚠️ GC route animes isn't connected`);
+    lines.push(`⚠️ GC route animes isn't connected: no paired session for ${LIBRARY_NUMBER} on this volume. Pair that number to turn them on.`);
     lines.push(`📞 Library number: ${LIBRARY_NUMBER}`);
   }
   lines.push('🎯 TikTok detector: ACTIVE (silent — TikTok links only)');
@@ -499,7 +499,7 @@ function attach(sock, opts) {
             const s = _librarySock || sock;
             if (s) refresh(s).then(() => printRouteHealth()).catch(() => {});
           } catch {}
-        }, 60000);
+        }, 60000).unref?.(); // unref: never keeps a process alive by itself
         if (typeof globalThis.__animeGcHealer.unref === 'function') { try { globalThis.__animeGcHealer.unref(); } catch {} }
       }
     }
