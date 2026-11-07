@@ -26,21 +26,22 @@ test('unknown or invalid source probes use the existing HD reference bitrate', (
   assert.equal(delivery.pickHdBitrate({ width: 0, height: 0, shortSide: 0, videoKbps: null }, delivery.HD_BOOST, hdBoost), delivery.HD_REFERENCE_KBPS);
 });
 
-test("boost constants are configured: 1% for standard HD and 0.4% for native video", () => {
+test("boost constants are configured: 0.01 for standard and native HD, 0.02 for 4K", () => {
   assert.equal(delivery.HD_BOOST, 1.01);
-  assert.equal(delivery.NATIVE_HD_BOOST, 1.004);
-  assert.equal(delivery.HIGH_QUALITY_HD_BOOST, 1.004);
+  assert.equal(delivery.NATIVE_HD_BOOST, 1.01);
+  assert.equal(delivery.HIGH_QUALITY_HD_BOOST, 1.01);
+  assert.equal(delivery.HIGH_QUALITY_4K_BOOST, 1.02);
 });
 
-test("HD sources with 1% boost encode at 1%", () => {
+test("HD sources with 0.01 boost encode at 1.01", () => {
   const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 20000 };
-  const expectedBitrate = Math.round(20000 * 1.01); // 20200 kb/s (1% boost)
+  const expectedBitrate = Math.round(20000 * 1.01); // 20200 kb/s (0.01 boost)
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, 1.01), expectedBitrate);
 });
 
-test("Native 1080p videos encode by 0.4%", () => {
+test("Native 1080p videos encode by 0.01", () => {
   const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 5000 };
-  const expectedBitrate = Math.round(5000 * 1.004); // 5020 kb/s (0.4% boost)
+  const expectedBitrate = Math.round(5000 * 1.01); // 5050 kb/s (0.01 boost)
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), expectedBitrate);
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), expectedBitrate);
 });

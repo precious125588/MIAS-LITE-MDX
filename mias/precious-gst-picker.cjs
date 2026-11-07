@@ -214,29 +214,7 @@ module.exports = {
             let vidBuf = payload.buf;
             const maxVidBytes = 95 * 1024 * 1024;
             if (vidBuf && vidBuf.length > maxVidBytes) {
-              // Video exceeds 95 MiB: compress without quality loss
-              const tmpVidIn = path.join(os.tmpdir(), `gst_c_in_${Date.now()}.mp4`);
-              const tmpVidOut = path.join(os.tmpdir(), `gst_c_out_${Date.now()}.mp4`);
-              try {
-                fs.writeFileSync(tmpVidIn, vidBuf);
-                await execFF([
-                  '-y', '-i', tmpVidIn,
-                  '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24',
-                  '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k',
-                  '-movflags', '+faststart',
-                  tmpVidOut
-                ]);
-                if (fs.existsSync(tmpVidOut)) {
-                  const compB = fs.readFileSync(tmpVidOut);
-                  if (compB && compB.length > 1024) vidBuf = compB;
-                }
-              } catch {} finally {
-                try { fs.unlinkSync(tmpVidIn); } catch {}
-                try { fs.unlinkSync(tmpVidOut); } catch {}
-              }
-              if (vidBuf.length > maxVidBytes) {
-                return { ok: false, error: 'Video exceeds WhatsApp 95 MiB limit even after compression.' };
-              }
+              return { ok: false, error: 'Video exceeds WhatsApp 95 MiB limit (compression permanently disabled).' };
             }
             inner = await g({ video: vidBuf, caption: payload.caption || '', mimetype: 'video/mp4' }, genOpts);
           } else if (payload.kind === 'audio') {

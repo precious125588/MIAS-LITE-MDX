@@ -41,12 +41,13 @@ const HD_VIDEO_FILTER = "setpts=PTS-STARTPTS,scale='if(gte(iw,ih),-2,1080)':'if(
 // - A source below that state is re-encoded to the 18398 kb/s reference, without the 10%.
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
-// 1% boost for general 1.3 HD re-encoding (1.01)
+// 0.01 boost (1.01) for general 1.3 HD re-encoding
 const HD_BOOST = 1.01;
-// 0.4% boost for native / high quality 1080p+ videos (1.004)
-const NATIVE_HD_BOOST = 1.004;
-const HIGH_QUALITY_HD_BOOST = 1.004;
-const HIGH_QUALITY_4K_BOOST = 1.015;
+// 0.01 boost (1.01) for native / high quality 1080p+ videos
+const NATIVE_HD_BOOST = 1.01;
+const HIGH_QUALITY_HD_BOOST = 1.01;
+// 0.02 boost (1.02) for 4K video encoding
+const HIGH_QUALITY_4K_BOOST = 1.02;
 const HD_MAX_KBPS = 40000;
 
 // Only native 1080p+ sources use the gentle source-relative boost. Smaller
@@ -279,47 +280,9 @@ async function reencodeHdForWhatsApp(input, {
     return { path: inPath, bytes: inStat ? inStat.size : (input?.bytes || 0), cleanup: async () => {}, untouched: true, fallback: true };
   }
 
-  // When output exceeds maxBytes (95 MiB), attempt high-quality compression to fit within 95 MiB
+  // Oversized videos are sent as downloadable documents without lossy recompression
   if (stat.size > maxBytes) {
-    const compOut = tempPath("hd_comp", ".mp4");
-    try {
-      // Calculate target bitrate from probe duration or default estimate
-      let durationSec = 60;
-      if (probe && probe.duration) durationSec = Number(probe.duration);
-      // Target 88 MiB to have safety margin under 95 MiB
-      const targetTotalKbps = Math.max(800, Math.floor((88 * 1024 * 8) / (durationSec || 60)));
-      const targetVideoKbps = Math.max(650, targetTotalKbps - 128);
-      const compArgs = [
-        "-y", "-v", "error",
-        "-i", out,
-        "-c:v", "libx264", "-preset", "veryfast",
-        "-b:v", `${targetVideoKbps}k`, "-maxrate", `${targetVideoKbps + 150}k`, "-bufsize", `${targetVideoKbps * 2}k`,
-        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
-        "-movflags", "+faststart",
-        compOut
-      ];
-      const compRun = await runFfmpeg(compArgs, timeoutMs);
-      if (!compRun.error && compRun.code === 0 && fs.existsSync(compOut)) {
-        const compStat = await fsp.stat(compOut).catch(() => null);
-        if (compStat && compStat.size > MIN_BYTES && compStat.size <= maxBytes) {
-          await cleanup();
-          return {
-            path: compOut,
-            bytes: compStat.size,
-            cleanup: async () => { await fsp.rm(compOut, { force: true }).catch(() => {}); }
-          };
-        }
-      }
-    } catch {} finally {
-      if (fs.existsSync(compOut)) {
-        const cStat = fs.statSync(compOut);
-        if (cStat.size > maxBytes || cStat.size < MIN_BYTES) {
-          try { fs.unlinkSync(compOut); } catch {}
-        }
-      }
-    }
-
-    console.warn("[HD re-encode] file exceeds maxBytes even after compression, returning for document fallback");
+    console.log(`[HD re-encode] file exceeds ${maxBytes} bytes, returning untouched for document fallback (compression disabled)`);
     return { path: out, bytes: stat.size, cleanup };
   }
 
@@ -339,8 +302,22 @@ async function deliverTikTokFile({
 }) {
   const isDoc = Boolean(mode && mode.document) || kind === "document";
   function finalizeResult(res) {
-    if (effectiveCacheKey && res?.sent?.key?.id) {
-      try { mediaCache.recordSentMedia(effectiveCacheKey, res.sent); } catch {}
+    if (res?.sent?.key?.id) {
+      if (effectiveCacheKey) {
+        try { mediaCache.recordSentMedia(effectiveCacheKey, res.sent); } catch {}
+      }
+      if (file?.path) {
+        try {
+          const h = mediaCache.computeFileHash(file.path);
+          if (h) mediaCache.recordSentMedia(`sha256:${h}`, res.sent);
+        } catch {}
+      }
+      if (res?.path) {
+        try {
+          const ph = mediaCache.computeFileHash(res.path);
+          if (ph) mediaCache.recordSentMedia(`sha256:${ph}`, res.sent);
+        } catch {}
+      }
     }
     return res;
   }
@@ -349,8 +326,22 @@ async function deliverTikTokFile({
   const cleanUrl = url ? String(url).trim() : (file?.url ? String(file.url).trim() : null);
   const effectiveCacheKey = cacheKey || (cleanUrl ? `tt:${cleanUrl}:${modeId}:${kind}` : null);
 
-  if (effectiveCacheKey) {
-    const cached = mediaCache.getCachedMedia(effectiveCacheKey);
+  const keysToCheck = [];
+  if (effectiveCacheKey) keysToCheck.push(effectiveCacheKey);
+  if (file?.path) {
+    try {
+      const fileHash = mediaCache.computeFileHash(file.path);
+      if (fileHash) keysToCheck.push(`sha256:${fileHash}`);
+    } catch {}
+  }
+
+  let cached = null;
+  for (const k of keysToCheck) {
+    cached = mediaCache.getCachedMedia(k);
+    if (cached) break;
+  }
+
+  if (cached) {
     if (cached) {
       try {
         const result = await mediaCache.sendViaMediaKeys(sock, jid, cached, {

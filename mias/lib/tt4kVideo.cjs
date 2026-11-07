@@ -215,9 +215,9 @@ async function processVideoTo4k(input, opts = {}) {
       const deadline = Date.now() + timeoutMs;
       const sourceProbe = await probeSourceVideo(ffmpegBin, inputPath).catch(() => null);
 
-      // If the video already has original high quality (native 1080p+), leave it untouched.
-      // Re-encoding or upscaling pristine sources causes audio cracking and playback lag.
-      if (sourceProbe && sourceProbe.shortSide >= MIN_HIGH_QUALITY_SHORT_SIDE && sourceProbe.videoKbps > 0) {
+      // When sourceQualityBoost is requested (e.g. 1.02 for 1.8 4k), proceed with encoding to apply the 0.02 boost.
+      // Only bypass re-encoding if no quality boost is requested.
+      if (!opts.sourceQualityBoost && sourceProbe && sourceProbe.shortSide >= MIN_HIGH_QUALITY_SHORT_SIDE && sourceProbe.videoKbps > 0) {
         fs.copyFileSync(inputPath, outputPath);
         const stats = fs.statSync(outputPath);
         return {
@@ -228,7 +228,7 @@ async function processVideoTo4k(input, opts = {}) {
         };
       }
 
-      const processingOpts = { ...opts, sourceProbe };
+      const processingOpts = { sourceQualityBoost: 1.02, ...opts, sourceProbe };
 
       const maxOutputBytes = Number(opts.maxOutputBytes) > 0 ? Number(opts.maxOutputBytes) : MAX_4K_OUTPUT_BYTES;
       let run = await runFfmpeg(ffmpegBin, buildFfmpegArgs(inputPath, outputPath, processingOpts, "normal"), timeoutMs);
@@ -305,46 +305,9 @@ async function processVideoTo4k(input, opts = {}) {
         };
       }
 
-      // When output exceeds maxOutputBytes (95 MiB), attempt high-quality compression to fit within 95 MiB
+      // When output exceeds maxOutputBytes (95 MiB), return without lossy compression for document fallback
       if (stats.size > maxOutputBytes) {
-        const compOut = path.join(WORK_DIR, `tt4k_comp_${jobId}.mp4`);
-        try {
-          const compArgs = [
-            "-y", "-v", "error",
-            "-i", outputPath,
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "24",
-            "-maxrate", "6M", "-bufsize", "12M",
-            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
-            "-movflags", "+faststart",
-            compOut
-          ];
-          const compRun = await runFfmpeg(ffmpegBin, compArgs, 180000);
-          if (!compRun.error && compRun.code === 0 && fs.existsSync(compOut)) {
-            const compStat = fs.statSync(compOut);
-            if (compStat.size > MIN_OUTPUT_BYTES && compStat.size <= maxOutputBytes) {
-              removeFile(outputPath);
-              let cleanedComp = false;
-              return {
-                path: compOut,
-                bytes: compStat.size,
-                cleanup: () => {
-                  if (cleanedComp) return;
-                  cleanedComp = true;
-                  removeFile(compOut);
-                }
-              };
-            }
-          }
-        } catch {} finally {
-          if (fs.existsSync(compOut)) {
-            const cStat = fs.statSync(compOut);
-            if (cStat.size > maxOutputBytes || cStat.size < MIN_OUTPUT_BYTES) {
-              removeFile(compOut);
-            }
-          }
-        }
-
-        console.warn("[4K video] file exceeds maxOutputBytes even after compression, returning for document fallback");
+        console.log(`[4K video] file size (${stats.size}) exceeds ${maxOutputBytes} bytes, returning untouched for document fallback (compression disabled)`);
         let cleaned = false;
         return {
           path: outputPath,

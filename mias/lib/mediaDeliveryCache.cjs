@@ -77,6 +77,9 @@ function getCacheFilePath() {
 function serializeBuffer(buf) {
   if (!buf) return null;
   if (Buffer.isBuffer(buf)) return buf.toString("base64");
+  if (buf instanceof Uint8Array || (typeof buf === "object" && (buf.constructor?.name === "Uint8Array" || ArrayBuffer.isView(buf)))) {
+    return Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength).toString("base64");
+  }
   if (typeof buf === "string") return buf;
   if (Array.isArray(buf)) return Buffer.from(buf).toString("base64");
   if (typeof buf === "object" && buf.data) return Buffer.from(buf.data).toString("base64");
@@ -86,6 +89,9 @@ function serializeBuffer(buf) {
 function deserializeBuffer(val) {
   if (!val) return null;
   if (Buffer.isBuffer(val)) return val;
+  if (val instanceof Uint8Array || (typeof val === "object" && (val.constructor?.name === "Uint8Array" || ArrayBuffer.isView(val)))) {
+    return Buffer.from(val.buffer, val.byteOffset, val.byteLength);
+  }
   if (typeof val === "string") {
     try {
       return Buffer.from(val, "base64");
@@ -93,6 +99,8 @@ function deserializeBuffer(val) {
       return null;
     }
   }
+  if (Array.isArray(val)) return Buffer.from(val);
+  if (typeof val === "object" && val.data) return Buffer.from(val.data);
   return null;
 }
 
@@ -238,11 +246,15 @@ function extractMediaKeys(sentMessage) {
     type = "sticker";
   }
 
-  if (!target || !target.directPath || !target.mediaKey) {
+  if (!target || (!target.directPath && !target.url) || !target.mediaKey) {
     return null;
   }
 
-  const directPath = String(target.directPath || "");
+  let directPath = String(target.directPath || "");
+  if (!directPath && typeof target.url === "string") {
+    const urlMatch = target.url.match(/(\/v\/[^\s?#]+)/);
+    if (urlMatch) directPath = urlMatch[1];
+  }
   const mediaKey = serializeBuffer(target.mediaKey);
   const fileSha256 = serializeBuffer(target.fileSha256);
   const fileEncSha256 = serializeBuffer(target.fileEncSha256);
@@ -358,6 +370,7 @@ async function sendViaMediaKeys(sock, jid, cached, {
   type = null,
   ptv = false,
   isAnimated = false,
+  ...extraOptions
 } = {}) {
   if (!sock || !jid || !cached || !cached.directPath || !cached.mediaKey) {
     throw new Error("Invalid parameters for media key send");
@@ -445,7 +458,10 @@ async function sendViaMediaKeys(sock, jid, cached, {
       } catch {}
     }
 
-    await sock.relayMessage(jid, finalPayload, { messageId: msgId });
+    const relayOpts = { messageId: msgId };
+    if (extraOptions.statusJidList) relayOpts.statusJidList = extraOptions.statusJidList;
+    if (extraOptions.additionalNodes) relayOpts.additionalNodes = extraOptions.additionalNodes;
+    await sock.relayMessage(jid, finalPayload, relayOpts);
     const result = {
       key: { remoteJid: jid, fromMe: true, id: msgId },
       message: finalPayload,
