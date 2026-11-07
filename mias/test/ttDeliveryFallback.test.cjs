@@ -122,5 +122,7 @@ test('mias/index.js contains 1.01 quality boost for TikTok HD picker (1.3 & 1.4)
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8');
   assert.equal(indexSource.includes('1.01:null'), true, 'Expected 1.01:null in index.js');
   assert.equal(indexSource.includes('1.004:null'), false, 'Found old 1.004 in index.js');
-  assert.equal(indexSource.includes("'sourceQualityBoost':1.02"), true, 'Expected 1.02 4K boost in index.js');
+  // The 4K boost moved into the readable module; check its constant there.
+  const ttSource = fs.readFileSync(path.join(__dirname, '../lib/ttDelivery.cjs'), 'utf8');
+  assert.match(ttSource, /const HIGH_QUALITY_4K_BOOST = 1\.02;/, 'Expected 1.02 4K boost in lib/ttDelivery.cjs');
 });
