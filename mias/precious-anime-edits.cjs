@@ -510,8 +510,8 @@ const NO_REENCODE_CATEGORIES = new Set([
 ]);
 
 function shouldSkipReencode(catKey, item) {
-  const c = String(catKey || (item && (item.category || item.catKey || item.cat)) || "").toLowerCase().trim();
-  return NO_REENCODE_CATEGORIES.has(c);
+  // All status menu categories send original file untouched through CDN and cache without re-encoding or brightness boost
+  return true;
 }
 
 async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null) {

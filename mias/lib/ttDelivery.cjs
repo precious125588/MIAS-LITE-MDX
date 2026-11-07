@@ -42,10 +42,10 @@ const HD_VIDEO_FILTER = "setpts=PTS-STARTPTS,scale='if(gte(iw,ih),-2,1080)':'if(
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
 // 0.01 boost (1.01) for general 1.3 HD re-encoding
-const HD_BOOST = 1.0001;
-// 0.0001 boost (1.0001) for native / high quality 1080p+ videos
-const NATIVE_HD_BOOST = 1.0001;
-const HIGH_QUALITY_HD_BOOST = 1.0001;
+const HD_BOOST = 1.0;
+// No brightness or quality boost for HD/status (original file untouched)
+const NATIVE_HD_BOOST = 1.0;
+const HIGH_QUALITY_HD_BOOST = 1.0;
 // 0.001 boost (1.001) for 4K video encoding
 const HIGH_QUALITY_4K_BOOST = 1.001;
 const HD_MAX_KBPS = 40000;
@@ -392,15 +392,19 @@ async function deliverTikTokFile({
     return finalizeResult({ type: "audio", bytes: file.bytes, sent });
   }
 
-  // 1.4 now re-encodes like 1.3 HD and sends as a document.
-  // Other document modes (such as 1.2 SD document) keep the provider's original file untouched.
-  if (mode && mode.document && !mode.upscale4k && mode.id !== "1.4" && mode.quality !== "hd") {
+  // Document modes (1.4 HD document, 1.2 SD document, etc.): send untouched source directly as original file unless 4K.
+  if (mode && mode.document && !mode.upscale4k) {
     const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, caption, quoted);
     return finalizeResult({ type: "document", bytes: file.bytes, sent });
   }
 
-  // Remove re-encode out across non-HD/non-4K video modes: send untouched source directly.
-  if (mode && !mode.upscale4k && mode.id !== "1.3" && mode.id !== "1.4" && mode.quality !== "hd" && !mode.videoNote && !mode.document) {
+  // Video modes (1.3 HD, 1.1 SD, etc.): send untouched source directly as original file unless 4K or videoNote.
+  if (!mode?.upscale4k && !mode?.videoNote && !mode?.document) {
+    if (file.bytes > TT_INLINE_VIDEO_MAX_BYTES) {
+      const docCaption = caption ? `${caption}\n📎 (larger than 92 MB — sent as document)` : "📎 (larger than 92 MB — sent as document)";
+      const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, docCaption, quoted);
+      return finalizeResult({ type: "document", bytes: file.bytes, sent, fallbackToDocument: true });
+    }
     const sent = await disk.sendVideoFromDisk(sock, jid, file.path, caption, quoted);
     return finalizeResult({ type: "video", bytes: file.bytes, sent });
   }
