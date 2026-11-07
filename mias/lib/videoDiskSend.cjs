@@ -183,16 +183,29 @@ function installVideoDiskSend(sock, { dir = null } = {}) {
               ptv: mediaKey === "audio" ? Boolean(content.ptt) : Boolean(content.ptv),
               isAnimated: Boolean(content.isAnimated),
               quoted: options?.quoted || null,
+              relayOptions: {
+                ...(Array.isArray(options?.statusJidList) ? { statusJidList: options.statusJidList } : {}),
+                ...(Array.isArray(options?.additionalNodes) ? { additionalNodes: options.additionalNodes } : {}),
+                ...(options?.messageId ? { messageId: options.messageId } : {}),
+              },
               sendFresh: () => rawSend(jid, payload, options),
             });
           }
         } catch (cacheErr) {
-          console.warn(`[disk-send] media cache fallback: ${cacheErr?.message || cacheErr}`);
+          if (cacheErr?.__mediaFreshSendFailed) throw cacheErr;
+          console.warn(`[CDN-CACHE] cache-layer error; using one fresh send media=${mediaKey} target=${jid === "status@broadcast" ? "status" : "chat"} error=${cacheErr?.message || cacheErr}`);
         }
       }
 
-      const result = await rawSend(jid, payload, options);
+      let result;
+      try {
+        result = await rawSend(jid, payload, options);
+      } catch (sendErr) {
+        console.error(`[CDN-CACHE] FAILED method=fresh media=${mediaKey || "unknown"} target=${jid === "status@broadcast" ? "status" : "chat"} error=${sendErr?.message || sendErr}`);
+        throw sendErr;
+      }
       if (result?.key?.id) {
+        console.log(`[CDN-CACHE] SUCCESS method=fresh media=${mediaKey || "unknown"} target=${jid === "status@broadcast" ? "status" : "chat"} cache=miss`);
         try {
           const mediaCache = require("./mediaDeliveryCache.cjs");
           const pathsToIndex = [...written];
