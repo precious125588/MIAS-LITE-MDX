@@ -285,3 +285,101 @@ test('deliverTikTokFile reuses cached CDN media for repeat TikTok URLs without r
     try { fs.unlinkSync(tmpFile); } catch {}
   }
 });
+
+
+test('extractMediaKeys extracts sticker CDN data', () => {
+  const extracted = mediaCache.extractMediaKeys({
+    key: { remoteJid: 'user@s.whatsapp.net', fromMe: true, id: 'STICKER_1' },
+    message: {
+      stickerMessage: {
+        directPath: '/v/t62/sticker.webp',
+        mediaKey: Buffer.from('sticker-media-key-0123456789'),
+        fileSha256: Buffer.from('sticker-sha256-data-0123456789'),
+        fileEncSha256: Buffer.from('sticker-enc-sha256-0123456789'),
+        fileLength: 4096,
+        mimetype: 'image/webp',
+        isAnimated: true,
+      },
+    },
+  });
+
+  assert.ok(extracted);
+  assert.equal(extracted.type, 'sticker');
+  assert.equal(extracted.directPath, '/v/t62/sticker.webp');
+  assert.equal(extracted.isAnimated, true);
+});
+
+test('sendViaMediaKeys relays cached sticker media as stickerMessage', async () => {
+  let relayedPayload = null;
+  const sock = {
+    relayMessage: async (_jid, message) => {
+      relayedPayload = message;
+    },
+  };
+  const cached = {
+    type: 'sticker',
+    directPath: '/v/t62/sticker.webp',
+    mediaKey: Buffer.from('sticker-media-key-0123456789').toString('base64'),
+    fileSha256: Buffer.from('sticker-sha256-data-0123456789').toString('base64'),
+    fileEncSha256: Buffer.from('sticker-enc-sha256-0123456789').toString('base64'),
+    fileLength: 4096,
+    mimetype: 'image/webp',
+    isAnimated: true,
+  };
+
+  const sent = await mediaCache.sendViaMediaKeys(sock, 'target@s.whatsapp.net', cached);
+  assert.ok(relayedPayload.stickerMessage);
+  assert.equal(relayedPayload.stickerMessage.directPath, cached.directPath);
+  assert.equal(relayedPayload.stickerMessage.isAnimated, true);
+  assert.ok(sent.key.id);
+});
+
+test('socket media wrapper reuses cached CDN keys for repeated identical buffers', async () => {
+  const { installVideoDiskSend } = require('../lib/videoDiskSend.cjs');
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mias-cache-wrapper-'));
+  const mediaBuffer = Buffer.concat([
+    Buffer.from('same-media-cache-wrapper-test-'),
+    Buffer.alloc(600 * 1024, 0x35),
+  ]);
+  const cacheKey = `sha256:${crypto.createHash('sha256').update(mediaBuffer).digest('hex')}`;
+  let freshSends = 0;
+  let relaySends = 0;
+  const sock = {
+    user: { id: 'bot@s.whatsapp.net' },
+    sendMessage: async (jid, payload) => {
+      freshSends += 1;
+      assert.equal(typeof payload.video.url, 'string');
+      return {
+        key: { remoteJid: jid, fromMe: true, id: `WRAP_FRESH_${freshSends}` },
+        message: {
+          videoMessage: {
+            directPath: '/v/t62/wrapper.mp4',
+            mediaKey: Buffer.from('wrapper-media-key-0123456789'),
+            fileSha256: Buffer.from('wrapper-sha256-data-0123456789'),
+            fileEncSha256: Buffer.from('wrapper-enc-sha256-0123456789'),
+            fileLength: mediaBuffer.length,
+            mimetype: 'video/mp4',
+          },
+        },
+      };
+    },
+    relayMessage: async (_jid, message, opts) => {
+      relaySends += 1;
+      assert.ok(message.videoMessage);
+      return { key: { id: opts.messageId } };
+    },
+  };
+  installVideoDiskSend(sock, { dir: tempDir });
+
+  try {
+    await sock.sendMessage('first@s.whatsapp.net', { video: mediaBuffer, mimetype: 'video/mp4' });
+    assert.ok(mediaCache.getCachedMedia(cacheKey), 'first send should index the media hash');
+
+    await sock.sendMessage('second@s.whatsapp.net', { video: mediaBuffer, mimetype: 'video/mp4' });
+    assert.equal(freshSends, 1, 'second delivery should not upload the bytes again');
+    assert.equal(relaySends, 1, 'second delivery should reuse the cached CDN keys');
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    mediaCache.deleteCachedMedia(cacheKey);
+  }
+});

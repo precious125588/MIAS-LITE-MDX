@@ -142,7 +142,10 @@ function loadCacheFromDisk() {
   _isLoaded = true;
   try {
     const file = getCacheFilePath();
-    if (!fs.existsSync(file)) return;
+    if (!fs.existsSync(file)) {
+      console.log("[CDN-CACHE] WhatsApp media cache enabled; no prior cache file, starting empty (TTL: 4 days)");
+      return;
+    }
     const raw = fs.readFileSync(file, "utf8");
     const json = JSON.parse(raw);
     const now = Date.now();
@@ -159,6 +162,7 @@ function loadCacheFromDisk() {
         }
       }
     }
+    console.log(`[CDN-CACHE] WhatsApp media cache loaded (${_cacheMap.size} valid entries; TTL: 4 days)`);
   } catch (err) {
     console.warn("[media-cache] Could not load cache file:", err?.message || err);
   }
@@ -229,6 +233,9 @@ function extractMediaKeys(sentMessage) {
   } else if (m.imageMessage) {
     target = m.imageMessage;
     type = "image";
+  } else if (m.stickerMessage) {
+    target = m.stickerMessage;
+    type = "sticker";
   }
 
   if (!target || !target.directPath || !target.mediaKey) {
@@ -250,7 +257,8 @@ function extractMediaKeys(sentMessage) {
     fileSha256,
     fileEncSha256,
     fileLength,
-    mimetype: target.mimetype || (type === "video" ? "video/mp4" : "application/octet-stream"),
+    mimetype: target.mimetype || (type === "video" ? "video/mp4" : type === "sticker" ? "image/webp" : "application/octet-stream"),
+    isAnimated: Boolean(target.isAnimated),
     seconds: Number(target.seconds || 0),
     height: Number(target.height || 0),
     width: Number(target.width || 0),
@@ -284,6 +292,7 @@ function setCachedMedia(key, mediaData) {
     width: Number(mediaData.width || 0),
     fileName: mediaData.fileName || "media",
     ptv: Boolean(mediaData.ptv),
+    isAnimated: Boolean(mediaData.isAnimated),
     rawMessage: mediaData.rawMessage || null,
   };
 
@@ -306,6 +315,21 @@ function getCachedMedia(key) {
     return null;
   }
   return entry;
+}
+
+function hasCachedMedia(key) {
+  return Boolean(getCachedMedia(key));
+}
+
+function getCacheStats() {
+  loadCacheFromDisk();
+  return {
+    enabled: true,
+    size: _cacheMap.size,
+    maxEntries: MAX_ENTRIES,
+    ttlDays: 4,
+    ttlMs: CACHE_TTL_MS,
+  };
 }
 
 /**
@@ -333,6 +357,7 @@ async function sendViaMediaKeys(sock, jid, cached, {
   fileName = null,
   type = null,
   ptv = false,
+  isAnimated = false,
 } = {}) {
   if (!sock || !jid || !cached || !cached.directPath || !cached.mediaKey) {
     throw new Error("Invalid parameters for media key send");
@@ -358,6 +383,17 @@ async function sendViaMediaKeys(sock, jid, cached, {
       title: fileName || cached.fileName || "document.mp4",
       fileName: fileName || cached.fileName || "document.mp4",
       caption: caption || "",
+    };
+  } else if (mediaType === "sticker") {
+    messageContent.stickerMessage = {
+      url: `https://mmg.whatsapp.net${cached.directPath}`,
+      directPath: cached.directPath,
+      mediaKey: mediaKeyBuf,
+      fileSha256: fileShaBuf,
+      fileEncSha256: fileEncShaBuf,
+      fileLength: cached.fileLength,
+      mimetype: cached.mimetype || "image/webp",
+      isAnimated: Boolean(isAnimated || cached.isAnimated),
     };
   } else if (mediaType === "audio") {
     messageContent.audioMessage = {
@@ -490,6 +526,7 @@ async function deliverWithMediaCache({
   fileName = null,
   quoted = null,
   ptv = false,
+  isAnimated = false,
   sendFresh,
 }) {
   if (typeof sendFresh !== "function") {
@@ -521,8 +558,10 @@ async function deliverWithMediaCache({
         fileName: fileName || cached.fileName,
         type: type || cached.type,
         ptv,
+        isAnimated,
       });
       if (result?.key?.id) {
+        console.log(`[CDN-CACHE] Cache hit delivered ${type} via WhatsApp CDN media keys`);
         return result;
       }
     } catch (primaryErr) {
@@ -533,6 +572,7 @@ async function deliverWithMediaCache({
     try {
       const result = await sendViaForwardFallback(sock, jid, cached, { quoted });
       if (result?.key?.id) {
+        console.log(`[CDN-CACHE] Cache hit delivered ${type} via forward fallback`);
         return result;
       }
     } catch (fallback1Err) {
@@ -548,8 +588,9 @@ async function deliverWithMediaCache({
     const extracted = extractMediaKeys(freshResult);
     if (extracted) {
       for (const k of keysToCheck) {
-        setCachedMedia(k, extracted);
+        setCachedMedia(k, { ...extracted, rawMessage: freshResult });
       }
+      console.log(`[CDN-CACHE] Indexed ${type} CDN media keys for reuse (TTL: 4 days)`);
     }
   } catch (indexErr) {
     console.warn(`[media-cache] Failed to index fresh send: ${indexErr?.message || indexErr}`);
@@ -578,6 +619,8 @@ module.exports = {
   computeFileHash,
   extractMediaKeys,
   getCachedMedia,
+  getCacheStats,
+  hasCachedMedia,
   setCachedMedia,
   deleteCachedMedia,
   sweepExpiredEntries,
