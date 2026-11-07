@@ -1,46 +1,96 @@
 const fs = require('fs');
 const path = require('path');
 
-// Prefer the per-session persistent volume used by the launcher. Keep the
-// historical project-relative file as a fallback for local development.
-const SETTINGS_PATH = process.env.AUTH_DIR
+let nexstoreDir = null;
+try {
+  const sessionPaths = require('../sessionPaths.js');
+  if (sessionPaths && typeof sessionPaths.nexstoreRoot === 'function') {
+    nexstoreDir = sessionPaths.nexstoreRoot();
+  }
+} catch {}
+
+const PRIMARY_VOL_SETTINGS = nexstoreDir ? path.join(nexstoreDir, 'settings.json') : null;
+const AUTH_SETTINGS = process.env.AUTH_DIR
   ? path.join(path.resolve(process.env.AUTH_DIR), 'database', 'legacy-settings.json')
-  : path.join(__dirname, '..', 'setting.json');
-const LEGACY_PATHS = [...new Set([
-  path.resolve(process.cwd(), 'setting.json'),
-  path.join(__dirname, 'setting.json'),
+  : null;
+const LOCAL_SETTINGS = path.join(__dirname, 'setting.json');
+const ROOT_DB_SETTINGS = path.join(__dirname, '..', 'database', 'settings.json');
+
+const CANDIDATE_PATHS = [
+  PRIMARY_VOL_SETTINGS,
+  AUTH_SETTINGS,
+  LOCAL_SETTINGS,
+  ROOT_DB_SETTINGS,
+  path.join(process.cwd(), 'setting', 'setting.json'),
+  path.join(process.cwd(), 'setting.json'),
   path.join(__dirname, '..', 'setting.json'),
-].filter(file => file !== SETTINGS_PATH))];
+].filter(Boolean);
 
 let settings = {};
+
 function readSettings(file) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8') || '{}');
+    if (!fs.existsSync(file)) return null;
+    const content = fs.readFileSync(file, 'utf8').trim();
+    if (!content) return null;
+    const parsed = JSON.parse(content);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
+}
+
+function loadMergedSettings() {
+  const merged = {};
+  // Read in reverse order so primary locations override older ones
+  for (let i = CANDIDATE_PATHS.length - 1; i >= 0; i--) {
+    const f = CANDIDATE_PATHS[i];
+    const data = readSettings(f);
+    if (data) {
+      for (const [jid, val] of Object.entries(data)) {
+        if (val && typeof val === 'object' && !Array.isArray(val)) {
+          merged[jid] = { ...(merged[jid] || {}), ...val };
+        } else if (val !== undefined) {
+          merged[jid] = val;
+        }
+      }
+    }
+  }
+  return merged;
 }
 
 try {
-  fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
-  settings = readSettings(SETTINGS_PATH) || {};
-  if (!fs.existsSync(SETTINGS_PATH)) {
-    // One-time, non-destructive migration from older relative locations.
-    for (const legacyPath of LEGACY_PATHS) {
-      const legacy = readSettings(legacyPath);
-      if (legacy) { settings = legacy; break; }
-    }
-    saveSettings();
-  }
+  settings = loadMergedSettings();
+  console.log(`[settings] Loaded persistent settings for ${Object.keys(settings).length} chats.`);
 } catch (e) {
-  console.error('Failed to load settings.json', e);
+  console.error('[settings] Failed to load settings:', e.message);
   settings = {};
 }
 
+function safeWriteJson(targetPath, obj) {
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    const tempPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(obj, null, 2), 'utf8');
+    fs.renameSync(tempPath, targetPath);
+    return true;
+  } catch (err) {
+    console.warn(`[settings] Write failed for ${targetPath}:`, err.message);
+    return false;
+  }
+}
+
 function saveSettings() {
-  fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
-  const tempPath = `${SETTINGS_PATH}.${process.pid}.tmp`;
-  fs.writeFileSync(tempPath, JSON.stringify(settings, null, 2), 'utf8');
-  fs.renameSync(tempPath, SETTINGS_PATH);
+  const targets = new Set([
+    PRIMARY_VOL_SETTINGS,
+    AUTH_SETTINGS,
+    LOCAL_SETTINGS,
+    ROOT_DB_SETTINGS,
+  ].filter(Boolean));
+
+  for (const t of targets) {
+    safeWriteJson(t, settings);
+  }
 }
 
 function getSetting(jid, key, defaultValue = false) {
@@ -54,4 +104,4 @@ function setSetting(jid, key, value) {
   saveSettings();
 }
 
-module.exports = { getSetting, setSetting };
+module.exports = { getSetting, setSetting, readSettings, saveSettings };

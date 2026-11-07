@@ -404,7 +404,7 @@ module.exports = function installV36(ctx) {
     }
 
     const parts = raw.split('|').map(value => value.trim());
-    const subject = parts[0];
+    const subject = (parts[0] || "").replace(/[\r\n]+/g, " ").trim().slice(0, 30);
     const description = parts[2] || "Group is created by MIAX MDX";
     const remoteJid = msg.key?.remoteJid || '';
     const isDirectMessage = remoteJid.endsWith('@s.whatsapp.net');
@@ -427,6 +427,7 @@ module.exports = function installV36(ctx) {
     if (isDirectMessage) addCandidate(senderPhone || sender);
     else if (sender) addCandidate(senderPhone || sender);
 
+    const myDigits = (sock.user?.id || sock.authState?.creds?.me?.id || '').split(':')[0].replace(/[^0-9]/g, '');
     const participants = [];
     const seen = new Set();
     for (let value of candidates) {
@@ -440,6 +441,7 @@ module.exports = function installV36(ctx) {
       if (value.endsWith('@lid')) continue;
       const digits = value.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
       if (digits.length < 7 || digits.length > 15) continue;
+      if (myDigits && digits === myDigits) continue; // WhatsApp groupCreate rejects self in participants
       const jid = `${digits}@s.whatsapp.net`;
       if (!seen.has(jid)) { seen.add(jid); participants.push(jid); }
     }

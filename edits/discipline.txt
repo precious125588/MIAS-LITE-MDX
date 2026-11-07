@@ -1,0 +1,6 @@
+index	primary_category	all_categories	caption	hashtags	video_url
+1	discipline	discipline	Unstoppable mindset and discipline #discipline #motivation	#discipline #motivation	https://www.tiktok.com/@rude_advice/video/7332145678901234567
+2	discipline	discipline	Wake up and grind #discipline #focus #grind	#discipline #focus	https://www.tiktok.com/@risenexx/video/7321456789012345678
+3	discipline	discipline	Resilience over motivation #resilience #discipline	#resilience #discipline	https://www.tiktok.com/@churchill___._/video/7312345678901234567
+4	discipline	discipline	Quiet authority and mental strength #discipline #sigma	#discipline #sigma	https://www.tiktok.com/@quietauthority.exe/video/7343210987654321098
+5	discipline	discipline	Relentless mentality daily discipline #grind #discipline	#grind #discipline	https://www.tiktok.com/@relentless__mentality/video/7354321098765432109

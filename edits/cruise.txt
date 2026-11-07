@@ -1,0 +1,6 @@
+index	primary_category	all_categories	caption	hashtags	video_url
+1	cruise	cruise	Best Tech Cruise Edits #cruise #comedy #funny	#cruise #funny	https://www.tiktok.com/@kingoftechcruzz/video/7331902047863586053
+2	cruise	cruise	Vawulence cruise session #cruise #vawulence	#cruise #vawulence	https://www.tiktok.com/@mr_vawulencee/video/7315582910384213253
+3	cruise	cruise	Kelly comedy reaction cruise #kelly #cruise	#kelly #cruise	https://www.tiktok.com/@kellyreacts02/video/7328901234567890123
+4	cruise	cruise	Mr Don Duke viral cruise #cruise #viral	#cruise #viral	https://www.tiktok.com/@mrdonduke/video/7345678901234567890
+5	cruise	cruise	Pure cruise and laughs #cruise #cruzz	#cruise #cruzz	https://www.tiktok.com/@kingoftechcruzz/video/7356789012345678901

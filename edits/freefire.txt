@@ -1,0 +1,6 @@
+index	primary_category	all_categories	caption	hashtags	video_url
+1	freefire	freefire	Insane 120fps Free Fire headshot highlights #freefire #ff	#freefire #ff #120fps	https://www.tiktok.com/@nexus.120fps_/video/7333456789012345678
+2	freefire	freefire	Zoya 120fps smooth gameplay #freefire #ffedit	#freefire #ffedit	https://www.tiktok.com/@zoya.120fps/video/7322345678901234567
+3	freefire	freefire	Prince AEP Free Fire montage #freefire #edit	#freefire #edit	https://www.tiktok.com/@prince.aep5/video/7311234567890123456
+4	freefire	freefire	Clean one tap highlights Garena Free Fire #freefire #ff	#freefire #ff	https://www.tiktok.com/@e_s_t_ff/video/7344567890123456789
+5	freefire	freefire	Demi AE Free Fire clip #freefire #aep	#freefire #aep	https://www.tiktok.com/@demi_ae1/video/7355678901234567890
