@@ -118,8 +118,8 @@ test('deliverTikTokFile videoNote mode attempts PTV and falls back cleanly', asy
   }
 });
 
-test('mias/index.js contains 1.002 quality boost and no 1.01 mismatch for TikTok HD picker', () => {
+test('mias/index.js contains 1.004 quality boost for TikTok HD picker (1.3 & 1.4)', () => {
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8');
-  assert.equal(indexSource.includes('1.01:null'), false, 'Found old 1.01 mismatch in index.js');
-  assert.equal(indexSource.includes('1.002:null'), true, 'Expected 1.002:null in index.js');
+  assert.equal(indexSource.includes('1.004:null'), true, 'Expected 1.004:null in index.js');
+  assert.equal(indexSource.includes('1.002:null'), false, 'Found old 1.002 in index.js');
 });

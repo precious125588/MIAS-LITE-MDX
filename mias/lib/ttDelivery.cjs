@@ -32,7 +32,7 @@ const TT_INLINE_VIDEO_MAX_BYTES = 95 * 1024 * 1024;
 // HD (1.3): a 1080p60 Full HD WhatsApp file. The short side is 1080 (upscaled from SD, never 4K),
 // source fps is preserved via passthrough mode, and the audio is
 // resampled to the video clock. Keyframes every 2 s make it start and seek reliably.
-const HD_VIDEO_FILTER = "scale='if(gte(iw,ih),-2,1080)':'if(gte(iw,ih),1080,-2)':flags=bicubic,setsar=1";
+const HD_VIDEO_FILTER = "setpts=PTS-STARTPTS,scale='if(gte(iw,ih),-2,1080)':'if(gte(iw,ih),1080,-2)':flags=bicubic,setsar=1";
 // Bitrate rule for 1.3 (and every path that calls reencodeHdForWhatsApp: status categories, .hd):
 // - The 1.3 state is the reference above: 1080p short side at 18398 kb/s.
 // - A source already at that state (short side >= 1080 and video bitrate >= 18398 kb/s) is
@@ -40,9 +40,11 @@ const HD_VIDEO_FILTER = "scale='if(gte(iw,ih),-2,1080)':'if(gte(iw,ih),1080,-2)'
 // - A source below that state is re-encoded to the 18398 kb/s reference, without the 10%.
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
-// 0.2% boost for re-encoding (1.002) including 1.3 HD and 1.4 HD document choice
-const HD_BOOST = 1.002;
-const HIGH_QUALITY_HD_BOOST = 1.002;
+// 1% boost for general 1.3 HD re-encoding (1.01)
+const HD_BOOST = 1.01;
+// 0.4% boost for native / high quality 1080p+ videos (1.004)
+const NATIVE_HD_BOOST = 1.004;
+const HIGH_QUALITY_HD_BOOST = 1.004;
 const HIGH_QUALITY_4K_BOOST = 1.015;
 const HD_MAX_KBPS = 40000;
 
@@ -71,9 +73,10 @@ const HD_ARGS = (inPath, outPath, kbps = HD_REFERENCE_KBPS, opts = {}) => [
   "-profile:v", "high", "-level", "4.2", "-pix_fmt", "yuv420p",
   "-fps_mode", "passthrough",
   "-force_key_frames", "expr:gte(t,n_forced*2)",
+  "-max_muxing_queue_size", "1024",
   // Audio matches the reference: AAC 190 kb/s, 48000 Hz, stereo.
   "-c:a", "aac", "-b:a", "190k", "-ac", "2", "-ar", "48000",
-  "-af", "aresample=async=1:first_pts=0",
+  "-af", "asetpts=PTS-STARTPTS,aresample=async=1000:min_hard_comp=0.100000:first_pts=0",
   "-avoid_negative_ts", "make_zero",
   "-shortest",
   "-movflags", "+faststart", "-f", "mp4",
@@ -202,8 +205,9 @@ async function probeSourceVideo(inPath) {
 // Picks the H.264 bitrate for the 1.3 encode from the source probe. Unknown source = reference rate.
 function pickHdBitrate(probe, boost = HD_BOOST, sourceQualityBoost = null) {
   if (!probe || !probe.shortSide || !probe.videoKbps) return HD_REFERENCE_KBPS;
-  if (sourceQualityBoost && isHighQualitySource(probe)) {
-    return Math.min(Math.round(probe.videoKbps * sourceQualityBoost), HD_MAX_KBPS);
+  if (isHighQualitySource(probe)) {
+    const rateBoost = sourceQualityBoost || NATIVE_HD_BOOST;
+    return Math.min(Math.round(probe.videoKbps * rateBoost), HD_MAX_KBPS);
   }
   const alreadyAtHdState = probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps >= HD_REFERENCE_KBPS;
   if (!alreadyAtHdState) return HD_REFERENCE_KBPS;
@@ -227,13 +231,7 @@ async function reencodeHdForWhatsApp(input, {
   const cleanup = async () => { await fsp.rm(out, { force: true }).catch(() => {}); };
   const probe = await probeSourceVideo(inPath).catch(() => null);
 
-  // If the video already has original high quality (native 1080p+), leave it untouched.
-  // Sending the untouched original avoids audio cracking / distortion and playback lag.
-  if (isHighQualitySource(probe)) {
-    await fsp.copyFile(inPath, out);
-    const stat = await fsp.stat(out);
-    return { path: out, bytes: stat.size, cleanup, untouched: true };
-  }
+  // All 1.3 TT videos re-encode, with native 1080p+ videos boosted by 0.4% without bypass.
 
   const kbps = pickHdBitrate(probe, boost, sourceQualityBoost);
   const deadline = Date.now() + timeoutMs;
@@ -428,6 +426,7 @@ module.exports = {
   HD_REFERENCE_KBPS,
   HD_BOOST,
   HIGH_QUALITY_HD_BOOST,
+  NATIVE_HD_BOOST,
   HIGH_QUALITY_4K_BOOST,
   HD_MAX_KBPS,
   isHighQualitySource,
