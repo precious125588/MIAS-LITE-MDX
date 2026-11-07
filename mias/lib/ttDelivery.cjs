@@ -42,12 +42,12 @@ const HD_VIDEO_FILTER = "setpts=PTS-STARTPTS,scale='if(gte(iw,ih),-2,1080)':'if(
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
 // 0.01 boost (1.01) for general 1.3 HD re-encoding
-const HD_BOOST = 1.01;
-// 0.01 boost (1.01) for native / high quality 1080p+ videos
-const NATIVE_HD_BOOST = 1.01;
-const HIGH_QUALITY_HD_BOOST = 1.01;
-// 0.02 boost (1.02) for 4K video encoding
-const HIGH_QUALITY_4K_BOOST = 1.02;
+const HD_BOOST = 1.0001;
+// 0.0001 boost (1.0001) for native / high quality 1080p+ videos
+const NATIVE_HD_BOOST = 1.0001;
+const HIGH_QUALITY_HD_BOOST = 1.0001;
+// 0.001 boost (1.001) for 4K video encoding
+const HIGH_QUALITY_4K_BOOST = 1.001;
 const HD_MAX_KBPS = 40000;
 
 // Only native 1080p+ sources use the gentle source-relative boost. Smaller
@@ -397,6 +397,12 @@ async function deliverTikTokFile({
   if (mode && mode.document && !mode.upscale4k && mode.id !== "1.4" && mode.quality !== "hd") {
     const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, caption, quoted);
     return finalizeResult({ type: "document", bytes: file.bytes, sent });
+  }
+
+  // Remove re-encode out across non-HD/non-4K video modes: send untouched source directly.
+  if (mode && !mode.upscale4k && mode.id !== "1.3" && mode.id !== "1.4" && mode.quality !== "hd" && !mode.videoNote && !mode.document) {
+    const sent = await disk.sendVideoFromDisk(sock, jid, file.path, caption, quoted);
+    return finalizeResult({ type: "video", bytes: file.bytes, sent });
   }
 
   // 1.8 / 1.9: the 4K encoder the picker uses. 1.3 and the rest: 1080p HD re-encode.

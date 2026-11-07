@@ -557,8 +557,8 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
       try {
         const hdRun = () => TTD.reencodeHdForWhatsApp(file, {
           maxBytes: 95 * 1024 * 1024,
-          boost: 1.01,
-          sourceQualityBoost: 1.01,
+          boost: 1.0001,
+          sourceQualityBoost: 1.0001,
         });
         hdEncoded = (_heavyGuard && typeof _heavyGuard.runHeavy === "function")
           ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 25000 })
