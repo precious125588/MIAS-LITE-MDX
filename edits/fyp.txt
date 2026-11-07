@@ -1,0 +1,6 @@
+index	primary_category	all_categories	caption	hashtags	video_url
+1	fyp	fyp	Viral 4K FYP edit #fyp #foryou #viral	#fyp #foryou #viral	https://www.tiktok.com/@undead.aep/video/7334567890123456789
+2	fyp	fyp	Smooth cinema style edit #fyp #foryoupage #trending	#fyp #foryoupage	https://www.tiktok.com/@mentalistfilms/video/7323456789012345678
+3	fyp	fyp	Trending sound viral montage #fyp #viral #aep	#fyp #viral	https://www.tiktok.com/@kitostunna/video/7312345678901234567
+4	fyp	fyp	Top tier quality TikTok FYP edit #fyp #4kedit	#fyp #4kedit	https://www.tiktok.com/@edits.moral/video/7345678901234567890
+5	fyp	fyp	Stunning visuals viral post #fyp #trending	#fyp #trending	https://www.tiktok.com/@maven.stark/video/7356789012345678901

@@ -11,10 +11,20 @@ const ownership = require(path.join(REPO_ROOT, "sessionOwnership.js"));
 const pairingHandshake = require(path.join(REPO_ROOT, "mias", "lib", "pairingHandshake.cjs"));
 const companionSyncGrace = require(path.join(REPO_ROOT, "mias", "lib", "companionSyncGrace.cjs"));
 
-let maisLauncher = null;
-try {
-  maisLauncher = require(path.join(REPO_ROOT, "mais_launcher.js"));
-} catch {}
+function dispatchAdminRequest(payload) {
+  try {
+    const adminReqDir = sessionPaths?.nexstoreRoot ? path.join(sessionPaths.nexstoreRoot(), "admin-requests") : path.join(REPO_ROOT, "nexstore", "admin-requests");
+    fs.mkdirSync(adminReqDir, { recursive: true });
+    const reqId = `${payload.action || "req"}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    fs.writeFileSync(path.join(adminReqDir, `${reqId}.json`), JSON.stringify({
+      ...payload,
+      requestedAt: new Date().toISOString()
+    }));
+    console.log(`[rentbot] Dispatched ${payload.action} admin request (${reqId}).`);
+  } catch (err) {
+    console.warn("[rentbot] Admin request dispatch notice:", err?.message);
+  }
+}
 
 
 const silentLogger = {
@@ -297,17 +307,9 @@ export function installRentBotCommands(ctx) {
               });
               saveRentedBots(list);
 
-              // 5) Launch child process so bot comes online immediately
-              if (maisLauncher && typeof maisLauncher.launch === "function") {
-                try {
-                  Promise.resolve(maisLauncher.launch(targetJid, tmpDir)).catch((launchErr) => {
-                    console.warn("[rentbot] Launcher spawn notice:", launchErr?.message);
-                  });
-                  console.log(`[rentbot] Rented bot +${digits} spawned via launcher.`);
-                } catch (launchErr) {
-                  console.warn("[rentbot] Launcher spawn notice:", launchErr?.message);
-                }
-              }
+              // 5) Dispatch launch request to the parent launcher process
+              dispatchAdminRequest({ action: "launch", jid: targetJid, sessionDir: tmpDir });
+              console.log(`[rentbot] Rented bot +${digits} launch request dispatched.`);
 
               // 6) Edit the live tracking message:
               // "bot is live for username ... url of the owner should become little small ... has tree line"
@@ -472,10 +474,8 @@ export function installRentBotCommands(ctx) {
 
     const targetJid = `${digits}@s.whatsapp.net`;
 
-    // 1. Stop running child process
-    if (maisLauncher && typeof maisLauncher.stopForReset === "function") {
-      try { await maisLauncher.stopForReset(targetJid); } catch {}
-    }
+    // 1. Stop running child process via admin-request
+    dispatchAdminRequest({ action: "delbot", number: digits, jid: targetJid });
 
     // 2. Release ownership marker
     try { ownership.release(targetJid); } catch {}

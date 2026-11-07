@@ -473,7 +473,7 @@ async function downloadCreatorToFile(url, file) {
   const run = async () => {
     const r = await axios.get(url, {
       headers: { ...UA, Referer: 'https://www.tiktok.com/' }, responseType: 'stream',
-      timeout: 90000, maxContentLength: CREATOR_MAX_BYTES, validateStatus: () => true,
+      timeout: 20000, maxContentLength: CREATOR_MAX_BYTES, validateStatus: () => true,
     });
     if (r.status >= 400 || !r.data) { try { r.data && r.data.destroy && r.data.destroy(); } catch {} return 0; }
     let bytes = 0;
@@ -554,23 +554,29 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
     // The rest of the categories: re-encode to TT command 1.3 HD state with 0.2% boost (clean H.264/AAC 1080p60 faststart)
     let hdEncoded = null;
     if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
-      const hdRun = () => TTD.reencodeHdForWhatsApp(file, {
-        maxBytes: 95 * 1024 * 1024,
-        boost: 1.002,
-        sourceQualityBoost: 1.002,
-      });
-      hdEncoded = (_heavyGuard && typeof _heavyGuard.runHeavy === "function")
-        ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 510000 })
-        : await hdRun();
-      console.log(`[anime-edits][hd] 1.3 HD state re-encoded: ${hdEncoded.path} (${hdEncoded.bytes} bytes)`);
-    } else {
-      throw new Error("HD encoder is unavailable");
+      try {
+        const hdRun = () => TTD.reencodeHdForWhatsApp(file, {
+          maxBytes: 95 * 1024 * 1024,
+          boost: 1.002,
+          sourceQualityBoost: 1.002,
+        });
+        hdEncoded = (_heavyGuard && typeof _heavyGuard.runHeavy === "function")
+          ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 25000 })
+          : await Promise.race([
+              hdRun(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("reencode timeout")), 25000))
+            ]);
+        console.log(`[anime-edits][hd] 1.3 HD state re-encoded: ${hdEncoded.path} (${hdEncoded.bytes} bytes)`);
+      } catch (err) {
+        console.warn(`[anime-edits][hd] HD re-encode skipped/timed out: ${err?.message}, delivering source video directly`);
+        hdEncoded = null;
+      }
     }
 
-    // Status menu categories process to HD only (no 4K, no fallback).
-    // Send inline video only; oversized output is rejected rather than silently sent as a document.
-    const sendPath = hdEncoded.path;
-    const sendBytes = hdEncoded.bytes;
+    // If re-encode succeeded, send re-encoded video, otherwise deliver clean original video
+    const sendPath = hdEncoded ? hdEncoded.path : file;
+    const statObj = await fs.promises.stat(sendPath).catch(() => null);
+    const sendBytes = statObj ? statObj.size : 0;
 
     try {
       const maxInline = (TTD && TTD.TT_INLINE_VIDEO_MAX_BYTES) || (95 * 1024 * 1024);
@@ -597,8 +603,8 @@ const deliverCreatorItemFromDisk = deliverItemFromDisk;
 // Each request shuffles the places, then takes one edit from each place before
 // it reuses one. A place whose download fails is skipped for the rest of that
 // request. A creator is not used twice and a video is never sent twice.
-const DELIVERY_BUDGET_MS = 180 * 1000;   // stop starting new attempts after this
-const MAX_DELIVERY_TRIES = 8;
+const DELIVERY_BUDGET_MS = 60 * 1000;   // stop starting new attempts after this
+const MAX_DELIVERY_TRIES = 4;
 function creatorOf(item) {
   if (item && item.creator) return String(item.creator).toLowerCase();
   const m = String((item && item.url) || '').match(/tiktok\.com\/@([^/?#\s]+)/i);
@@ -651,15 +657,21 @@ module.exports = {
       const user = (msg.key.participant || msg.key.remoteJid || '').split(':')[0];
       const cat = CATEGORIES[catKey];
       await P.react(sock, msg, '☄️').catch(() => {});
-      // Every place is read on every request, in parallel. The order each edit
-      // is taken from is decided per request by makeDeliveryPlan.
-      const parts = await Promise.all([
-        Promise.resolve().then(() => routeZip(cat)).catch(() => []),
-        routePages(cat).catch(() => []),
-        routeSearch(cat).catch(() => []),
-        Promise.resolve().then(() => routeGc(catKey, cat)).catch(() => []),
-      ]);
-      const pool = parts.flat();
+      // Take local verified zip items first to guarantee instant delivery.
+      const zipItems = routeZip(cat) || [];
+      let networkParts = [];
+      if (zipItems.length < 10) {
+        const netPromise = Promise.all([
+          routePages(cat).catch(() => []),
+          routeSearch(cat).catch(() => []),
+          Promise.resolve().then(() => routeGc(catKey, cat)).catch(() => []),
+        ]);
+        networkParts = await Promise.race([
+          netPromise,
+          new Promise((r) => setTimeout(() => r([[], [], []]), 3500)),
+        ]);
+      }
+      const pool = [zipItems, ...networkParts].flat();
       if (!pool.length) {
         await P.react(sock, msg, '❌').catch(() => {});
         return P.sendReply(sock, msg, `❌ No ${cat.label} edits available right now. Try again in a bit.`);
