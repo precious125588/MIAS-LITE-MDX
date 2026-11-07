@@ -339,12 +339,13 @@ async function _tick() {
  * @param {Function} onReconnect   called with reason string to trigger reconnect
  */
 export function startWatchdog(sock, sessionPath, onReconnect) {
+  // Detach listeners from the previous socket before replacing the reference.
+  // Assigning _sock first makes stopWatchdog() try to detach from the new socket,
+  // leaving observers attached to the old socket after every reconnect.
+  stopWatchdog();
   _sock         = sock;
   _sessionPath  = sessionPath;
   _onReconnect  = onReconnect;
-
-  // Remove any previous listeners to avoid duplication on reconnect
-  stopWatchdog();
 
   // ── Observe message activity ─────────────────────────────────
   _msgUpsertListener = ({ messages = [] }) => {
