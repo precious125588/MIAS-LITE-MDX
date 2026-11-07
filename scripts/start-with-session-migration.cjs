@@ -324,9 +324,22 @@ async function prepareSessionDatabase() {
 
 async function main() {
   await prepareSessionDatabase();
+  try {
+    const sessionDebug = require('./sessionDebug.cjs');
+    const SP = require(path.join(__dirname, '..', 'sessionPaths.js'));
+    sessionDebug.logSessionDebug(SP.ensureSessionRoot());
+  } catch (e) {
+    console.warn('[session-debug] could not inspect sessions:', e && e.message);
+  }
   const server = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     cwd: path.join(__dirname, '..'),
-    env: process.env,
+    // Keep dotenv's "injected env" banner out of the logs; env values still load.
+    env: {
+      DOTENV_CONFIG_QUIET: 'true',
+      ...process.env,
+      // node:sqlite prints an experimental-feature warning on every start; it is expected here.
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
+    },
     stdio: 'inherit',
   });
 

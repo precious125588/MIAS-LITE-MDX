@@ -340,10 +340,16 @@ function bootParent() {
   const result = { cleanup: false, sessionBoot: false, sessionAudit: false, audit: null };
 
   /* 0. Volume sweeper (was only run by `npm start` — Railway never saw it). */
-  try {
-    const c = require('./cleanup.cjs');
-    if (typeof c.runOnce === 'function') { c.runOnce(); result.cleanup = true; }
-  } catch (e) { warn('cleanup skipped: ' + (e && e.message)); }
+  // cleanup.cjs is optional; this repo does not ship it, so skip it quietly
+  // instead of printing a module-not-found warning on every boot.
+  if (fs.existsSync(path.join(ROOT, 'cleanup.cjs'))) {
+    try {
+      const c = require('./cleanup.cjs');
+      if (typeof c.runOnce === 'function') { c.runOnce(); result.cleanup = true; }
+    } catch (e) { warn('cleanup skipped: ' + (e && e.message)); }
+  } else {
+    log('volume sweeper not part of this build (cleanup.cjs absent); skipped');
+  }
 
 
   /* 2. Session boot: volume detection + legacy session migration. */
