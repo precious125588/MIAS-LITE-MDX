@@ -155,11 +155,39 @@ function arrToSet(arr) { return new Set(arr); }
 // a digest of what this process last wrote per file and skip identical writes.
 // The bytes on disk are the same as before; there is just less I/O and CPU.
 const _lastWriteDigest = new Map();
+
+// ── Keep the database folder available for writes ───────────
+// DB_DIR is created once at import time. A session restore, reset, or cleanup
+// can remove it while the bot is still running, and every later save then
+// failed with ENOENT. If the session folder (the parent of DB_DIR) still
+// exists, recreate DB_DIR. If the whole session folder is gone, the session
+// was removed on purpose, so skip writes instead of recreating a folder for it.
+let _databaseDirGoneWarned = false;
+function ensureDatabaseDir() {
+  if (fs.existsSync(DB_DIR)) {
+    _databaseDirGoneWarned = false;
+    return true;
+  }
+  const sessionDir = path.dirname(DB_DIR);
+  if (!fs.existsSync(sessionDir)) {
+    if (!_databaseDirGoneWarned) {
+      _databaseDirGoneWarned = true;
+      console.warn(`[DB] Session folder is gone (${sessionDir}); skipping database writes.`);
+    }
+    return false;
+  }
+  fs.mkdirSync(DB_DIR, { recursive: true });
+  console.warn(`[DB] Database folder was missing; recreated ${DB_DIR}.`);
+  return true;
+}
+
 function writeIfChanged(filePath, data) {
+  if (!ensureDatabaseDir()) return false;
   const digest = createHash("sha1").update(data).digest("hex");
-  if (_lastWriteDigest.get(filePath) === digest && fs.existsSync(filePath)) return;
+  if (_lastWriteDigest.get(filePath) === digest && fs.existsSync(filePath)) return true;
   fs.writeFileSync(filePath, data, "utf8");
   _lastWriteDigest.set(filePath, digest);
+  return true;
 }
 
 // ── Save a Map to a JSON file ───────────────────────────────
