@@ -423,3 +423,38 @@ test('extractMediaKeys extracts directPath from url when directPath property is 
   assert.ok(extracted);
   assert.equal(extracted.directPath, '/v/t62.7118-24/fallback_path.mp4');
 });
+
+test('cached status relay preserves audience options and creates no fresh upload', async () => {
+  const tmpFile = path.join(os.tmpdir(), `test_status_reuse_${Date.now()}.mp4`);
+  fs.writeFileSync(tmpFile, Buffer.from('status-video-cache-test-payload'));
+  const cacheKey = `sha256:${crypto.createHash('sha256').update(fs.readFileSync(tmpFile)).digest('hex')}`;
+  const statusJidList = ['one@s.whatsapp.net', 'two@s.whatsapp.net'];
+  let freshSends = 0;
+  let relayOptions = null;
+  const cached = {
+    type: 'video', directPath: '/v/status-test.mp4',
+    mediaKey: Buffer.from('media-key-status-test').toString('base64'),
+    fileSha256: Buffer.from('file-sha-status-test').toString('base64'),
+    fileEncSha256: Buffer.from('enc-sha-status-test').toString('base64'),
+    fileLength: 31, mimetype: 'video/mp4',
+  };
+  mediaCache.setCachedMedia(cacheKey, cached);
+  const sock = {
+    user: { id: 'bot@s.whatsapp.net' },
+    relayMessage: async (_jid, _message, opts) => { relayOptions = opts; },
+  };
+  try {
+    const result = await mediaCache.deliverWithMediaCache({
+      sock, jid: 'status@broadcast', cacheKey, filePath: tmpFile, type: 'video',
+      relayOptions: { statusJidList, messageId: 'MIAS_STATUS_TEST' },
+      sendFresh: async () => { freshSends++; return { key: { id: 'fresh' } }; },
+    });
+    assert.equal(result.__cacheMethod, 'primary_cdn_keys');
+    assert.equal(freshSends, 0);
+    assert.deepEqual(relayOptions.statusJidList, statusJidList);
+    assert.equal(relayOptions.messageId, 'MIAS_STATUS_TEST');
+  } finally {
+    mediaCache.deleteCachedMedia(cacheKey);
+    fs.rmSync(tmpFile, { force: true });
+  }
+});

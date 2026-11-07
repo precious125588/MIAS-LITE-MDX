@@ -420,6 +420,19 @@ async function sendViaMediaKeys(sock, jid, cached, {
       seconds: cached.seconds || 0,
       ptt: Boolean(cached.ptv),
     };
+  } else if (mediaType === "image") {
+    messageContent.imageMessage = {
+      url: `https://mmg.whatsapp.net${cached.directPath}`,
+      directPath: cached.directPath,
+      mediaKey: mediaKeyBuf,
+      fileSha256: fileShaBuf,
+      fileEncSha256: fileEncShaBuf,
+      fileLength: cached.fileLength,
+      mimetype: cached.mimetype || "image/jpeg",
+      caption: caption || "",
+      height: cached.height || 0,
+      width: cached.width || 0,
+    };
   } else {
     // Video
     messageContent.videoMessage = {
@@ -458,7 +471,7 @@ async function sendViaMediaKeys(sock, jid, cached, {
       } catch {}
     }
 
-    const relayOpts = { messageId: msgId };
+    const relayOpts = { messageId: extraOptions.messageId || msgId };
     if (extraOptions.statusJidList) relayOpts.statusJidList = extraOptions.statusJidList;
     if (extraOptions.additionalNodes) relayOpts.additionalNodes = extraOptions.additionalNodes;
     await sock.relayMessage(jid, finalPayload, relayOpts);
@@ -472,15 +485,23 @@ async function sendViaMediaKeys(sock, jid, cached, {
 
   // Fallback direct sendMessage if relayMessage not present on mock
   if (typeof sock.sendMessage === "function") {
+    const contentKey = {
+      video: "videoMessage",
+      document: "documentMessage",
+      audio: "audioMessage",
+      image: "imageMessage",
+      sticker: "stickerMessage",
+    }[mediaType];
     const payload = {};
-    if (mediaType === "document") {
-      payload.document = messageContent.documentMessage;
-      payload.fileName = fileName || cached.fileName;
-    } else {
-      payload.video = messageContent.videoMessage;
+    if (!contentKey || !messageContent[contentKey]) {
+      throw new Error(`Unsupported cached media type: ${mediaType}`);
     }
-    payload.caption = caption;
-    const res = await sock.sendMessage(jid, payload, { quoted });
+    payload[mediaType] = messageContent[contentKey];
+    if (mediaType === "document") payload.fileName = fileName || cached.fileName;
+    if (["image", "video", "document"].includes(mediaType)) payload.caption = caption;
+    if (mediaType === "audio") payload.ptt = Boolean(ptv || cached.ptv);
+    if (mediaType === "video" && isPtv) payload.ptv = true;
+    const res = await sock.sendMessage(jid, payload, { quoted, ...extraOptions });
     if (res && res.key) res.__cacheMethod = "primary_cdn_keys";
     return res;
   }
@@ -494,6 +515,7 @@ async function sendViaMediaKeys(sock, jid, cached, {
  */
 async function sendViaForwardFallback(sock, jid, cached, {
   quoted = null,
+  relayOptions = {},
 } = {}) {
   if (!sock || !jid || !cached) {
     throw new Error("Invalid parameters for forward fallback");
@@ -506,7 +528,7 @@ async function sendViaForwardFallback(sock, jid, cached, {
 
   // 1. Try sock.copyNForward (forceForward = false removes forwarded indicator)
   if (typeof sock.copyNForward === "function") {
-    const res = await sock.copyNForward(jid, rawMsg, false, { quoted });
+    const res = await sock.copyNForward(jid, rawMsg, false, { quoted, ...relayOptions });
     if (res && res.key) {
       res.__cacheMethod = "fallback_forward";
       return res;
@@ -518,7 +540,7 @@ async function sendViaForwardFallback(sock, jid, cached, {
     const res = await sock.sendMessage(jid, {
       forward: rawMsg,
       contextInfo: { forwardingScore: 0, isForwarded: false },
-    }, { quoted });
+    }, { quoted, ...relayOptions });
     if (res && res.key) {
       res.__cacheMethod = "fallback_forward";
       return res;
@@ -543,6 +565,7 @@ async function deliverWithMediaCache({
   quoted = null,
   ptv = false,
   isAnimated = false,
+  relayOptions = {},
   sendFresh,
 }) {
   if (typeof sendFresh !== "function") {
@@ -575,29 +598,42 @@ async function deliverWithMediaCache({
         type: type || cached.type,
         ptv,
         isAnimated,
+        ...relayOptions,
       });
       if (result?.key?.id) {
-        console.log(`[CDN-CACHE] Cache hit delivered ${type} via WhatsApp CDN media keys`);
+        console.log(`[CDN-CACHE] SUCCESS method=cdn_keys media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=hit`);
         return result;
       }
     } catch (primaryErr) {
-      console.warn(`[media-cache] Primary CDN media-key relay failed, trying Fallback 1: ${primaryErr?.message || primaryErr}`);
+      console.error(`[CDN-CACHE] FAILED method=cdn_keys media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} error=${primaryErr?.message || primaryErr}`);
     }
 
     // 4. Try Fallback 1 (copyNForward / forward)
     try {
-      const result = await sendViaForwardFallback(sock, jid, cached, { quoted });
+      const result = await sendViaForwardFallback(sock, jid, cached, { quoted, relayOptions });
       if (result?.key?.id) {
-        console.log(`[CDN-CACHE] Cache hit delivered ${type} via forward fallback`);
+        console.log(`[CDN-CACHE] SUCCESS method=forward media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=hit`);
         return result;
       }
     } catch (fallback1Err) {
-      console.warn(`[media-cache] Fallback 1 forward failed, falling back to fresh send: ${fallback1Err?.message || fallback1Err}`);
+      console.error(`[CDN-CACHE] FAILED method=forward media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} error=${fallback1Err?.message || fallback1Err}`);
     }
   }
 
-  // 5. Fallback 2: Fresh Send
-  const freshResult = await sendFresh();
+  // 5. Fallback 2: Fresh Send. Do not let callers repeat this after a transport error.
+  let freshResult;
+  try {
+    freshResult = await sendFresh();
+  } catch (freshErr) {
+    freshErr.__mediaFreshSendFailed = true;
+    console.error(`[CDN-CACHE] FAILED method=fresh media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=${cached ? "fallback" : "miss"} error=${freshErr?.message || freshErr}`);
+    throw freshErr;
+  }
+  if (!freshResult?.key?.id) {
+    console.error(`[CDN-CACHE] FAILED method=fresh media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=${cached ? "fallback" : "miss"} error=no-message-id`);
+  } else {
+    console.log(`[CDN-CACHE] SUCCESS method=fresh media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=${cached ? "fallback" : "miss"}`);
+  }
 
   // 6. Index new send for future reuse with 4-day TTL
   try {
