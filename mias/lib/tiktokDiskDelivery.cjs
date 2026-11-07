@@ -1,6 +1,8 @@
 "use strict";
 
 const fs = require("fs");
+const mediaCache = require("./mediaDeliveryCache.cjs");
+
 const RATE_LIMIT_RETRY_DELAYS_MS = Object.freeze([1500, 5000]);
 const WHATSAPP_VIDEO_MAX_BYTES = 95 * 1024 * 1024;
 
@@ -130,9 +132,6 @@ async function fetchVideoCandidate(url, {
       return null;
     }
 
-    // The normalizer's documented 120 MiB input limit makes it a no-op above
-    // this size. Keep large non-MP4 responses off the heap too: reject them
-    // rather than reading an unexpected large payload into a Buffer.
     if (bytes > maxBufferedBytes) {
       if (!hasMp4Signature(prefix)) {
         await cleanup();
@@ -153,7 +152,7 @@ async function fetchVideoCandidate(url, {
   }
 }
 
-function sendVideoFromDisk(sock, jid, filePath, caption, msg, retryOptions) {
+async function sendVideoFromDisk(sock, jid, filePath, caption, msg, retryOptions, customOpts = {}) {
   try {
     if (filePath && fs.existsSync(filePath)) {
       const stat = fs.statSync(filePath);
@@ -166,23 +165,54 @@ function sendVideoFromDisk(sock, jid, filePath, caption, msg, retryOptions) {
       throw err;
     }
   }
-  return sendConfirmedFileMessage(
+
+  return mediaCache.deliverWithMediaCache({
     sock,
     jid,
-    { video: { url: filePath }, mimetype: "video/mp4", caption },
-    msg,
-    retryOptions,
-  );
+    cacheKey: customOpts?.cacheKey || null,
+    filePath,
+    type: "video",
+    caption,
+    quoted: msg,
+    ptv: Boolean(customOpts?.ptv),
+    sendFresh: () => sendConfirmedFileMessage(
+      sock,
+      jid,
+      {
+        video: { url: filePath },
+        mimetype: customOpts?.mimetype || "video/mp4",
+        caption,
+        ...(customOpts?.ptv ? { ptv: true } : {}),
+      },
+      msg,
+      retryOptions,
+    ),
+  });
 }
 
-function sendDocumentFromDisk(sock, jid, filePath, fileName, caption, msg, retryOptions) {
-  return sendConfirmedFileMessage(
+async function sendDocumentFromDisk(sock, jid, filePath, fileName, caption, msg, retryOptions, customOpts = {}) {
+  return mediaCache.deliverWithMediaCache({
     sock,
     jid,
-    { document: { url: filePath }, mimetype: "video/mp4", fileName, caption },
-    msg,
-    retryOptions,
-  );
+    cacheKey: customOpts?.cacheKey || null,
+    filePath,
+    type: "document",
+    fileName,
+    caption,
+    quoted: msg,
+    sendFresh: () => sendConfirmedFileMessage(
+      sock,
+      jid,
+      {
+        document: { url: filePath },
+        mimetype: customOpts?.mimetype || "video/mp4",
+        fileName,
+        caption,
+      },
+      msg,
+      retryOptions,
+    ),
+  });
 }
 
 module.exports = {
