@@ -147,7 +147,19 @@ function installVideoDiskSend(sock, { dir = null } = {}) {
         }
       }
 
-      return await rawSend(jid, payload, options);
+      const result = await rawSend(jid, payload, options);
+      if (result?.key?.id && written.length > 0) {
+        try {
+          const mediaCache = require("./mediaDeliveryCache.cjs");
+          for (const file of written) {
+            const h = mediaCache.computeFileHash(file);
+            if (h) {
+              mediaCache.recordSentMedia(`sha256:${h}`, result);
+            }
+          }
+        } catch {}
+      }
+      return result;
     } catch (error) {
       console.error(`[disk-send] send error: ${error?.message || error}`);
       throw error;

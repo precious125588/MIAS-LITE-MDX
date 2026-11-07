@@ -1,3 +1,4 @@
+const mediaCache = require("./mediaDeliveryCache.cjs");
 'use strict';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -334,47 +335,59 @@ async function deliverMediaWithDiskTemp(sock, jid, media, {
     const defName = fileName || (type === "audio" ? `audio_${Date.now()}.mp3` : `video_${Date.now()}.mp4`);
     const mime = mimetype || (type === "audio" ? "audio/mpeg" : type === "image" ? "image/jpeg" : "video/mp4");
 
-    if (isLarge || type === "document") {
-      return await sock.sendMessage(jid, {
-        document: { url: tmpPath },
-        mimetype: mime,
-        fileName: path.basename(defName),
-        caption,
-      }, { quoted });
-    }
+    const deliveryType = isLarge || type === "document" ? "document" : type;
+    return await mediaCache.deliverWithMediaCache({
+      sock,
+      jid,
+      filePath: tmpPath,
+      type: deliveryType,
+      fileName: path.basename(defName),
+      caption,
+      quoted,
+      sendFresh: async () => {
+        if (isLarge || type === "document") {
+          return await sock.sendMessage(jid, {
+            document: { url: tmpPath },
+            mimetype: mime,
+            fileName: path.basename(defName),
+            caption,
+          }, { quoted });
+        }
 
-    if (type === "audio") {
-      return await sock.sendMessage(jid, {
-        audio: { url: tmpPath },
-        mimetype: mime,
-        ptt: Boolean(ptt),
-        fileName: path.basename(defName),
-        caption,
-      }, { quoted });
-    }
+        if (type === "audio") {
+          return await sock.sendMessage(jid, {
+            audio: { url: tmpPath },
+            mimetype: mime,
+            ptt: Boolean(ptt),
+            fileName: path.basename(defName),
+            caption,
+          }, { quoted });
+        }
 
-    if (type === "image") {
-      return await sock.sendMessage(jid, {
-        image: { url: tmpPath },
-        caption,
-      }, { quoted });
-    }
+        if (type === "image") {
+          return await sock.sendMessage(jid, {
+            image: { url: tmpPath },
+            caption,
+          }, { quoted });
+        }
 
-    // Default: video
-    try {
-      return await sock.sendMessage(jid, {
-        video: { url: tmpPath },
-        mimetype: mime,
-        caption,
-      }, { quoted });
-    } catch (_vidErr) {
-      return await sock.sendMessage(jid, {
-        document: { url: tmpPath },
-        mimetype: mime,
-        fileName: path.basename(defName),
-        caption,
-      }, { quoted });
-    }
+        // Default: video
+        try {
+          return await sock.sendMessage(jid, {
+            video: { url: tmpPath },
+            mimetype: mime,
+            caption,
+          }, { quoted });
+        } catch (_vidErr) {
+          return await sock.sendMessage(jid, {
+            document: { url: tmpPath },
+            mimetype: mime,
+            fileName: path.basename(defName),
+            caption,
+          }, { quoted });
+        }
+      },
+    });
   } finally {
     if (mustUnlink && tmpPath) {
       await safeUnlink(tmpPath);

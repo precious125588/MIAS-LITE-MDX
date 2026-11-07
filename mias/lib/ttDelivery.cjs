@@ -18,6 +18,7 @@ const { promisify } = require("util");
 const execFileAsync = promisify(execFile);
 const { resolveFfmpeg } = require("./portableVideo.cjs");
 const disk = require("./tiktokDiskDelivery.cjs");
+const mediaCache = require("./mediaDeliveryCache.cjs");
 
 const WORK_DIR = path.join(os.tmpdir(), "tt-hd-work");
 const STALE_MS = 60 * 60 * 1000;
@@ -334,7 +335,60 @@ async function reencodeHdForWhatsApp(input, {
  */
 async function deliverTikTokFile({
   sock, jid, quoted = null, file, kind = "video", mode = {}, caption = "", fileName = "tiktok.mp4",
+  cacheKey = null, url = null,
 }) {
+  const isDoc = Boolean(mode && mode.document) || kind === "document";
+  function finalizeResult(res) {
+    if (effectiveCacheKey && res?.sent?.key?.id) {
+      try { mediaCache.recordSentMedia(effectiveCacheKey, res.sent); } catch {}
+    }
+    return res;
+  }
+  const isPtv = Boolean(mode && mode.videoNote);
+  const modeId = String(mode?.id || (isDoc ? "doc" : "video"));
+  const cleanUrl = url ? String(url).trim() : (file?.url ? String(file.url).trim() : null);
+  const effectiveCacheKey = cacheKey || (cleanUrl ? `tt:${cleanUrl}:${modeId}:${kind}` : null);
+
+  if (effectiveCacheKey) {
+    const cached = mediaCache.getCachedMedia(effectiveCacheKey);
+    if (cached) {
+      try {
+        const result = await mediaCache.sendViaMediaKeys(sock, jid, cached, {
+          caption,
+          quoted,
+          fileName,
+          type: isDoc ? "document" : (isPtv ? "video" : cached.type),
+          ptv: isPtv,
+        });
+        if (result?.key?.id) {
+          return {
+            type: isDoc ? "document" : (isPtv ? "videoNote" : "video"),
+            bytes: cached.fileLength,
+            sent: result,
+            fromCache: true,
+            cacheMethod: "primary_cdn_keys",
+          };
+        }
+      } catch (primErr) {
+        console.warn(`[deliverTikTokFile] Primary CDN media keys failed, trying Fallback 1: ${primErr?.message || primErr}`);
+      }
+
+      try {
+        const fwdResult = await mediaCache.sendViaForwardFallback(sock, jid, cached, { quoted });
+        if (fwdResult?.key?.id) {
+          return {
+            type: isDoc ? "document" : (isPtv ? "videoNote" : "video"),
+            bytes: cached.fileLength,
+            sent: fwdResult,
+            fromCache: true,
+            cacheMethod: "fallback_forward",
+          };
+        }
+      } catch (fwdErr) {
+        console.warn(`[deliverTikTokFile] Fallback 1 forward failed, continuing with fresh encode: ${fwdErr?.message || fwdErr}`);
+      }
+    }
+  }
   if (kind === "audio") {
     const audioName = fileName.replace(/\.[a-z0-9]+$/i, "") + (file.mimetype === "audio/mp4" ? ".m4a" : ".mp3");
     const sent = await disk.sendWithRateLimitRetry(async () => {
@@ -344,14 +398,14 @@ async function deliverTikTokFile({
       if (!result?.key?.id) throw new Error("WhatsApp did not confirm the audio send; delivery is unconfirmed.");
       return result;
     });
-    return { type: "audio", bytes: file.bytes, sent };
+    return finalizeResult({ type: "audio", bytes: file.bytes, sent });
   }
 
   // 1.4 now re-encodes like 1.3 HD and sends as a document.
   // Other document modes (such as 1.2 SD document) keep the provider's original file untouched.
   if (mode && mode.document && !mode.upscale4k && mode.id !== "1.4" && mode.quality !== "hd") {
     const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, caption, quoted);
-    return { type: "document", bytes: file.bytes, sent };
+    return finalizeResult({ type: "document", bytes: file.bytes, sent });
   }
 
   // 1.8 / 1.9: the 4K encoder the picker uses. 1.3 and the rest: 1080p HD re-encode.
@@ -371,7 +425,7 @@ async function deliverTikTokFile({
       const sent = await disk.sendDocumentFromDisk(
         sock, jid, encoded.path, fileName, caption, quoted,
       );
-      return { type: "document", bytes: encoded.bytes, sent };
+      return finalizeResult({ type: "document", bytes: encoded.bytes, sent });
     }
     if (mode && mode.videoNote) {
       let sent = null;
@@ -385,18 +439,18 @@ async function deliverTikTokFile({
           if (!res?.key?.id) throw new Error("WhatsApp did not confirm video note send");
           return res;
         });
-        return { type: "videoNote", bytes: encoded.bytes, sent };
+        return finalizeResult({ type: "videoNote", bytes: encoded.bytes, sent });
       } catch (noteErr) {
         console.warn("[deliverTikTokFile] video note send failed, falling back to video:", noteErr?.message || noteErr);
         try {
           sent = await disk.sendVideoFromDisk(sock, jid, encoded.path, caption ? `${caption}
 📎 (video-note failed — sent as video)` : "📎 (video-note failed — sent as video)", quoted);
-          return { type: "video", bytes: encoded.bytes, sent, fallbackToVideo: true };
+          return finalizeResult({ type: "video", bytes: encoded.bytes, sent, fallbackToVideo: true });
         } catch (videoErr) {
           console.warn("[deliverTikTokFile] video fallback failed, falling back to document:", videoErr?.message || videoErr);
           sent = await disk.sendDocumentFromDisk(sock, jid, encoded.path, fileName, caption ? `${caption}
 📎 (client rejected round note — sent as file)` : "📎 (client rejected round note — sent as file)", quoted);
-          return { type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true };
+          return finalizeResult({ type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true });
         }
       }
     }
@@ -404,17 +458,17 @@ async function deliverTikTokFile({
       const docCaption = caption ? `${caption}
 📎 (Sent as document: video exceeds WhatsApp 95 MiB inline limit)` : "";
       const sent = await disk.sendDocumentFromDisk(sock, jid, encoded.path, fileName, docCaption, quoted);
-      return { type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true };
+      return finalizeResult({ type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true });
     }
     try {
       const sent = await disk.sendVideoFromDisk(sock, jid, encoded.path, caption, quoted);
-      return { type: "video", bytes: encoded.bytes, sent };
+      return finalizeResult({ type: "video", bytes: encoded.bytes, sent });
     } catch (videoErr) {
       console.warn("[deliverTikTokFile] sendVideoFromDisk failed, falling back to document:", videoErr?.message || videoErr);
       const docCaption = caption ? `${caption}
 📎 (Sent as document: video send failed)` : "";
       const sent = await disk.sendDocumentFromDisk(sock, jid, encoded.path, fileName, docCaption, quoted);
-      return { type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true };
+      return finalizeResult({ type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true });
     }
   } finally {
     try { await encoded.cleanup(); } catch {}  // 4K cleanup is synchronous; both kinds are safe here
