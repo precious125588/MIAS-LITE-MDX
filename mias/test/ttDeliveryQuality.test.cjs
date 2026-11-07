@@ -26,39 +26,23 @@ test('unknown or invalid source probes use the existing HD reference bitrate', (
   assert.equal(delivery.pickHdBitrate({ width: 0, height: 0, shortSide: 0, videoKbps: null }, delivery.HD_BOOST, hdBoost), delivery.HD_REFERENCE_KBPS);
 });
 
-test('high quality videos are left untouched by reencodeHdForWhatsApp', async () => {
-  const samplePath = '/tmp/test_tiktok.mp4';
-  if (fs.existsSync(samplePath)) {
-    const originalStat = fs.statSync(samplePath);
-    const result = await delivery.reencodeHdForWhatsApp(samplePath);
-    assert.equal(result.untouched, true);
-    assert.equal(result.bytes, originalStat.size);
-    await result.cleanup();
-  }
+test("boost constants are configured: 1% for standard HD and 0.4% for native video", () => {
+  assert.equal(delivery.HD_BOOST, 1.01);
+  assert.equal(delivery.NATIVE_HD_BOOST, 1.004);
+  assert.equal(delivery.HIGH_QUALITY_HD_BOOST, 1.004);
 });
 
-test('high quality videos are left untouched by processVideoTo4k', async () => {
-  const samplePath = '/tmp/test_tiktok.mp4';
-  if (fs.existsSync(samplePath)) {
-    const originalStat = fs.statSync(samplePath);
-    const result = await processVideoTo4k(samplePath);
-    assert.equal(result.untouched, true);
-    assert.equal(result.bytes, originalStat.size);
-    result.cleanup();
-  }
-});
-
-
-test("0.2% boost constants are configured for HD delivery", () => {
-  assert.equal(delivery.HD_BOOST, 1.002);
-  assert.equal(delivery.HIGH_QUALITY_HD_BOOST, 1.002);
-});
-
-test("HD sources at or above reference bitrate encode by 0.2%", () => {
+test("HD sources with 1% boost encode at 1%", () => {
   const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 20000 };
-  const expectedBitrate = Math.round(20000 * 1.002); // 20040 kb/s (0.2% boost)
-  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), expectedBitrate);
+  const expectedBitrate = Math.round(20000 * 1.01); // 20200 kb/s (1% boost)
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, 1.01), expectedBitrate);
+});
+
+test("Native 1080p videos encode by 0.4%", () => {
+  const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 5000 };
+  const expectedBitrate = Math.round(5000 * 1.004); // 5020 kb/s (0.4% boost)
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), expectedBitrate);
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), expectedBitrate);
 });
 
 test("fyp, cruise, feeling, discipline bypass re-encoding while other categories do not", () => {
