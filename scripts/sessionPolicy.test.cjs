@@ -12,6 +12,7 @@ const { sessionDigits, parseDiscardSessions, matchesSession, shouldPruneSession,
 const bootstrap = require('./sessionBootstrap.cjs');
 const startup = require('./start-with-session-migration.cjs');
 const store = require('../mias/sessionPersistence.cjs');
+const { restoreSessionFromSessionId: restoreSession } = require('../mias/lib/sessionRestore.cjs');
 const ROOT = path.join(__dirname, '..');
 const A = '15550001001', B = '15550001002';
 const jid = n => n + '@s.whatsapp.net';
@@ -39,14 +40,38 @@ function save(dir, name, value) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, name), typeof value === 'string' ? value : JSON.stringify(value));
 }
+function matchingBrace(source, open) {
+  let depth = 0, quote = null;
+  for (let i = open; i < source.length; i++) {
+    const c = source[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === '`') quote = c;
+    else if (c === '{') depth++;
+    else if (c === '}' && --depth === 0) return i;
+  }
+  throw new Error('unbalanced function body');
+}
+function decoderPreamble(source) {
+  const span = name => {
+    const i = source.indexOf('function ' + name + '(');
+    assert.ok(i >= 0, name + ' decoder exists');
+    return source.slice(i, matchingBrace(source, source.indexOf('{', i)) + 1);
+  };
+  const iifeStart = source.indexOf('(function(_0x15ff90,_0x1a94a2)');
+  const callEnd = '(_0x89a3,0xcb38c));';
+  const iifeEnd = source.indexOf(callEnd, iifeStart) + callEnd.length;
+  assert.ok(iifeStart >= 0 && iifeEnd > iifeStart, 'decoder rotation exists');
+  return [span('_0x89a3'), span('_0x2462'), source.slice(iifeStart, iifeEnd), 'const _0x39d0fd=_0x2462;'].join('\n');
+}
+// The bot bundle is one minified line, so run its own string decoder and then take the real function.
 function loadWorkerFunction(name, globals = {}) {
   const source = fs.readFileSync(path.join(ROOT, 'mias/index.js'), 'utf8');
-  const start = source.indexOf((name === 'restoreSession' ? 'async ' : '') + 'function ' + name + '(');
+  const start = source.indexOf('function ' + name + '(');
   assert.ok(start >= 0, name + ' exists');
-  const end = source.indexOf('\n}', start);
-  assert.ok(end > start, name + ' readable function boundary');
+  const end = matchingBrace(source, source.indexOf('{', start));
   const context = vm.createContext({ require: createRequire(path.join(ROOT, 'mias/index.js')), Buffer, console, process, ...globals });
-  return { fn: vm.runInContext('(' + source.slice(start, end + 2) + ')', context), context };
+  vm.runInContext(decoderPreamble(source), context);
+  return { fn: vm.runInContext('(' + source.slice(start, end + 1) + ')', context), context };
 }
 
 test('normalizes WhatsApp JIDs with device suffixes', () => {
@@ -182,27 +207,24 @@ test('process alive is not WhatsApp connected; closed and stale states stay offl
 test('worker fallback cannot import primary bot credentials into another bot directory', async t => {
   environment(t, { STORAGE_MODE: 'json' });
   const dir = path.join(temporary(t), jid(B));
-  const { fn } = loadWorkerFunction('restoreSession', { CONFIG: { OWNER_NUMBER: B } });
-  await assert.rejects(fn('JUST_X~' + Buffer.from(JSON.stringify(creds(A))).toString('base64'), dir), /different worker/);
+  await assert.rejects(restoreSession({ sessionId: 'JUST_X~' + Buffer.from(JSON.stringify(creds(A))).toString('base64'), authDir: dir }), /different worker/);
   assert.equal(fs.existsSync(path.join(dir, 'creds.json')), false);
 });
 test('worker restoration preserves rotated disk credentials and rejects corrupt disk', async t => {
   environment(t, { STORAGE_MODE: 'json' });
   const dir = path.join(temporary(t), jid(A));
   save(dir, 'creds.json', creds(A, 'Rotated', 97));
-  const { fn } = loadWorkerFunction('restoreSession', { CONFIG: { OWNER_NUMBER: A } });
-  assert.equal(await fn(JSON.stringify(creds()), dir), true);
+  assert.equal(await restoreSession({ sessionId: JSON.stringify(creds()), authDir: dir }), true);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'creds.json'))).accountSyncCounter, 97);
   save(dir, 'creds.json', '{broken');
-  await assert.rejects(fn(JSON.stringify(creds()), dir), /unreadable/);
+  await assert.rejects(restoreSession({ sessionId: JSON.stringify(creds()), authDir: dir }), /unreadable/);
   assert.equal(fs.readFileSync(path.join(dir, 'creds.json'), 'utf8'), '{broken');
 });
 test('legacy full-file worker export imports and normalizes the whole key snapshot', async t => {
   environment(t, { STORAGE_MODE: 'json' });
   const dir = path.join(temporary(t), jid(A));
   const files = { 'creds.json': creds(), 'session-peer.json': { secret: { type: 'Buffer', data: [3, 4] }, ratchet: 65 } };
-  const { fn } = loadWorkerFunction('restoreSession', { CONFIG: { OWNER_NUMBER: A } });
-  assert.equal(await fn(Buffer.from(JSON.stringify(files)).toString('base64'), dir), true);
+  assert.equal(await restoreSession({ sessionId: Buffer.from(JSON.stringify(files)).toString('base64'), authDir: dir }), true);
   const { useMultiFileAuthState } = await import('@whiskeysockets/baileys');
   const { state } = await useMultiFileAuthState(dir);
   const key = (await state.keys.get('session', ['peer'])).peer;
@@ -213,9 +235,9 @@ test('legacy worker exports cannot write outside their auth directory', async t 
   environment(t, { STORAGE_MODE: 'json' });
   const root = temporary(t), dir = path.join(root, jid(A));
   const files = { 'creds.json': creds(), '../escape.json': { data: 'forbidden' } };
-  const { fn } = loadWorkerFunction('restoreSession', { CONFIG: { OWNER_NUMBER: A } });
-  await assert.rejects(fn(Buffer.from(JSON.stringify(files)).toString('base64'), dir), /Unsafe session export/);
+  await assert.rejects(restoreSession({ sessionId: Buffer.from(JSON.stringify(files)).toString('base64'), authDir: dir }), /Unsafe session export/);
   assert.equal(fs.existsSync(path.join(root, 'escape.json')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'creds.json')), false);
 });
 
 test('dynamic owner name never borrows a different deployed account identity', t => {
