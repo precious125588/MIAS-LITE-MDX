@@ -118,13 +118,67 @@ test('deliverTikTokFile videoNote mode attempts PTV and falls back cleanly', asy
   }
 });
 
-test('mias/index.js contains 1.0001 quality boost for TikTok HD picker (1.3 & 1.4) and 1.001 for 4K', () => {
+test('boost configuration: 4K uses 1.001 and HD/status has no artificial brightness boost', () => {
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8');
-  assert.equal(indexSource.includes('1.0001:null'), true, 'Expected 1.0001:null in index.js');
+  assert.equal(indexSource.includes('1.0001:null'), false, 'Found old 1.0001 in index.js');
   assert.equal(indexSource.includes('1.01:null'), false, 'Found old 1.01 in index.js');
-  // The 4K boost moved into the readable module; check its constant there.
   const ttSource = fs.readFileSync(path.join(__dirname, '../lib/ttDelivery.cjs'), 'utf8');
   assert.match(ttSource, /const HIGH_QUALITY_4K_BOOST = 1\.001;/, 'Expected 1.001 4K boost in lib/ttDelivery.cjs');
+  assert.match(ttSource, /const HD_BOOST = 1\.0;/, 'Expected 1.0 HD boost in lib/ttDelivery.cjs');
+});
+
+test('deliverTikTokFile mode 1.3 HD sends original video untouched without re-encoding', async () => {
+  const tmpFile = path.join(os.tmpdir(), "test_hd_direct_" + Date.now() + ".mp4");
+  fs.writeFileSync(tmpFile, Buffer.alloc(1024, 0x66));
+  let sentPath = null;
+  const mockSock = {
+    user: { id: 'bot@s.whatsapp.net' },
+    sendMessage: async (jid, content) => {
+      sentPath = content?.video?.url || null;
+      return { key: { id: 'HD_DIRECT_SEND' } };
+    }
+  };
+  try {
+    const result = await delivery.deliverTikTokFile({
+      sock: mockSock,
+      jid: 'user@s.whatsapp.net',
+      file: { path: tmpFile, bytes: 1024 },
+      mode: { id: '1.3', format: 'video' },
+      caption: '1.3 HD test',
+      fileName: 'test_hd.mp4',
+    });
+    assert.equal(result.type, 'video');
+    assert.equal(sentPath, tmpFile, '1.3 HD video should be sent directly from source path without re-encoding');
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+});
+
+test('deliverTikTokFile mode 1.4 HD document sends original file untouched without re-encoding', async () => {
+  const tmpFile = path.join(os.tmpdir(), "test_hd_doc_direct_" + Date.now() + ".mp4");
+  fs.writeFileSync(tmpFile, Buffer.alloc(1024, 0x77));
+  let sentDocPath = null;
+  const mockSock = {
+    user: { id: 'bot@s.whatsapp.net' },
+    sendMessage: async (jid, content) => {
+      sentDocPath = content?.document?.url || null;
+      return { key: { id: 'HD_DOC_DIRECT_SEND' } };
+    }
+  };
+  try {
+    const result = await delivery.deliverTikTokFile({
+      sock: mockSock,
+      jid: 'user@s.whatsapp.net',
+      file: { path: tmpFile, bytes: 1024 },
+      mode: { id: '1.4', format: 'video', document: true },
+      caption: '1.4 HD doc test',
+      fileName: 'test_hd_doc.mp4',
+    });
+    assert.equal(result.type, 'document');
+    assert.equal(sentDocPath, tmpFile, '1.4 HD document should be sent directly from source path without re-encoding');
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
 });
 
 test('deliverTikTokFile mode 1.1 sends original video untouched without re-encoding', async () => {

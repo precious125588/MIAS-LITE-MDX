@@ -2,11 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const os = require('node:os');
 const delivery = require('../lib/ttDelivery.cjs');
-const { processVideoTo4k } = require('../lib/tt4kVideo.cjs');
 
 const hdBoost = delivery.HIGH_QUALITY_HD_BOOST;
 
@@ -26,27 +22,25 @@ test('unknown or invalid source probes use the existing HD reference bitrate', (
   assert.equal(delivery.pickHdBitrate({ width: 0, height: 0, shortSide: 0, videoKbps: null }, delivery.HD_BOOST, hdBoost), delivery.HD_REFERENCE_KBPS);
 });
 
-test("boost constants are configured: 0.0001 for standard and native HD, 0.001 for 4K", () => {
-  assert.equal(delivery.HD_BOOST, 1.0001);
-  assert.equal(delivery.NATIVE_HD_BOOST, 1.0001);
-  assert.equal(delivery.HIGH_QUALITY_HD_BOOST, 1.0001);
+test("boost constants are configured: 1.0 for HD (no brightness boost), 1.001 for 4K (0.001 boost)", () => {
+  assert.equal(delivery.HD_BOOST, 1.0);
+  assert.equal(delivery.NATIVE_HD_BOOST, 1.0);
+  assert.equal(delivery.HIGH_QUALITY_HD_BOOST, 1.0);
   assert.equal(delivery.HIGH_QUALITY_4K_BOOST, 1.001);
 });
 
-test("HD sources with 0.0001 boost encode at 1.0001", () => {
+test("HD sources with 1.0 boost preserve bitrate without artificial boost", () => {
   const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 20000 };
-  const expectedBitrate = Math.round(20000 * 1.0001); // 20002 kb/s (0.0001 boost)
-  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, 1.0001), expectedBitrate);
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, 1.0), 20000);
 });
 
-test("Native 1080p videos encode by 0.0001", () => {
+test("Native 1080p videos preserve original bitrate with 1.0 boost", () => {
   const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 5000 };
-  const expectedBitrate = Math.round(5000 * 1.0001); // 5001 kb/s (0.0001 boost)
-  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), expectedBitrate);
-  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), expectedBitrate);
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), 5000);
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), 5000);
 });
 
-test("fyp, cruise, feeling, discipline bypass re-encoding while other categories do not", () => {
+test("all status categories bypass re-encoding and send as original file", () => {
   const edits = require("../precious-anime-edits.cjs");
   assert.equal(edits.shouldSkipReencode("fyp"), true);
   assert.equal(edits.shouldSkipReencode("cruise"), true);
@@ -55,10 +49,8 @@ test("fyp, cruise, feeling, discipline bypass re-encoding while other categories
   assert.equal(edits.shouldSkipReencode("foryou"), true);
   assert.equal(edits.shouldSkipReencode("cruzz"), true);
   assert.equal(edits.shouldSkipReencode("discip"), true);
-
-  // The rest are re-encoded (e.g. naruto, jjk, bleach, onepiece)
-  assert.equal(edits.shouldSkipReencode("naruto"), false);
-  assert.equal(edits.shouldSkipReencode("jjk"), false);
-  assert.equal(edits.shouldSkipReencode("bleach"), false);
-  assert.equal(edits.shouldSkipReencode("onepiece"), false);
+  assert.equal(edits.shouldSkipReencode("naruto"), true);
+  assert.equal(edits.shouldSkipReencode("jjk"), true);
+  assert.equal(edits.shouldSkipReencode("bleach"), true);
+  assert.equal(edits.shouldSkipReencode("onepiece"), true);
 });
