@@ -383,3 +383,43 @@ test('socket media wrapper reuses cached CDN keys for repeated identical buffers
     mediaCache.deleteCachedMedia(cacheKey);
   }
 });
+
+test('extractMediaKeys handles Uint8Array buffers from protobuf decoding', () => {
+  const mockUint8Msg = {
+    key: { remoteJid: '123@s.whatsapp.net', fromMe: true, id: 'MSG_UINT8_1' },
+    message: {
+      videoMessage: {
+        url: 'https://mmg.whatsapp.net/v/t62.7118-24/vid_uint8.mp4',
+        directPath: '/v/t62.7118-24/vid_uint8.mp4',
+        mediaKey: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        fileSha256: new Uint8Array([20, 21, 22, 23, 24]),
+        fileEncSha256: new Uint8Array([30, 31, 32, 33, 34]),
+        fileLength: 524288,
+        mimetype: 'video/mp4',
+      }
+    }
+  };
+
+  const extracted = mediaCache.extractMediaKeys(mockUint8Msg);
+  assert.ok(extracted, 'Must extract keys from Uint8Array fields');
+  assert.equal(extracted.directPath, '/v/t62.7118-24/vid_uint8.mp4');
+  assert.equal(extracted.fileLength, 524288);
+  assert.equal(typeof extracted.mediaKey, 'string');
+});
+
+test('extractMediaKeys extracts directPath from url when directPath property is empty', () => {
+  const mockMsg = {
+    key: { remoteJid: '123@s.whatsapp.net', fromMe: true, id: 'MSG_FALLBACK_URL' },
+    message: {
+      videoMessage: {
+        url: 'https://mmg.whatsapp.net/v/t62.7118-24/fallback_path.mp4?hash=123',
+        mediaKey: Buffer.from('0123456789abcdef0123456789abcdef'),
+        fileLength: 1024,
+      }
+    }
+  };
+
+  const extracted = mediaCache.extractMediaKeys(mockMsg);
+  assert.ok(extracted);
+  assert.equal(extracted.directPath, '/v/t62.7118-24/fallback_path.mp4');
+});

@@ -192,10 +192,18 @@ function installVideoDiskSend(sock, { dir = null } = {}) {
       }
 
       const result = await rawSend(jid, payload, options);
-      if (result?.key?.id && written.length > 0) {
+      if (result?.key?.id) {
         try {
           const mediaCache = require("./mediaDeliveryCache.cjs");
-          for (const file of written) {
+          const pathsToIndex = [...written];
+          const mediaKey = DISK_KEYS.find((k) => payload[k]);
+          const localPath = (mediaKey && payload[mediaKey]?.url && fs.existsSync(payload[mediaKey].url) ? payload[mediaKey].url : null)
+            || (mediaKey && content[mediaKey]?.url && fs.existsSync(content[mediaKey].url) ? content[mediaKey].url : null)
+            || (mediaKey && typeof content[mediaKey] === "string" && fs.existsSync(content[mediaKey]) ? content[mediaKey] : null);
+          if (localPath && !pathsToIndex.includes(localPath)) {
+            pathsToIndex.push(localPath);
+          }
+          for (const file of pathsToIndex) {
             const h = mediaCache.computeFileHash(file);
             if (h) {
               mediaCache.recordSentMedia(`sha256:${h}`, result);

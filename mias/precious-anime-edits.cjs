@@ -551,14 +551,14 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
       return true;
     }
 
-    // The rest of the categories: re-encode to TT command 1.3 HD state with 0.2% boost (clean H.264/AAC 1080p60 faststart)
+    // The rest of the categories: re-encode to TT command 1.3 HD state with 0.01 boost (clean H.264/AAC 1080p60 faststart)
     let hdEncoded = null;
     if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
       try {
         const hdRun = () => TTD.reencodeHdForWhatsApp(file, {
           maxBytes: 95 * 1024 * 1024,
           boost: 1.01,
-          sourceQualityBoost: 1.004,
+          sourceQualityBoost: 1.01,
         });
         hdEncoded = (_heavyGuard && typeof _heavyGuard.runHeavy === "function")
           ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 25000 })
