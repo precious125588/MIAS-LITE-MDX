@@ -242,16 +242,67 @@ async function processVideoTo4k(input, opts = {}) {
         }
       }
 
-      if (run.error) throw run.error;
-      if (run.timedOut) throw new Error(`4K video processing timed out after ${timeoutMs}ms`);
-      if (run.code !== 0) {
+      if (run.error || run.timedOut || run.code !== 0) {
         const killedBy = run.signal ? ` (killed by ${run.signal}, usually out of memory)` : "";
-        throw new Error(`ffmpeg 4K conversion exited with code ${run.code}${killedBy}: ${run.stderr.slice(0, 300)}`);
+        const reason = run.timedOut
+          ? `timed out after ${timeoutMs}ms`
+          : (run.error?.message || `ffmpeg exited with code ${run.code}${killedBy}: ${run.stderr.slice(0, 300)}`);
+        console.warn(`[4K video] ffmpeg failed (${reason}), falling back to source file`);
+        removeFile(outputPath);
+        try { fs.copyFileSync(inputPath, outputPath); } catch {}
+        const fbStats = fs.existsSync(outputPath) ? fs.statSync(outputPath) : null;
+        if (fbStats && fbStats.size >= MIN_OUTPUT_BYTES) {
+          let cleanedFb = false;
+          return {
+            path: outputPath,
+            bytes: fbStats.size,
+            cleanup: () => {
+              if (cleanedFb) return;
+              cleanedFb = true;
+              removeFile(outputPath);
+            },
+            untouched: true,
+            fallback: true,
+          };
+        }
+        const inStat = fs.statSync(inputPath);
+        return {
+          path: inputPath,
+          bytes: inStat.size,
+          cleanup: () => {},
+          untouched: true,
+          fallback: true,
+        };
       }
 
-      let stats = fs.statSync(outputPath);
-      if (!stats.size || stats.size < MIN_OUTPUT_BYTES) {
-        throw new Error("ffmpeg produced an empty 4K output file");
+      let stats = fs.existsSync(outputPath) ? fs.statSync(outputPath) : null;
+      if (!stats || !stats.size || stats.size < MIN_OUTPUT_BYTES) {
+        console.warn("[4K video] ffmpeg produced empty output, falling back to source file");
+        removeFile(outputPath);
+        try { fs.copyFileSync(inputPath, outputPath); } catch {}
+        const fbStats = fs.existsSync(outputPath) ? fs.statSync(outputPath) : null;
+        if (fbStats && fbStats.size >= MIN_OUTPUT_BYTES) {
+          let cleanedFb = false;
+          return {
+            path: outputPath,
+            bytes: fbStats.size,
+            cleanup: () => {
+              if (cleanedFb) return;
+              cleanedFb = true;
+              removeFile(outputPath);
+            },
+            untouched: true,
+            fallback: true,
+          };
+        }
+        const inStat = fs.statSync(inputPath);
+        return {
+          path: inputPath,
+          bytes: inStat.size,
+          cleanup: () => {},
+          untouched: true,
+          fallback: true,
+        };
       }
 
       // When output exceeds maxOutputBytes (95 MiB), attempt high-quality compression to fit within 95 MiB
@@ -293,8 +344,17 @@ async function processVideoTo4k(input, opts = {}) {
           }
         }
 
-        removeFile(outputPath);
-        throw new Error("4K video exceeds the 95 MiB size limit even after compression. Choose the 4K document option (1.9) to download it.");
+        console.warn("[4K video] file exceeds maxOutputBytes even after compression, returning for document fallback");
+        let cleaned = false;
+        return {
+          path: outputPath,
+          bytes: stats.size,
+          cleanup: () => {
+            if (cleaned) return;
+            cleaned = true;
+            removeFile(outputPath);
+          }
+        };
       }
 
       let cleaned = false;

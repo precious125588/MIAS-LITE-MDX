@@ -248,18 +248,36 @@ async function reencodeHdForWhatsApp(input, {
     if (remaining > 0) run = await runFfmpeg(HD_ARGS(inPath, out, retryKbps, { lowMemory: true }), remaining);
   }
   if (run.error || run.timedOut || run.code !== 0) {
-    await cleanup();
     const killed = run.signal ? ` (killed by ${run.signal}${run.signal === "SIGKILL" ? ", usually out of memory" : ""})` : "";
     const stderrText = run.stderr.trim().slice(0, 200);
     const reason = run.timedOut
       ? "timed out"
       : (run.error?.message || `ffmpeg exited with code ${run.code}${killed}${stderrText ? `: ${stderrText}` : ""}`);
-    throw new Error(`HD re-encode failed: ${reason}. Nothing was sent.`);
+    console.warn(`[HD re-encode] ffmpeg failed (${reason}), falling back to source file`);
+    try { await cleanup(); } catch {}
+    try {
+      await fsp.copyFile(inPath, out);
+      const fallbackStat = await fsp.stat(out).catch(() => null);
+      if (fallbackStat && fallbackStat.size >= MIN_BYTES) {
+        return { path: out, bytes: fallbackStat.size, cleanup, untouched: true, fallback: true };
+      }
+    } catch {}
+    const inStat = await fsp.stat(inPath).catch(() => null);
+    return { path: inPath, bytes: inStat ? inStat.size : (input?.bytes || 0), cleanup: async () => {}, untouched: true, fallback: true };
   }
   let stat = await fsp.stat(out).catch(() => null);
   if (!stat || stat.size < MIN_BYTES) {
-    await cleanup();
-    throw new Error("HD re-encode produced an empty file. Nothing was sent.");
+    console.warn("[HD re-encode] produced empty file, falling back to source file");
+    try { await cleanup(); } catch {}
+    try {
+      await fsp.copyFile(inPath, out);
+      const fallbackStat = await fsp.stat(out).catch(() => null);
+      if (fallbackStat && fallbackStat.size >= MIN_BYTES) {
+        return { path: out, bytes: fallbackStat.size, cleanup, untouched: true, fallback: true };
+      }
+    } catch {}
+    const inStat = await fsp.stat(inPath).catch(() => null);
+    return { path: inPath, bytes: inStat ? inStat.size : (input?.bytes || 0), cleanup: async () => {}, untouched: true, fallback: true };
   }
 
   // When output exceeds maxBytes (95 MiB), attempt high-quality compression to fit within 95 MiB
@@ -302,8 +320,8 @@ async function reencodeHdForWhatsApp(input, {
       }
     }
 
-    await cleanup();
-    throw new Error("HD video exceeds the 95 MiB size limit even after compression. Choose the document option (1.4) to download it.");
+    console.warn("[HD re-encode] file exceeds maxBytes even after compression, returning for document fallback");
+    return { path: out, bytes: stat.size, cleanup };
   }
 
   return { path: out, bytes: stat.size, cleanup };
@@ -357,11 +375,49 @@ async function deliverTikTokFile({
       );
       return { type: "document", bytes: encoded.bytes, sent };
     }
-    if (encoded.bytes > TT_INLINE_VIDEO_MAX_BYTES) {
-      throw new Error("The video exceeds the 95 MiB size limit. Choose an explicit document option to send it as a document.");
+    if (mode && mode.videoNote) {
+      let sent = null;
+      try {
+        sent = await disk.sendWithRateLimitRetry(async () => {
+          const res = await sock.sendMessage(jid, {
+            video: { url: encoded.path },
+            ptv: true,
+            mimetype: "video/mp4",
+          }, { quoted });
+          if (!res?.key?.id) throw new Error("WhatsApp did not confirm video note send");
+          return res;
+        });
+        return { type: "videoNote", bytes: encoded.bytes, sent };
+      } catch (noteErr) {
+        console.warn("[deliverTikTokFile] video note send failed, falling back to video:", noteErr?.message || noteErr);
+        try {
+          sent = await disk.sendVideoFromDisk(sock, jid, encoded.path, caption ? `${caption}
+📎 (video-note failed — sent as video)` : "📎 (video-note failed — sent as video)", quoted);
+          return { type: "video", bytes: encoded.bytes, sent, fallbackToVideo: true };
+        } catch (videoErr) {
+          console.warn("[deliverTikTokFile] video fallback failed, falling back to document:", videoErr?.message || videoErr);
+          sent = await disk.sendDocumentFromDisk(sock, jid, encoded.path, fileName, caption ? `${caption}
+📎 (client rejected round note — sent as file)` : "📎 (client rejected round note — sent as file)", quoted);
+          return { type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true };
+        }
+      }
     }
-    const sent = await disk.sendVideoFromDisk(sock, jid, encoded.path, caption, quoted);
-    return { type: "video", bytes: encoded.bytes, sent };
+    if (encoded.bytes > TT_INLINE_VIDEO_MAX_BYTES) {
+      const docCaption = caption ? `${caption}
+📎 (Sent as document: video exceeds WhatsApp 95 MiB inline limit)` : "";
+      const sent = await disk.sendDocumentFromDisk(sock, jid, encoded.path, fileName, docCaption, quoted);
+      return { type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true };
+    }
+    try {
+      const sent = await disk.sendVideoFromDisk(sock, jid, encoded.path, caption, quoted);
+      return { type: "video", bytes: encoded.bytes, sent };
+    } catch (videoErr) {
+      console.warn("[deliverTikTokFile] sendVideoFromDisk failed, falling back to document:", videoErr?.message || videoErr);
+      const docCaption = caption ? `${caption}
+📎 (Sent as document: video send failed)` : "";
+      const sent = await disk.sendDocumentFromDisk(sock, jid, encoded.path, fileName, docCaption, quoted);
+      return { type: "document", bytes: encoded.bytes, sent, fallbackToDocument: true };
+    }
   } finally {
     try { await encoded.cleanup(); } catch {}  // 4K cleanup is synchronous; both kinds are safe here
   }
