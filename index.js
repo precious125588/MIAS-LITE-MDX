@@ -20,7 +20,10 @@ console.log('⚡ [MIAS LITE MDX] Initializing environment...');
 const bootstrapScript = path.join(__dirname, 'scripts', 'start-with-session-migration.cjs');
 
 if (fs.existsSync(bootstrapScript)) {
-    require(bootstrapScript);
+    require(bootstrapScript).main().catch((error) => {
+        console.error("[session-startup] Startup failed:", error.code || error.name);
+        process.exitCode = 1;
+    });
 } else {
     console.log('⚡ [MIAS LITE MDX] Launching server dashboard...');
     require('./server.js');

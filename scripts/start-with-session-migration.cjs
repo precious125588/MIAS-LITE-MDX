@@ -133,254 +133,73 @@ async function initSessionDatabase(sessionUrl) {
 }
 
 async function cleanLockedAndStaleSessions({ sessionUrl, settingsUrl, preserveSessionJid } = {}) {
-  try {
-    let sessionPaths;
-    try { sessionPaths = require("../sessionPaths"); } catch { sessionPaths = require("../nexstore_modules/sessionPaths"); }
-    const nexRoot = sessionPaths.nexstoreRoot ? sessionPaths.nexstoreRoot() : path.join(__dirname, "..", "nexstore");
-    const sessionRoot = sessionPaths.resolveSessionRoot ? sessionPaths.resolveSessionRoot() : path.join(nexRoot, "pairing");
-
-    const scanDirs = new Set([
-      sessionRoot,
-      path.join(nexRoot, "pairing"),
-      "/app/nexstore/pairing",
-      path.join(__dirname, "..", "nexstore", "pairing")
-    ]);
-
-    const { sessionDigits, parseDiscardSessions } = require('./sessionPolicy.cjs');
-    const envSessionDigits = sessionDigits(preserveSessionJid);
-    const discardSet = parseDiscardSessions(process.env.DISCARD_SESSIONS);
-    // An explicitly loaded SESSION_ID is authoritative. Never discard the
-    // live env identity even if DISCARD_SESSIONS accidentally contains it.
-    if (envSessionDigits) discardSet.delete(envSessionDigits);
-    const keepEnvSessionOnly = Boolean(envSessionDigits);
-    const purgeAll = String(process.env.RESET_SESSIONS || process.env.PURGE_ALL_SESSIONS || "").toLowerCase() === "true";
-
-    console.log(`[session-startup] Checking sessions${keepEnvSessionOnly ? ` (keeping only SESSION_ID ${envSessionDigits})` : ` (discard list: ${[...discardSet].join(", ")})`}${purgeAll ? "; RESET requested" : ""}...`);
-
-    // 1. Purge from PostgreSQL if connected
-    for (const dbUrl of [sessionUrl, settingsUrl].filter(Boolean)) {
-      let pg;
-      try { pg = require("pg"); } catch { break; }
-      const { Pool } = pg;
-      let pool;
+  const { sessionDigits, parseDiscardSessions, shouldPruneSession } = require('./sessionPolicy.cjs');
+  const protectedDigits = sessionDigits(preserveSessionJid);
+  const discardSet = parseDiscardSessions(process.env.DISCARD_SESSIONS);
+  if (protectedDigits) discardSet.delete(protectedDigits);
+  const purgeAll = [process.env.RESET_SESSIONS, process.env.PURGE_ALL_SESSIONS]
+    .some(value => String(value || '').toLowerCase() === 'true');
+  // SESSION_ID selects an import, NEVER an implicit delete-all-other-bots policy.
+  if (!purgeAll && discardSet.size === 0) return { cleaned: false, reason: 'no_explicit_reset' };
+  const sessionPaths = require('../sessionPaths');
+  const nexRoot = sessionPaths.nexstoreRoot();
+  const roots = new Set([sessionPaths.resolveSessionRoot(), path.join(nexRoot, 'pairing')]);
+  const shouldRemove = value => shouldPruneSession(value, protectedDigits, discardSet, purgeAll);
+  // Only an explicit reset reaches any deletion, and the active env identity is protected.
+  for (const dbUrl of new Set([sessionUrl, settingsUrl].filter(Boolean))) {
+    let pool;
+    try {
+      const { Pool } = require('pg');
+      pool = new Pool({ connectionString: normalizePostgresConnectionString(dbUrl), max: 1,
+        connectionTimeoutMillis: 5000, statement_timeout: 15000, ssl: databaseSslOptions(dbUrl) });
+      const client = await pool.connect();
       try {
-        pool = new Pool({
-          connectionString: normalizePostgresConnectionString(dbUrl),
-          max: 1,
-          connectionTimeoutMillis: 5000,
-          statement_timeout: 15000,
-          ssl: databaseSslOptions(dbUrl),
-          application_name: "mais-clean-locked-sessions",
-        });
-        const client = await pool.connect();
-        try {
-          if (keepEnvSessionOnly) {
-            const keepJid = `${envSessionDigits}@s.whatsapp.net`;
-            const auth = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_session_auth"]);
-            if (auth.rows[0]?.tbl) {
-              await client.query("DELETE FROM public.mias_session_auth WHERE session_id NOT IN ($1, $2)", [keepJid, envSessionDigits]);
-            }
-            const registry = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_session_registry"]);
-            if (registry.rows[0]?.tbl) {
-              await client.query("DELETE FROM public.mias_session_registry WHERE jid <> $1 OR number <> $2", [keepJid, envSessionDigits]);
-            }
-            const selections = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_bot_selections"]);
-            if (selections.rows[0]?.tbl) {
-              await client.query("DELETE FROM public.mias_bot_selections WHERE number <> $1", [envSessionDigits]);
-            }
-          } else if (purgeAll) {
-            for (const table of ["mias_session_auth", "mias_session_registry", "mias_bot_selections"]) {
-              const check = await client.query("SELECT to_regclass($1) AS tbl", [`public.${table}`]);
-              if (check.rows[0]?.tbl) {
-                await client.query(`TRUNCATE TABLE public.${table} CASCADE`);
-              }
-            }
-          } else {
-            for (const num of discardSet) {
-              const jid = `${num}@s.whatsapp.net`;
-              const checkAuth = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_session_auth"]);
-              if (checkAuth.rows[0]?.tbl) {
-                await client.query("DELETE FROM mias_session_auth WHERE session_id = $1 OR session_id = $2", [jid, num]);
-              }
-              const checkReg = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_session_registry"]);
-              if (checkReg.rows[0]?.tbl) {
-                await client.query("DELETE FROM mias_session_registry WHERE jid = $1 OR number = $2", [jid, num]);
-              }
-              const checkSel = await client.query("SELECT to_regclass($1) AS tbl", ["public.mias_bot_selections"]);
-              if (checkSel.rows[0]?.tbl) {
-                await client.query("DELETE FROM mias_bot_selections WHERE number = $1", [num]);
-              }
-            }
-          }
-        } finally {
-          client.release();
-        }
-      } catch (dbErr) {
-        // Advisory cleanup; ignore unreachable DB
-      } finally {
-        if (pool) try { await pool.end(); } catch {}
-      }
-    }
-
-    // 2. Scan disk folders across all session roots
-    for (const dir of scanDirs) {
-      if (!fs.existsSync(dir)) continue;
-      let entries = [];
-      try { entries = fs.readdirSync(dir); } catch {}
-      for (const ent of entries) {
-        const fullPath = path.join(dir, ent);
-        let isDirectory = false;
-        try { isDirectory = fs.statSync(fullPath).isDirectory(); } catch {}
-        if (!isDirectory) continue;
-
-        const digits = ent.split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
-
-        // A. Remove if in discard list or full reset requested
-        const looksLikeSessionFolder = Boolean(digits) && (ent.includes("@") || /^\d/.test(ent) || ent.includes(".quarantine-"));
-        if ((keepEnvSessionOnly && looksLikeSessionFolder && digits !== envSessionDigits) || (!keepEnvSessionOnly && purgeAll) || (digits && discardSet.has(digits))) {
-          try {
-            fs.rmSync(fullPath, { recursive: true, force: true });
-            console.log(`[session-startup] Permanently removed discarded session: ${ent}`);
-          } catch {}
-          continue;
-        }
-
-        // B. Remove quarantine copies of discarded numbers
-        if (ent.includes(".quarantine-")) {
-          for (const num of discardSet) {
-            if (ent.includes(num)) {
-              try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch {}
-              break;
-            }
+        await client.query('BEGIN');
+        for (const [table, column] of [['mias_session_auth', 'session_id'], ['mias_session_registry', 'jid'], ['mias_bot_selections', 'number']]) {
+          const found = await client.query('SELECT to_regclass($1) AS tbl', ['public.' + table]);
+          if (!found.rows[0]?.tbl) continue;
+          const rows = await client.query('SELECT DISTINCT ' + column + ' AS identity FROM public.' + table);
+          for (const row of rows.rows) if (shouldRemove(row.identity)) {
+            await client.query('DELETE FROM public.' + table + ' WHERE ' + column + ' = $1', [row.identity]);
           }
         }
-
-        // C. Clear stale connection paused markers (.connection-paused.json)
-        // On container startup, no bot worker process exists yet from previous runs
-        const connPaused = path.join(fullPath, ".connection-paused.json");
-        if (fs.existsSync(connPaused)) {
-          try {
-            fs.rmSync(connPaused, { force: true });
-            console.log(`[session-startup] Cleared stale connection pause marker in ${ent}`);
-          } catch {}
-        }
-
-        // D. Clear stale runtime locks
-        const runtimeLock = path.join(fullPath, ".runtime.lock");
-        if (fs.existsSync(runtimeLock)) {
-          try { fs.rmSync(runtimeLock, { force: true }); } catch {}
-        }
-
-        // E. Clean incomplete / broken creds older than 3 minutes
-        const credsFile = path.join(fullPath, "creds.json");
-        if (fs.existsSync(credsFile)) {
-          try {
-            const data = JSON.parse(fs.readFileSync(credsFile, "utf8"));
-            if (!data || (data.registered === false && !data.me)) {
-              const stat = fs.statSync(credsFile);
-              if (Date.now() - stat.mtimeMs > 3 * 60 * 1000) {
-                fs.rmSync(fullPath, { recursive: true, force: true });
-                console.log(`[session-startup] Cleaned incomplete stale session folder: ${ent}`);
-              }
-            }
-          } catch {
-            fs.rmSync(fullPath, { recursive: true, force: true });
-            console.log(`[session-startup] Cleaned corrupt session folder: ${ent}`);
-          }
-        }
-      }
-    }
-
-    // 3. Clean web_pairs.json
-    const webPairsPath = path.join(nexRoot, "web_pairs.json");
-    try {
-      if (fs.existsSync(webPairsPath)) {
-        let webPairs = JSON.parse(fs.readFileSync(webPairsPath, "utf8")) || [];
-        if (Array.isArray(webPairs)) {
-          const beforeLen = webPairs.length;
-          webPairs = purgeAll && !keepEnvSessionOnly ? [] : webPairs.filter(p => {
-            const num = sessionDigits(p?.number || p?.jid || "");
-            if (keepEnvSessionOnly) return num === envSessionDigits;
-            return num && !discardSet.has(num);
-          });
-          if (webPairs.length !== beforeLen) {
-            fs.writeFileSync(webPairsPath, JSON.stringify(webPairs, null, 2), "utf8");
-            console.log(`[session-startup] Cleaned web_pairs.json (${beforeLen - webPairs.length} removed)`);
-          }
-        }
-      }
-    } catch {}
-
-    // 4. Clean active_bot.json
-    const activeBotPath = path.join(nexRoot, "active_bot.json");
-    try {
-      if (fs.existsSync(activeBotPath)) {
-        const activeBot = JSON.parse(fs.readFileSync(activeBotPath, "utf8")) || {};
-        const actNum = String(activeBot.digits || activeBot.jid || "").split("@")[0].replace(/[^0-9]/g, "");
-        if ((keepEnvSessionOnly && actNum !== envSessionDigits) || (purgeAll && !keepEnvSessionOnly) || (actNum && discardSet.has(actNum))) {
-          fs.writeFileSync(activeBotPath, JSON.stringify({
-            live: false,
-            username: null,
-            pushName: null,
-            jid: null,
-            digits: null,
-            updatedAt: new Date().toISOString()
-          }, null, 2), "utf8");
-          console.log("[session-startup] Reset active_bot.json to unlinked state");
-        }
-      }
-    } catch {}
-
-    // 5. Clean botSelectionStore (bot_selections.json, pending_selections.json)
-    try {
-      const selStore = require("../deploy/botSelectionStore");
-      for (const num of discardSet) {
-        selStore.clearSelection(num);
-        selStore.clearPending(num);
-      }
-      if (keepEnvSessionOnly) {
-        for (const filename of ["bot_selections.json", "pending_selections.json"]) {
-          const target = path.join(nexRoot, filename);
-          try {
-            if (!fs.existsSync(target)) continue;
-            const data = JSON.parse(fs.readFileSync(target, "utf8")) || {};
-            for (const key of Object.keys(data)) {
-              if (sessionDigits(key) !== envSessionDigits) delete data[key];
-            }
-            fs.writeFileSync(target, JSON.stringify(data, null, 2), "utf8");
-          } catch {}
-        }
-      }
-      if (purgeAll && !keepEnvSessionOnly) {
-        const selFile = path.join(nexRoot, "bot_selections.json");
-        const penFile = path.join(nexRoot, "pending_selections.json");
-        if (fs.existsSync(selFile)) fs.writeFileSync(selFile, "{}", "utf8");
-        if (fs.existsSync(penFile)) fs.writeFileSync(penFile, "{}", "utf8");
-      }
-    } catch {}
-
-    // 6. Clean bot_status/
-    try {
-      const statusDir = path.join(nexRoot, "bot_status");
-      if (fs.existsSync(statusDir)) {
-        if (keepEnvSessionOnly) {
-          for (const entry of fs.readdirSync(statusDir)) {
-            if (entry.endsWith('.json') && sessionDigits(entry) !== envSessionDigits) {
-              try { fs.rmSync(path.join(statusDir, entry), { force: true }); } catch {}
-            }
-          }
-        } else {
-          for (const num of discardSet) {
-            const p = path.join(statusDir, `${num}.json`);
-            if (fs.existsSync(p)) fs.rmSync(p, { force: true });
-          }
-        }
-      }
-    } catch {}
-
-  } catch (err) {
-    console.warn("[session-startup] Notice running session cleanup:", err.message);
+        await client.query('COMMIT');
+      } catch (error) { await client.query('ROLLBACK'); throw error; }
+      finally { client.release(); }
+    } catch (error) {
+      console.warn('[session-startup] Explicit database cleanup failed:', error.code || error.name);
+    } finally { if (pool) await pool.end().catch(() => {}); }
   }
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+      if (entry.isDirectory() && shouldRemove(entry.name)) {
+        fs.rmSync(path.join(root, entry.name), { recursive: true, force: true });
+        console.log('[session-startup] Explicitly discarded session: ' + entry.name);
+      }
+    }
+  }
+  for (const name of ['web_pairs.json', 'bot_selections.json', 'pending_selections.json']) {
+    const target = path.join(nexRoot, name);
+    if (!fs.existsSync(target)) continue;
+    const data = JSON.parse(fs.readFileSync(target, 'utf8'));
+    if (Array.isArray(data)) {
+      fs.writeFileSync(target, JSON.stringify(data.filter(row => !shouldRemove(row?.jid || row?.number)), null, 2));
+    } else if (data && typeof data === 'object') {
+      for (const key of Object.keys(data)) if (shouldRemove(key)) delete data[key];
+      fs.writeFileSync(target, JSON.stringify(data, null, 2));
+    }
+  }
+  const activePath = path.join(nexRoot, 'active_bot.json');
+  if (fs.existsSync(activePath)) {
+    const active = JSON.parse(fs.readFileSync(activePath, 'utf8'));
+    if (shouldRemove(active?.jid || active?.digits)) fs.writeFileSync(activePath, JSON.stringify({ live: false, updatedAt: new Date().toISOString() }));
+  }
+  const statusRoot = path.join(nexRoot, 'bot_status');
+  if (fs.existsSync(statusRoot)) for (const name of fs.readdirSync(statusRoot)) {
+    if (name.endsWith('.json') && shouldRemove(name.slice(0, -5))) fs.rmSync(path.join(statusRoot, name), { force: true });
+  }
+  return { cleaned: true };
 }
 
 async function prepareSessionDatabase() {
@@ -401,7 +220,7 @@ async function prepareSessionDatabase() {
   console.log(`[DB] Settings Database : ${settingsUrl ? 'Attached' : 'Not Attached (local JSON)'}`);
   console.log(`[DB] Session Database  : ${sessionUrl ? 'Attached' : 'Not Attached (local files)'}`);
   // Resolve SESSION_ID before cleanup so a reset can preserve the credentials
-  // the bot is actually about to run, and remove only non-matching sessions.
+  // the bot is actually about to run. Only explicit reset/discard flags may prune.
   let envBootResult = null;
   const sessionIdConfigured = Boolean(String(process.env.SESSION_ID || '').trim());
   if (sessionIdConfigured) {
@@ -436,23 +255,12 @@ async function prepareSessionDatabase() {
       if (bootResult && bootResult.canonicalJid && bootResult.credsObj) {
         const sessionRoot = sessionPaths.resolveSessionRoot();
         const targetDirs = new Set([
-          path.join(sessionRoot, bootResult.canonicalJid),
-          path.join(nexRoot, 'pairing', bootResult.canonicalJid)
+          path.join(sessionRoot, bootResult.canonicalJid)
         ]);
         for (const targetDir of targetDirs) {
-          fs.mkdirSync(targetDir, { recursive: true });
-          fs.writeFileSync(path.join(targetDir, 'creds.json'), JSON.stringify(bootResult.credsObj, null, 2), 'utf8');
+          await require('./sessionBootstrap.cjs').prepareBootSession(targetDir, bootResult);
         }
-        for (const legacyDir of [
-          path.join(sessionRoot, bootResult.digits),
-          path.join(nexRoot, 'pairing', bootResult.digits)
-        ]) {
-          try {
-            if (fs.existsSync(legacyDir) && !targetDirs.has(legacyDir)) {
-              fs.rmSync(legacyDir, { recursive: true, force: true });
-            }
-          } catch {}
-        }
+
 
         const webPairsPath = path.join(nexRoot, 'web_pairs.json');
         let webPairs = [];
@@ -461,23 +269,23 @@ async function prepareSessionDatabase() {
             webPairs = JSON.parse(fs.readFileSync(webPairsPath, 'utf8')) || [];
           }
         } catch {}
-        const alreadyHas = webPairs.some(p => String(p?.jid || p?.number || '').includes(bootResult.digits));
+        const alreadyHas = webPairs.some(p => require('./sessionPolicy.cjs').sessionDigits(p?.jid || p?.number) === bootResult.digits);
         if (!alreadyHas) {
           webPairs.push({
             number: bootResult.digits,
             jid: bootResult.canonicalJid,
             pairedAt: new Date().toISOString(),
-            status: 'connected',
+            status: 'starting',
             source: 'session_id_bootstrap'
           });
           fs.writeFileSync(webPairsPath, JSON.stringify(webPairs, null, 2), 'utf8');
         }
 
-        // Record active bot session info so web UI shows: "BOT LIVE for <username>"
+        // Imported credentials are not proof of a live WhatsApp connection.
         const activeBotPath = path.join(nexRoot, 'active_bot.json');
         try {
           fs.writeFileSync(activeBotPath, JSON.stringify({
-            live: true,
+            live: false,
             username: bootResult.sessionUserName || 'User',
             pushName: bootResult.pushName || null,
             jid: bootResult.canonicalJid,
@@ -489,7 +297,7 @@ async function prepareSessionDatabase() {
 
         process.env.BOT_ACTIVE_USER = bootResult.sessionUserName || 'User';
         process.env.BOT_ACTIVE_JID = bootResult.canonicalJid;
-        process.env.BOT_IS_LIVE = 'true';
+        process.env.BOT_IS_LIVE = 'false';
 
         console.log(`[session-bootstrap] Injected credentials for ${bootResult.canonicalJid}`);
       }
@@ -516,8 +324,8 @@ async function prepareSessionDatabase() {
 
 async function main() {
   await prepareSessionDatabase();
-  const server = spawn(process.execPath, ['server.js'], {
-    cwd: process.cwd(),
+  const server = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
+    cwd: path.join(__dirname, '..'),
     env: process.env,
     stdio: 'inherit',
   });
@@ -561,4 +369,6 @@ module.exports = {
   initSessionDatabase,
   resolveDatabaseUrls,
   databaseSslOptions,
+  cleanLockedAndStaleSessions,
+  main,
 };
