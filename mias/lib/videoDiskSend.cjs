@@ -147,6 +147,50 @@ function installVideoDiskSend(sock, { dir = null } = {}) {
         }
       }
 
+      // Universal cache layer: covers media commands that send buffers/URLs
+      // directly instead of using one of the dedicated disk-delivery helpers.
+      const mediaKey = DISK_KEYS.find((key) => payload[key]);
+      if (mediaKey) {
+        try {
+          const mediaCache = require("./mediaDeliveryCache.cjs");
+          const source = content[mediaKey];
+          const localPath = written.find((file) => payload[mediaKey]?.url === file)
+            || (source && typeof source === "object" && typeof source.url === "string" && fs.existsSync(source.url) ? source.url : null)
+            || (typeof source === "string" && fs.existsSync(source) ? source : null);
+          const sourceBuffer = Buffer.isBuffer(source) ? source : null;
+          const sourceHash = localPath
+            ? mediaCache.computeFileHash(localPath)
+            : sourceBuffer ? crypto.createHash("sha256").update(sourceBuffer).digest("hex") : null;
+          const cacheKey = sourceHash ? `sha256:${sourceHash}` : null;
+
+          if (cacheKey) {
+            const type = mediaKey === "ptv" ? "video" : mediaKey;
+            const cacheSock = new Proxy(sock, {
+              get(target, property, receiver) {
+                if (property === "sendMessage") return rawSend;
+                const value = Reflect.get(target, property, receiver);
+                return typeof value === "function" ? value.bind(target) : value;
+              },
+            });
+            return await mediaCache.deliverWithMediaCache({
+              sock: cacheSock,
+              jid,
+              cacheKey,
+              filePath: localPath,
+              type,
+              caption: typeof content.caption === "string" ? content.caption : "",
+              fileName: content.fileName || null,
+              ptv: mediaKey === "audio" ? Boolean(content.ptt) : Boolean(content.ptv),
+              isAnimated: Boolean(content.isAnimated),
+              quoted: options?.quoted || null,
+              sendFresh: () => rawSend(jid, payload, options),
+            });
+          }
+        } catch (cacheErr) {
+          console.warn(`[disk-send] media cache fallback: ${cacheErr?.message || cacheErr}`);
+        }
+      }
+
       const result = await rawSend(jid, payload, options);
       if (result?.key?.id && written.length > 0) {
         try {
@@ -169,6 +213,7 @@ function installVideoDiskSend(sock, { dir = null } = {}) {
   };
 
   sock.__miasVideoDiskSend = true;
+  console.log("[CDN-CACHE] Media cache enabled for direct socket media delivery (video, audio, image, document, sticker)");
   return sock;
 }
 
