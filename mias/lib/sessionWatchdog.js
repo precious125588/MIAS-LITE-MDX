@@ -31,6 +31,9 @@ const WATCHDOG_INTERVAL_MS   = 60_000;       // run health check every 60s
 const SILENT_WARN_MS         = 5  * 60_000;  // no message activity 5min → warning
 const SILENT_DEGRADED_MS     = 12 * 60_000;  // 12min → degraded
 const SILENT_BROKEN_MS       = 20 * 60_000;  // 20min → broken (likely zombie socket)
+// A socket that answers pings but delivers no messages passes every check above.
+// After this much silence, refresh the connection once (at most once per window).
+const SILENT_INBOUND_RECONNECT_MS = 60 * 60_000;
 const STUCK_QUEUE_MS         = 45_000;       // command in-flight > 45s → stuck
 const MAX_QUEUE_WARN         = 30;           // queue depth warning threshold
 const MAX_QUEUE_DEGRADE      = 80;           // queue depth degraded threshold
@@ -50,6 +53,7 @@ let _watchTimer       = null;
 let _healLock         = false;
 let _lastHealMs       = 0;
 let _lastProbeMs      = 0;
+let _lastInboundRecheckMs = 0;
 let _cmdIdSeq         = 0;
 let _inFlight         = new Map();   // id → { name, startMs }
 let _msgUpsertListener = null;
@@ -273,6 +277,28 @@ async function _probeOnly() {
   }
 }
 
+/**
+ * Long silence on a socket that still answers pings: the ping proves the socket
+ * is open, not that messages are being delivered. Refresh the connection once
+ * per SILENT_INBOUND_RECONNECT_MS. Dead sockets are reconnected as usual.
+ */
+async function _silentInboundRecheck() {
+  const now = Date.now();
+  if (!_sock || _healLock) return;
+  if (now - _lastInboundRecheckMs < SILENT_INBOUND_RECONNECT_MS) return;
+  if (now - _lastProbeMs < HEAL_COOLDOWN_MS) return;
+  _lastProbeMs = now;
+  _lastInboundRecheckMs = now;
+  const silentMin = _state.lastMsgReceived ? Math.round((now - _state.lastMsgReceived) / 60000) : "?";
+  const alive = await _probeSocket(_sock);
+  if (alive === false) {
+    _requestReconnect("watchdog-silent-zombie");
+  } else if (alive === true) {
+    console.log(`[Watchdog] No inbound messages for ${silentMin}min, ping answered — refreshing connection to restore the message stream`);
+    _requestReconnect("watchdog-no-inbound-messages");
+  }
+}
+
 // ── Self-healing ───────────────────────────────────────────────────
 async function _selfHeal(reason, status) {
   const now = Date.now();
@@ -383,8 +409,13 @@ async function _tick() {
       return;
     }
 
-    if (_state.lastMsgReceived && Date.now() - _state.lastMsgReceived > SILENT_BROKEN_MS) {
-      await _probeOnly();
+    if (_state.lastMsgReceived) {
+      const silentMs = Date.now() - _state.lastMsgReceived;
+      if (silentMs > SILENT_INBOUND_RECONNECT_MS) {
+        await _silentInboundRecheck();
+      } else if (silentMs > SILENT_BROKEN_MS) {
+        await _probeOnly();
+      }
     }
   } catch (e) {
     console.error(`[Watchdog] Tick error: ${e?.message}`);
@@ -409,8 +440,11 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
   _onReconnect  = onReconnect;
 
   // ── Observe message activity ─────────────────────────────────
-  _msgUpsertListener = ({ messages = [] }) => {
-    if (messages.length > 0) recordMessageReceived();
+  _msgUpsertListener = ({ messages = [], type } = {}) => {
+    if (messages.length > 0) {
+      recordMessageReceived();
+      console.log(`[Watchdog] inbound ${type || "?"} x${messages.length}`);
+    }
   };
   try { sock.ev.on("messages.upsert", _msgUpsertListener); } catch {}
 
@@ -498,9 +532,11 @@ export async function forceHealthCheck() {
 export const _testing = {
   tick: _tick,
   probeOnly: _probeOnly,
+  silentInboundRecheck: _silentInboundRecheck,
   reset() {
     _lastHealMs = 0;
     _lastProbeMs = 0;
+    _lastInboundRecheckMs = 0;
     _healLock = false;
     _inFlight.clear();
     _state.status = HEALTH.HEALTHY;
