@@ -528,12 +528,16 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
       }
       return false;
     };
+    // Prefer the original HD file (CDN hd=1) so the re-encode starts from full quality.
+    // The stored play link is usually an SD copy, so it is only a fallback.
     let ok = false;
-    if (item.play) ok = await attempt([item.play]);
-    if (!ok && item.url) {
-      const info = await resolveTikTok(item.url);
-      if (info) ok = await attempt([info.hd, info.play]);
+    let info = null;
+    if (item.url) {
+      info = await resolveTikTok(item.url);
+      if (info) ok = await attempt([info.hd]);
     }
+    if (!ok && item.play) ok = await attempt([item.play]);
+    if (!ok && info) ok = await attempt([info.play]);
     if (!ok) return false;
 
     // Direct delivery without re-encoding for fyp, cruise, feeling, and discipline
@@ -562,10 +566,10 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
           sourceQualityBoost: 1.2,
         });
         hdEncoded = (_heavyGuard && typeof _heavyGuard.runHeavy === "function")
-          ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 25000 })
+          ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 120000 })
           : await Promise.race([
               hdRun(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error("reencode timeout")), 25000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error("reencode timeout")), 120000))
             ]);
         console.log(`[anime-edits][hd] 1.3 HD state re-encoded: ${hdEncoded.path} (${hdEncoded.bytes} bytes)`);
       } catch (err) {
