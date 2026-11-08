@@ -34,6 +34,8 @@ const SILENT_BROKEN_MS       = 20 * 60_000;  // 20min → broken (likely zombie 
 // A socket that answers pings but delivers no messages passes every check above.
 // After this much silence, refresh the connection once (at most once per window).
 const SILENT_INBOUND_RECONNECT_MS = 60 * 60_000;
+// Top up pre-keys on the server every 6h, so keys stay fresh without re-pairing.
+const PREKEY_CHECK_MS        = 6 * 60 * 60_000;
 const STUCK_QUEUE_MS         = 45_000;       // command in-flight > 45s → stuck
 const MAX_QUEUE_WARN         = 30;           // queue depth warning threshold
 const MAX_QUEUE_DEGRADE      = 80;           // queue depth degraded threshold
@@ -54,6 +56,7 @@ let _healLock         = false;
 let _lastHealMs       = 0;
 let _lastProbeMs      = 0;
 let _lastInboundRecheckMs = 0;
+let _preKeyTimer      = null;
 let _cmdIdSeq         = 0;
 let _inFlight         = new Map();   // id → { name, startMs }
 let _msgUpsertListener = null;
@@ -77,6 +80,7 @@ const _state = {
   lastHealMs:      null,
   issues:          [],
   lastCloseMs:     null,
+  loggedOut:       false,
 };
 
 // ── Command tracking ─────────────────────────────────────────────
@@ -258,6 +262,10 @@ async function _probeSocket(sock) {
 
 function _requestReconnect(reason) {
   if (typeof _onReconnect !== "function") return;
+  if (_state.loggedOut) {
+    console.error("[Watchdog] Not reconnecting: WhatsApp logged this device out. Re-pair the number.");
+    return;
+  }
   console.log(`[Watchdog] 🔴 ${reason} — scheduling reconnect`);
   setTimeout(() => {
     try { _onReconnect(reason); } catch {}
@@ -296,6 +304,18 @@ async function _silentInboundRecheck() {
   } else if (alive === true) {
     console.log(`[Watchdog] No inbound messages for ${silentMin}min, ping answered — refreshing connection to restore the message stream`);
     _requestReconnect("watchdog-no-inbound-messages");
+  }
+}
+
+/** Let Baileys top up pre-keys on the server when the server reports them low. */
+async function _preKeyCheck() {
+  if (!_sock || _state.loggedOut) return;
+  if (typeof _sock.uploadPreKeysToServerIfRequired !== "function") return;
+  try {
+    await _withTimeout(_sock.uploadPreKeysToServerIfRequired(), 30_000, "Pre-key check");
+    console.log("[Watchdog] Pre-key check done");
+  } catch (err) {
+    console.warn(`[Watchdog] Pre-key check failed: ${err?.message || err}`);
   }
 }
 
@@ -449,8 +469,9 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
   try { sock.ev.on("messages.upsert", _msgUpsertListener); } catch {}
 
   // ── Observe connection state ─────────────────────────────────
-  _connUpdateListener = ({ connection }) => {
+  _connUpdateListener = ({ connection, lastDisconnect }) => {
     if (connection === "open") {
+      _state.loggedOut = false;
       _state.reconnects++;
       _state.lastMsgReceived = Date.now();
       // On fresh connect: clear stuck queue and reset to healthy
@@ -464,6 +485,11 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
       // Do not pre-set BROKEN here: a socket marked BROKEN before the tick was
       // skipped by the heal check, so a closed socket was never reconnected.
       _state.lastCloseMs = Date.now();
+      // 401 = WhatsApp logged this linked device out. Reconnecting cannot fix it.
+      if (lastDisconnect?.error?.output?.statusCode === 401) {
+        _state.loggedOut = true;
+        console.error("[Watchdog] WhatsApp logged this device out (401). Reconnecting will not fix it: re-pair the number.");
+      }
     }
   };
   try { sock.ev.on("connection.update", _connUpdateListener); } catch {}
@@ -471,12 +497,15 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
   // ── Start periodic health check ───────────────────────────────
   _watchTimer = setInterval(_tick, WATCHDOG_INTERVAL_MS);
   if (_watchTimer?.unref) _watchTimer.unref();
+  _preKeyTimer = setInterval(_preKeyCheck, PREKEY_CHECK_MS);
+  if (_preKeyTimer?.unref) _preKeyTimer.unref();
 
   console.log("[Watchdog] Started — health check every 60s");
 }
 
 export function stopWatchdog() {
   if (_watchTimer) { clearInterval(_watchTimer); _watchTimer = null; }
+  if (_preKeyTimer) { clearInterval(_preKeyTimer); _preKeyTimer = null; }
   // Remove previously attached listeners to prevent duplication
   try {
     if (_sock && _msgUpsertListener)   _sock.ev.off("messages.upsert",   _msgUpsertListener);
@@ -533,10 +562,12 @@ export const _testing = {
   tick: _tick,
   probeOnly: _probeOnly,
   silentInboundRecheck: _silentInboundRecheck,
+  preKeyCheck: _preKeyCheck,
   reset() {
     _lastHealMs = 0;
     _lastProbeMs = 0;
     _lastInboundRecheckMs = 0;
+    _state.loggedOut = false;
     _healLock = false;
     _inFlight.clear();
     _state.status = HEALTH.HEALTHY;
