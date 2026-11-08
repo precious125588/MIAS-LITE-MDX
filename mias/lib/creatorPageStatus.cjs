@@ -178,7 +178,7 @@ async function probeCreator(name, { axios, timeout = 12000 } = {}) {
 
   // 2. Nexray API fallback
   try {
-    const nx = await NX.nexrayList('https://api.nexray.eu.cc/search/tiktok?q=' + encodeURIComponent('@' + clean), timeout);
+    const nx = await NX.nexrayList('https://api.nexray.eu.cc/search/tiktok?q=' + encodeURIComponent('@' + clean), timeout, { lane: 'background' });
     if (nx.list.length > 0) {
       const data = { status: true, result: nx.list };
       {

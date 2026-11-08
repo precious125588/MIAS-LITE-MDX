@@ -656,11 +656,16 @@ function makeDeliveryPlan(fresh) {
 // Fetches fresh candidates when the first pool is used up. Skips anything already
 // tried in this request and any link that recently failed to deliver.
 async function fetchMoreCandidates(catKey, cat, user, zipItems, attempted) {
+  const named = (label, p) => Promise.resolve(p).catch((e) => {
+    console.log(`[anime-edits][refetch] ${cat.label} ${label} failed: ${(e && e.message) || e}`);
+    return [];
+  });
   const parts = await Promise.all([
-    routePages(cat).catch(() => []),
-    routeSearch(cat).catch(() => []),
-    Promise.resolve().then(() => routeGc(catKey, cat)).catch(() => []),
+    named('pages', routePages(cat)),
+    named('search', routeSearch(cat)),
+    named('gc', Promise.resolve().then(() => routeGc(catKey, cat))),
   ]);
+  console.log(`[anime-edits][refetch] ${cat.label} sources: pages ${parts[0].length}, search ${parts[1].length}, gc ${parts[2].length}`);
   const all = [...(zipItems || []), ...parts.flat()].filter((i) => i && !isDeadLink(i.url));
   const candidates = all.filter((i) => !attempted.has(contentKeyOf(i)));
   const seen = new Set(((loadSeen()[user] || {})[catKey]) || []);
@@ -690,7 +695,7 @@ module.exports = {
         ]);
         networkParts = await Promise.race([
           netPromise,
-          new Promise((r) => setTimeout(() => r([[], [], []]), 3500)),
+          new Promise((r) => setTimeout(() => r([[], [], []]), 20000)),   // NexRay calls queue one by one and can take 10s+
         ]);
       }
       const pool = [zipItems, ...networkParts].flat().filter((i) => !isDeadLink(i.url));
