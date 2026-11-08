@@ -1,4 +1,7 @@
 node_modules/
+mias/node_modules
+mias/node_modules/
+**/node_modules/
 nexstore/pairing/
 nexstore/sessions/
 *.log

@@ -1,4 +1,5 @@
 'use strict';
+try { require("../lib/shims/ensure-helpers.cjs"); } catch {}
 
 const fs = require('node:fs');
 const path = require('node:path');

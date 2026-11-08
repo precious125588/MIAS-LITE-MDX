@@ -40,6 +40,7 @@
     "axios": "^1.20.0",
     "axios-retry": "^4.5.0",
     "bufferutil": "^4.1.0",
+    "call-bind-apply-helpers": "^1.0.2",
     "canvas": "^3.2.3",
     "chalk": "^4.1.2",
     "cheerio": "^1.2.0",
@@ -50,6 +51,7 @@
     "dotenv": "^18.0.8",
     "emoji-db": "^16.0.1",
     "express": "^5.3.0",
+    "fflate": "^0.8.2",
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
     "figlet": "^1.12.0",
@@ -90,8 +92,7 @@
     "wa-sticker-formatter": "^4.4.4",
     "ws": "^8.22.2",
     "youtubei.js": "^18.3.0",
-    "yt-search": "^2.13.1",
-    "fflate": "^0.8.2"
+    "yt-search": "^2.13.1"
   },
   "overrides": {
     "wa-sticker-formatter": {

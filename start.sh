@@ -3,7 +3,7 @@ set -e
 cd "."
 
 # Install root dependencies if missing
-if [ ! -d node_modules ] || [ ! -d node_modules/chalk ]; then
+if [ ! -d node_modules ] || [ ! -d node_modules/chalk ] || [ ! -d node_modules/call-bind-apply-helpers ] || [ ! -d node_modules/express ]; then
   echo "[MIAS LITE MDX] Installing main dependencies..."
   bash scripts/robust-install.sh .
 fi
@@ -43,6 +43,9 @@ if [ -d mias ] && [ ! -d mias/node_modules/axios ]; then
   echo "[MIAS LITE MDX] Installing missing client dependencies..."
   bash scripts/robust-install.sh mias || true
 fi
+
+# Ensure critical helpers and shims are present on disk
+node -e "try{require('./lib/shims/ensure-helpers.cjs')}catch(e){}"
 
 echo "[MIAS LITE MDX] Starting web pairing server and bot supervisor..."
 exec node server.js
