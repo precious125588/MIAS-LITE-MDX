@@ -2446,7 +2446,23 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     await react(sock, msg, emoji);
     try {
       const found = await LYRICS.resolveLyrics(args.join(' '));
-      await sendReply(sock, msg, LYRICS.formatLyricsMessage(found));
+      // Music card: cover art with the lyrics as the caption. Text-only when no artwork is found.
+      let art = null;
+      try { art = await LYRICS.fetchArtwork(found.title, found.artist); } catch { art = null; }
+      let buf = null;
+      if (art) {
+        try {
+          const r = await axios.get(art, { responseType: 'arraybuffer', timeout: 15000, validateStatus: () => true });
+          if (r.status < 400 && r.data && r.data.byteLength > 500) buf = Buffer.from(r.data);
+        } catch { buf = null; }
+      }
+      if (buf) {
+        const { caption, rest } = LYRICS.splitLyricsCaption(found);
+        await _sendImg(sock, msg, buf, caption);
+        if (rest) await sendReply(sock, msg, LYRICS.formatLyricsRest(rest, found));
+      } else {
+        await sendReply(sock, msg, LYRICS.formatLyricsMessage(found));
+      }
       await react(sock, msg, '✅');
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   };
