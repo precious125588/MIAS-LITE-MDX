@@ -42,7 +42,7 @@ async function fetchCreatorPosts(axios, uniqueId, timeout = 5000) {
   const isTestMock = Boolean(axios && (!axios.defaults || !axios.create));
   if (!isTestMock) {
     try {
-      const found = await nexrayCreatorVideos(cleanId, 3000);
+      const found = await nexrayCreatorVideos(cleanId, 8000);
       if (found.length) return { status: "ok", videos: found, error: null };
     } catch {}
   }
