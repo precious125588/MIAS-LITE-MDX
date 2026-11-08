@@ -1449,8 +1449,18 @@ export function createAnimeEditFlow({ prefix = "." } = {}) {
     // text. A provider may return one or two good candidates, so do not throw
     // away usable edits merely because three were not available.
     for (const result of results) {
+      let videoBuffer = result.buffer;
+      try {
+        const { prepareTikTokVideo } = await import("./ttVideo.js");
+        const boosted = await prepareTikTokVideo(result.buffer);
+        if (boosted && Buffer.isBuffer(boosted) && boosted.length >= 1024) {
+          videoBuffer = boosted;
+        }
+      } catch (boostErr) {
+        console.warn("[animeEdits] Video HD boost skipped:", boostErr?.message || boostErr);
+      }
       await sock.sendMessage(jid, {
-        video: result.buffer,
+        video: videoBuffer,
         mimetype: "video/mp4",
         caption: `🎬 ${entry.title} edit\n${randomHashtags(3)}`,
       });

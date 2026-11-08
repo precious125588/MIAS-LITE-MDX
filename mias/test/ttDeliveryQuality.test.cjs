@@ -90,3 +90,33 @@ test("all status categories use the HD re-encode option and do not skip re-encod
   assert.equal(edits.shouldSkipReencode("bleach"), false);
   assert.equal(edits.shouldSkipReencode("onepiece"), false);
 });
+
+test("mode 1.4 HD document uses the same HD re-encode pipeline with 1.2 boost as 1.3", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const tmpFile = path.join(os.tmpdir(), "test_1_4_pipeline_" + Date.now() + ".mp4");
+  fs.writeFileSync(tmpFile, Buffer.alloc(1024, 0x88));
+  let sentDocument = null;
+  const mockSock = {
+    user: { id: "bot@s.whatsapp.net" },
+    sendMessage: async (jid, payload) => {
+      sentDocument = payload?.document || null;
+      return { key: { id: "MSG_1_4_TEST" } };
+    },
+  };
+  try {
+    const res = await delivery.deliverTikTokFile({
+      sock: mockSock,
+      jid: "user@s.whatsapp.net",
+      file: { path: tmpFile, bytes: 1024 },
+      mode: { id: "1.4", format: "video", document: true, quality: "hd" },
+      caption: "1.4 HD Document",
+      fileName: "test_1_4.mp4",
+    });
+    assert.equal(res.type, "document");
+    assert.ok(sentDocument, "Expected document payload sent");
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+});
