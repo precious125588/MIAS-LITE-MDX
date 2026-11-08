@@ -41,11 +41,11 @@ const HD_VIDEO_FILTER = "setpts=PTS-STARTPTS,scale='if(gte(iw,ih),-2,1080)':'if(
 // - A source below that state is re-encoded to the 18398 kb/s reference, without the 10%.
 const HD_REFERENCE_KBPS = 18398;
 const HD_REFERENCE_SHORT_SIDE = 1080;
-// 0.01 boost (1.01) for general 1.3 HD re-encoding
-const HD_BOOST = 1.0;
-// No brightness or quality boost for HD/status (original file untouched)
-const NATIVE_HD_BOOST = 1.0;
-const HIGH_QUALITY_HD_BOOST = 1.0;
+// 1.2 boost for general 1.3 HD and SD re-encoding
+const HD_BOOST = 1.2;
+// 1.2 boost for native / high quality 1080p+ videos
+const NATIVE_HD_BOOST = 1.2;
+const HIGH_QUALITY_HD_BOOST = 1.2;
 // 0.001 boost (1.001) for 4K video encoding
 const HIGH_QUALITY_4K_BOOST = 1.001;
 const HD_MAX_KBPS = 40000;
@@ -206,13 +206,13 @@ async function probeSourceVideo(inPath) {
 
 // Picks the H.264 bitrate for the 1.3 encode from the source probe. Unknown source = reference rate.
 function pickHdBitrate(probe, boost = HD_BOOST, sourceQualityBoost = null) {
-  if (!probe || !probe.shortSide || !probe.videoKbps) return HD_REFERENCE_KBPS;
+  if (!probe || !probe.shortSide || !probe.videoKbps) return Math.round(HD_REFERENCE_KBPS * boost);
   if (isHighQualitySource(probe)) {
     const rateBoost = sourceQualityBoost || NATIVE_HD_BOOST;
     return Math.min(Math.round(probe.videoKbps * rateBoost), HD_MAX_KBPS);
   }
   const alreadyAtHdState = probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps >= HD_REFERENCE_KBPS;
-  if (!alreadyAtHdState) return HD_REFERENCE_KBPS;
+  if (!alreadyAtHdState) return Math.min(Math.round((probe.videoKbps || HD_REFERENCE_KBPS) * boost), HD_MAX_KBPS);
   return Math.min(Math.round(probe.videoKbps * boost), HD_MAX_KBPS);
 }
 
@@ -398,16 +398,7 @@ async function deliverTikTokFile({
     return finalizeResult({ type: "document", bytes: file.bytes, sent });
   }
 
-  // Video modes (1.3 HD, 1.1 SD, etc.): send untouched source directly as original file unless 4K or videoNote.
-  if (!mode?.upscale4k && !mode?.videoNote && !mode?.document) {
-    if (file.bytes > TT_INLINE_VIDEO_MAX_BYTES) {
-      const docCaption = caption ? `${caption}\n📎 (larger than 92 MB — sent as document)` : "📎 (larger than 92 MB — sent as document)";
-      const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, docCaption, quoted);
-      return finalizeResult({ type: "document", bytes: file.bytes, sent, fallbackToDocument: true });
-    }
-    const sent = await disk.sendVideoFromDisk(sock, jid, file.path, caption, quoted);
-    return finalizeResult({ type: "video", bytes: file.bytes, sent });
-  }
+  // 1.3 HD, 1.1 SD, and other video modes re-encode with 1.2 quality boost below.
 
   // 1.8 / 1.9: the 4K encoder the picker uses. 1.3 and the rest: 1080p HD re-encode.
   const encoded = mode && mode.upscale4k
@@ -417,9 +408,8 @@ async function deliverTikTokFile({
       })
     : await reencodeHdForWhatsApp(file, {
         maxBytes: mode && mode.document ? disk.WHATSAPP_DOC_MAX_BYTES : TT_INLINE_VIDEO_MAX_BYTES,
-        sourceQualityBoost: mode && (mode.id === "1.3" || mode.id === "1.4")
-          ? HIGH_QUALITY_HD_BOOST
-          : null,
+        boost: HD_BOOST,
+        sourceQualityBoost: HIGH_QUALITY_HD_BOOST,
       });
   try {
     if (mode && mode.document) {

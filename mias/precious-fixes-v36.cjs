@@ -581,7 +581,7 @@ module.exports = function installV36(ctx) {
         let hdEncoded = null;
         try {
           // Re-encode by 25% for quality
-          hdEncoded = await ttd.reencodeHdForWhatsApp(inPath, { boost: 1.0, sourceQualityBoost: 1.0, maxBytes: 95 * 1024 * 1024 });
+          hdEncoded = await ttd.reencodeHdForWhatsApp(inPath, { boost: 1.2, sourceQualityBoost: 1.2, maxBytes: 95 * 1024 * 1024 });
           const sendPath = hdEncoded.path;
           const sendBytes = hdEncoded.bytes;
 

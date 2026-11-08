@@ -118,13 +118,13 @@ test('deliverTikTokFile videoNote mode attempts PTV and falls back cleanly', asy
   }
 });
 
-test('boost configuration: 4K uses 1.001 and HD/status has no artificial brightness boost', () => {
+test('boost configuration: 4K uses 1.001 and HD/SD uses 1.2 quality boost', () => {
   const indexSource = fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8');
   assert.equal(indexSource.includes('1.0001:null'), false, 'Found old 1.0001 in index.js');
   assert.equal(indexSource.includes('1.01:null'), false, 'Found old 1.01 in index.js');
   const ttSource = fs.readFileSync(path.join(__dirname, '../lib/ttDelivery.cjs'), 'utf8');
   assert.match(ttSource, /const HIGH_QUALITY_4K_BOOST = 1\.001;/, 'Expected 1.001 4K boost in lib/ttDelivery.cjs');
-  assert.match(ttSource, /const HD_BOOST = 1\.0;/, 'Expected 1.0 HD boost in lib/ttDelivery.cjs');
+  assert.match(ttSource, /const HD_BOOST = 1\.2;/, 'Expected 1.2 HD boost in lib/ttDelivery.cjs');
 });
 
 test('deliverTikTokFile mode 1.3 HD sends original video untouched without re-encoding', async () => {
