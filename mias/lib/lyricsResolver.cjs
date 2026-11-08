@@ -5,7 +5,9 @@
 
 const NEXRAY_LYRICS = 'https://api.nexray.eu.cc/search/lyrics';
 const LRCLIB_SEARCH = 'https://lrclib.net/api/search';
+const ITUNES_SEARCH = 'https://itunes.apple.com/search';
 const MAX_LYRICS_CHARS = 3500;
+const WA_CAPTION_MAX = 1000;   // WhatsApp image captions cap at 1024 chars; keep room for the footer
 const TIMEOUT_MS = 10000;
 
 function cleanText(value) {
@@ -96,6 +98,55 @@ async function resolveLyrics(query, { fetchImpl = fetch } = {}) {
   throw err;
 }
 
+// Cover art for the music card. iTunes Search is free and needs no key.
+// Returns a 600x600 artwork URL, or null when nothing matches.
+async function fetchArtwork(title, artist, { fetchImpl = fetch } = {}) {
+  const term = cleanText([title, artist].filter(Boolean).join(' '));
+  if (!term) return null;
+  const data = await getJson(`${ITUNES_SEARCH}?term=${encodeURIComponent(term)}&entity=song&limit=1`, fetchImpl);
+  const hit = data && Array.isArray(data.results) ? data.results[0] : null;
+  const art = hit && typeof hit.artworkUrl100 === 'string' ? hit.artworkUrl100 : '';
+  if (!/^https:\/\//i.test(art)) return null;
+  return art.replace(/\/\d+x\d+bb\.(jpg|png)$/i, '/600x600bb.$1');
+}
+
+// Music card caption: title, artist and as many lyric lines as fit under the
+// WhatsApp caption limit. Anything left over comes back as `rest` (plain text).
+function splitLyricsCaption(found, limit = WA_CAPTION_MAX) {
+  const footer = `_Source: ${found.source}_`;
+  const head = [`🎶 *${found.title || 'Lyrics'}*`, found.artist ? `_${found.artist}_` : null]
+    .filter(Boolean).join('\n') + '\n\n';
+  const budget = Math.max(0, limit - head.length - footer.length - 4);
+  const lines = String(found.lyrics || '').split('\n');
+  let body = '';
+  let i = 0;
+  while (i < lines.length && body.length + lines[i].length + 1 <= budget) {
+    body += (i ? '\n' : '') + lines[i];
+    i += 1;
+  }
+  let rest;
+  if (i === 0) {
+    body = lines[0].slice(0, budget);
+    rest = [lines[0].slice(budget), ...lines.slice(1)].join('\n');
+  } else {
+    rest = lines.slice(i).join('\n');
+  }
+  rest = rest.trim();
+  if (!rest) return { caption: `${head}${body.trim()}\n\n${footer}`, rest: '' };
+  return { caption: `${head}${body.trim()}`, rest };
+}
+
+// Follow-up text for lyrics that did not fit in the caption.
+function formatLyricsRest(rest, found) {
+  let body = String(rest || '');
+  let trimmed = false;
+  if (body.length > MAX_LYRICS_CHARS) {
+    body = body.slice(0, MAX_LYRICS_CHARS).replace(/\s+\S*$/, '') + '…';
+    trimmed = true;
+  }
+  return `${body}\n\n_Source: ${found.source}${trimmed ? ' · trimmed' : ''}_`;
+}
+
 function formatLyricsMessage(found) {
   const header = ['🎶 *Lyrics*', found.title ? `*Title:* ${found.title}` : null, found.artist ? `*Artist:* ${found.artist}` : null]
     .filter(Boolean)
@@ -109,4 +160,4 @@ function formatLyricsMessage(found) {
   return `${header}\n\n${body}\n\n_Source: ${found.source}${trimmed ? ' · trimmed' : ''}_`;
 }
 
-module.exports = { resolveLyrics, formatLyricsMessage, parseNexrayLyrics, parseLrclibLyrics, stripSynced };
+module.exports = { resolveLyrics, formatLyricsMessage, parseNexrayLyrics, parseLrclibLyrics, stripSynced, fetchArtwork, splitLyricsCaption, formatLyricsRest };
