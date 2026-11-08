@@ -201,15 +201,35 @@ async function probeSourceVideo(inPath) {
   }
   const width = size ? Number(size[1]) : 0;
   const height = size ? Number(size[2]) : 0;
-  return { width, height, shortSide: Math.min(width, height), videoKbps: videoKbps || null };
+  const durationMatch = stderr.match(/Duration: (\d+):(\d{2}):(\d{2}(?:\.\d+)?)/);
+  const durationSec = durationMatch
+    ? Number(durationMatch[1]) * 3600 + Number(durationMatch[2]) * 60 + Number(durationMatch[3])
+    : null;
+  return { width, height, shortSide: Math.min(width, height), videoKbps: videoKbps || null, durationSec };
 }
 
 // Picks the H.264 bitrate for the 1.3 encode from the source probe. Unknown source = reference rate.
+// Keeps the HD file under HD_TARGET_MAX_BYTES for the clip length, so it still goes out as a video message.
+const HD_TARGET_MAX_BYTES = 80 * 1024 * 1024;
+const HD_AUDIO_KBPS = 190;
+const HD_MIN_KBPS = 2500;
+
+// Largest video bitrate that keeps the file under HD_TARGET_MAX_BYTES for this clip length.
+function sizeCapKbps(probe) {
+  const sec = probe && probe.durationSec;
+  if (!sec || sec <= 0) return HD_MAX_KBPS;
+  const cap = Math.floor((HD_TARGET_MAX_BYTES * 8) / sec / 1000) - HD_AUDIO_KBPS;
+  return Math.max(HD_MIN_KBPS, Math.min(cap, HD_MAX_KBPS));
+}
+
 function pickHdBitrate(probe, boost = HD_BOOST, sourceQualityBoost = null) {
   if (!probe || !probe.shortSide || !probe.videoKbps) return Math.round(HD_REFERENCE_KBPS * boost);
   if (isHighQualitySource(probe)) {
     const rateBoost = sourceQualityBoost || NATIVE_HD_BOOST;
-    return Math.min(Math.round(probe.videoKbps * rateBoost), HD_MAX_KBPS);
+    // Never encode a 1080p source below the 1.3 reference rate. A low-bitrate TikTok copy re-encoded
+    // at its own rate (about 1.2 Mb/s) comes out muddy and blocky, which is the "black" look.
+    const wanted = Math.max(Math.round(probe.videoKbps * rateBoost), HD_REFERENCE_KBPS);
+    return Math.min(wanted, sizeCapKbps(probe));
   }
   const alreadyAtHdState = probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps >= HD_REFERENCE_KBPS;
   if (!alreadyAtHdState) return Math.min(Math.round((probe.videoKbps || HD_REFERENCE_KBPS) * boost), HD_MAX_KBPS);
