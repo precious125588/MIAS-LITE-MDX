@@ -19,22 +19,30 @@ function setPoolForTesting(pool) {
 
 function getPool() {
   if (_testPool) return _testPool;
-  if (isJsonOnly()) return null;
+  // JSON mode keeps the app on files, but the session backup still runs when an
+  // explicit session database URL is set. Without one, sessions stay on the volume.
+  if (isJsonOnly() && !getExplicitSessionDatabaseUrl()) return null;
   return createPool();
 }
 
-function getDatabaseUrl() {
-  // An explicit session URL keeps the session store separate. If none is set,
-  // Railway deployments may share RAILWAY_DATABASE_URL; existing Neon session
-  // URLs remain preferred unless RAILWAY_SESSION_DATABASE_URL is explicitly set.
+function getExplicitSessionDatabaseUrl() {
   return String(
     process.env.RAILWAY_SESSION_DATABASE_URL ||
     process.env.SESSION_DATABASE_URL ||
     process.env.SESSION_DB_URL ||
     process.env.SESSIONS_DATABASE_URL ||
-    process.env.RAILWAY_DATABASE_URL ||
     ""
   ).trim();
+}
+
+function getDatabaseUrl() {
+  // An explicit session URL keeps the session store separate.
+  const explicit = getExplicitSessionDatabaseUrl();
+  if (explicit) return explicit;
+  // RAILWAY_DATABASE_URL belongs to the main app database. Use it only in
+  // postgres mode, never in JSON mode.
+  if (isJsonOnly()) return "";
+  return String(process.env.RAILWAY_DATABASE_URL || "").trim();
 }
 
 function createPool() {
@@ -644,6 +652,7 @@ module.exports = {
   createPool,
   readyPool,
   getDatabaseUrl,
+  getExplicitSessionDatabaseUrl,
   saveRegistryEntry,
   deleteRegistryEntry,
   setPoolForTesting,
