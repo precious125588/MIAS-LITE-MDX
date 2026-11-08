@@ -1,3 +1,4 @@
+import tikwmGate from "./tikwmGate.cjs";
 /**
  * AUTO-DOWNLOADER v4 — Universal best-quality resolver.
  * Supports: TikTok, YouTube/Shorts, Facebook, Instagram, X/Twitter,
@@ -345,6 +346,7 @@ async function expandUrl(url) {
 // ─── Platform-specific resolvers ───────────────────────────────────────────
 
 async function fromTikwm(url, platform) {
+  if (!tikwmGate.isTikwmEnabled()) return null;
   const r = await httpPostForm("https://www.tikwm.com/api/", { url, hd: "1" }, { headers: { Referer: "https://www.tikwm.com/" } });
   const d = r.data?.data;
   if (!d) return null;

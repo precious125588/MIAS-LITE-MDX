@@ -46,6 +46,7 @@ async function fetchCreatorPosts(axios, uniqueId, timeout = 5000) {
       if (found.length) return { status: "ok", videos: found, error: null };
     } catch {}
   }
+  if (!require('./tikwmGate.cjs').isTikwmEnabled()) return { status: 'empty', videos: [], error: null };
   const endpoint = 'https://www.tikwm.com/api/user/posts';
   const form = new URLSearchParams({ unique_id: cleanId, count: '35', cursor: '0', hd: '1' }).toString();
   let r;

@@ -559,7 +559,7 @@ module.exports.install = function install(P) {
     const url = m[0];
     await P.react(sock, msg, '🌀').catch(() => {});
     let info = null;
-    try { const d = await getJson('https://www.tikwm.com/api/?url=' + encodeURIComponent(url) + '&hd=1'); info = d?.data; } catch {}
+    try { if (!require('./lib/tikwmGate.cjs').isTikwmEnabled()) throw new Error('tikwm off'); const d = await getJson('https://www.tikwm.com/api/?url=' + encodeURIComponent(url) + '&hd=1'); info = d?.data; } catch {}
     if (!info || !info.play) { await P.react(sock, msg, '❌').catch(() => {}); return P.sendReply(sock, msg, '❌ Unable to fetch that TikTok. Check the link and try again.'); }
     const abs = u => (u && u.startsWith('/') ? 'https://www.tikwm.com' + u : u);
     let thumb = null;

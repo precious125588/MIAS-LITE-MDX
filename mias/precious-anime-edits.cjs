@@ -277,14 +277,10 @@ async function resolveTikTok(videoUrl) {
     return null;
   }
 }
-async function tikwmUserPosts(uniqueId) {
-  const d = await getJson('https://www.tikwm.com/api/user/posts?unique_id=' + encodeURIComponent(uniqueId) + '&count=35&hd=1', 20000);
-  const arr = d && d.data && d.data.videos;
-  return Array.isArray(arr) ? arr : [];
-}
 async function nexraySearch(keywords) {
   const nx = await NX.nexrayList('https://api.nexray.eu.cc/search/tiktok?q=' + encodeURIComponent(keywords), 20000);
   if (nx.list.length) return nx.list;
+  if (!require('./lib/tikwmGate.cjs').isTikwmEnabled()) return [];
   try {
     const d = await getJson('https://www.tikwm.com/api/feed/search?keywords=' + encodeURIComponent(keywords) + '&count=20&hd=1', 15000);
     const arr = d && d.data && d.data.videos;

@@ -132,7 +132,7 @@ async function probeCreator(name, { axios, timeout = 12000 } = {}) {
 
   // If a mock axios is passed (in test runner), respect its response
   const isMock = Boolean(axios && (!axios.defaults || !axios.create));
-  if (isMock) {
+  if (isMock && require('./tikwmGate.cjs').isTikwmEnabled()) {
     try {
       const res = await axios.get('https://www.tikwm.com/api/user/posts?unique_id=' + encodeURIComponent(clean) + '&count=1&hd=1');
       let body = res.data;
@@ -196,9 +196,8 @@ async function probeCreator(name, { axios, timeout = 12000 } = {}) {
     }
   } catch (_) {}
 
-  // 3. TikWM live feed: the same source the bot downloads creator videos from,
-  //    so a creator the bot can deliver from is never reported as an error here.
-  try {
+  // 3. TikWM live feed (opt-in: TIKWM_ENABLED=1). Off by default because Cloudflare blocks it.
+  if (require('./tikwmGate.cjs').isTikwmEnabled()) try {
     const res = await fetch('https://www.tikwm.com/api/user/posts', {
       method: 'POST',
       headers: {
@@ -237,6 +236,7 @@ function describeProbe(p) {
 
 // Total videos for a creator from TikWM user info (true account total).
 async function fetchTotalVideos(name, timeoutMs = 12000) {
+  if (!require('./tikwmGate.cjs').isTikwmEnabled()) return null;
   try {
     const res = await fetch('https://www.tikwm.com/api/user/info', {
       method: 'POST',

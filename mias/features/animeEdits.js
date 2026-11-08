@@ -1,3 +1,4 @@
+import tikwmGate from "../lib/tikwmGate.cjs";
 // Anime edit command plugin.
 //
 // The resolver deliberately lives outside index.js so anime aliases and
@@ -879,6 +880,7 @@ function withTimeout(promise, timeoutMs = 130000) {
 }
 
 function tikwmRequest(url, params) {
+  if (!tikwmGate.isTikwmEnabled()) return Promise.reject(new Error('TikWM disabled (TIKWM_ENABLED is not set)'));
   const request = tikwmQueue.then(async () => {
     const response = await axios.get(url, {
       params,

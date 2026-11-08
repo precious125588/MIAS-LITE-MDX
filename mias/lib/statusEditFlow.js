@@ -1,3 +1,4 @@
+import tikwmGate from "./tikwmGate.cjs";
 import { prepareTikTokVideo } from "../features/ttVideo.js";
 import axios from "axios";
 import { createRequire } from "module";
@@ -299,6 +300,7 @@ function matchesQuery(query, ...texts) {
 }
 
 async function tikwmRequest(url, params) {
+  if (!tikwmGate.isTikwmEnabled()) throw new Error('TikWM disabled (TIKWM_ENABLED is not set)');
   const request = tikwmQueue.then(async () => {
     const response = await axios.get(url, {
       params,
@@ -560,6 +562,7 @@ async function prexzyDownload(sourceUrl, platform) {
 }
 
 async function tikwmDownload(sourceUrl) {
+  if (!tikwmGate.isTikwmEnabled()) throw new Error('TikWM disabled (TIKWM_ENABLED is not set)');
   // TikWM currently exposes a lightweight JSON resolver for TikTok pages.
   // Serialize calls because its free endpoint enforces roughly one request
   // per second; concurrent anime workers would otherwise trip its limiter.
