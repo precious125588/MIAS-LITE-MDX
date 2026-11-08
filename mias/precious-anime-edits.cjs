@@ -610,8 +610,8 @@ function isDeadLink(url) {
   if (Date.now() - t > DEAD_LINK_TTL_MS) { _deadLinks.delete(String(url)); return false; }
   return true;
 }
-const DELIVERY_BUDGET_MS = 60 * 1000;   // stop starting new attempts after this
-const MAX_DELIVERY_TRIES = 4;
+const DELIVERY_BUDGET_MS = 90 * 1000;   // stop starting new attempts after this
+const MAX_DELIVERY_TRIES = 12;          // a failed candidate is skipped and the next one tried
 function creatorOf(item) {
   if (item && item.creator) return String(item.creator).toLowerCase();
   const m = String((item && item.url) || '').match(/tiktok\.com\/@([^/?#\s]+)/i);
@@ -653,6 +653,21 @@ function makeDeliveryPlan(fresh) {
   };
 }
 
+// Fetches fresh candidates when the first pool is used up. Skips anything already
+// tried in this request and any link that recently failed to deliver.
+async function fetchMoreCandidates(catKey, cat, user, zipItems, attempted) {
+  const parts = await Promise.all([
+    routePages(cat).catch(() => []),
+    routeSearch(cat).catch(() => []),
+    Promise.resolve().then(() => routeGc(catKey, cat)).catch(() => []),
+  ]);
+  const all = [...(zipItems || []), ...parts.flat()].filter((i) => i && !isDeadLink(i.url));
+  const candidates = all.filter((i) => !attempted.has(contentKeyOf(i)));
+  const seen = new Set(((loadSeen()[user] || {})[catKey]) || []);
+  const unseen = candidates.filter((i) => !seen.has(contentKeyOf(i)));
+  return unseen.length ? unseen : candidates;
+}
+
 // ── install ───────────────────────────────────────────────────────────────
 module.exports = {
   install(P, helpers) {
@@ -687,14 +702,25 @@ module.exports = {
       const countBySrc = {};
       for (const i of pool) countBySrc[i.src || 'other'] = (countBySrc[i.src || 'other'] || 0) + 1;
       console.log(`[anime-edits][pick] ${cat.label} for ${user}: pool ${JSON.stringify(countBySrc)}`);
-      const plan = makeDeliveryPlan(fresh);
+      let plan = makeDeliveryPlan(fresh);
       const sent = [];
+      const attempted = new Set();   // every candidate tried in this request, delivered or not
+      let refetched = false;
       let fourKError = null;
       const deadline = Date.now() + DELIVERY_BUDGET_MS;
       let tries = 0;
       while (sent.length < 2 && tries < MAX_DELIVERY_TRIES && Date.now() < deadline) {
-        const c = plan.next();
+        let c = plan.next();
+        if (!c && !refetched) {
+          // The first pool is used up or failed: fetch new candidates once and keep going.
+          refetched = true;
+          const more = await fetchMoreCandidates(catKey, cat, user, zipItems, attempted);
+          console.log(`[anime-edits][refetch] ${cat.label} for ${user}: ${more.length} new candidates`);
+          if (more.length) { plan = makeDeliveryPlan(more); c = plan.next(); }
+        }
         if (!c) break;
+        if (attempted.has(c.key)) continue;
+        attempted.add(c.key);
         tries++;
         const where = c.src + (c.creator ? ' @' + c.creator : '');
         const caption = String(c.item.caption || c.item.title || (cat.label + ' edit'))
@@ -703,21 +729,17 @@ module.exports = {
         // that folder is removed after the send succeeds or fails. No RAM fallback.
         let res = false;
         try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch { res = false; }
-        if (res && res.error) {
-          fourKError = res.error;
-          plan.failed(c);
-          console.log(`[anime-edits][failed] ${cat.label} for ${user}: ${where}: ${res.error.split("\n")[0]}`);
-          break;
-        }
         const ok = res === true;
         if (ok) {
           plan.delivered(c);
           sent.push(c.key);
           console.log(`[anime-edits][sent] ${cat.label} for ${user}: edit ${sent.length}/2 from ${where}`);
         } else {
+          // Failed candidate: remember it, skip it, and move on to the next one.
+          if (res && res.error) fourKError = res.error;
           plan.failed(c);
           markDeadLink(c.item.url);
-          console.log(`[anime-edits][failed] ${cat.label} for ${user}: ${where} did not deliver, switching place`);
+          console.log(`[anime-edits][failed] ${cat.label} for ${user}: ${where} did not deliver, skipping to next`);
         }
       }
       if (sent.length) {
