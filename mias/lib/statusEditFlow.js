@@ -675,12 +675,18 @@ async function trimVideo(buffer) {
       if (bundled && fs.existsSync(bundled)) ffmpeg = bundled;
     } catch {}
     await fs.promises.writeFile(input, buffer);
-    await execFileAsync(ffmpeg, [
+    const cut = (codecArgs) => execFileAsync(ffmpeg, [
       "-hide_banner", "-loglevel", "error", "-y", "-i", input,
       "-t", String(MAX_DURATION_SECONDS), "-map", "0:v:0", "-map", "0:a:0?",
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
-      "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", output,
+      ...codecArgs, "-movflags", "+faststart", output,
     ], { timeout: 120000, maxBuffer: 1024 * 1024 });
+    // A normal TikTok MP4 is only cut and remuxed, so the bot's HD encode is the one lossy step.
+    // Anything the MP4 container cannot copy (WebM, Matroska) still gets the full re-encode.
+    try {
+      await cut(["-c", "copy"]);
+    } catch {
+      await cut(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k"]);
+    }
     const trimmed = await fs.promises.readFile(output);
     return trimmed.length > 10000 ? trimmed : null;
   } catch {
