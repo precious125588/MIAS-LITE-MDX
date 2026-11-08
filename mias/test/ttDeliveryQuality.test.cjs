@@ -40,16 +40,29 @@ test("Native 1080p sources above the reference keep the 1.2 boost", () => {
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), 24000);
 });
 
-test("Low-bitrate 1080p sources are lifted to the 1.3 reference rate", () => {
+test("Low-bitrate 1080p sources are lifted to the clean floor", () => {
   const source = { width: 1080, height: 1920, shortSide: 1080, videoKbps: 1030 };
-  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), delivery.HD_REFERENCE_KBPS);
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), delivery.HD_CLEAN_FLOOR_KBPS);
 });
 
-test("Long clips are capped so the HD file stays under 80 MB", () => {
+test("60 s clips get the clean 3 Mb/s floor and stay under the 25 MB budget", () => {
   const source = { width: 1080, height: 1920, shortSide: 1080, videoKbps: 1030, durationSec: 60 };
   const kbps = delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST);
-  assert.ok(kbps >= 10000 && kbps <= 11000, `unexpected cap ${kbps}`);
-  assert.ok(((kbps + 190) * 1000 * 60) / 8 <= 80 * 1024 * 1024);
+  assert.equal(kbps, 3000);
+  assert.ok(((kbps + 190) * 1000 * 60) / 8 <= 25 * 1024 * 1024);
+});
+
+test("Clips up to 3 minutes stay under the 25 MB budget", () => {
+  for (const sec of [15, 30, 60, 120, 180]) {
+    const source = { width: 1080, height: 1920, shortSide: 1080, videoKbps: 1030, durationSec: sec };
+    const kbps = delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST);
+    assert.ok(((kbps + 190) * 1000 * sec) / 8 <= 25 * 1024 * 1024, `${sec}s at ${kbps} kb/s is over budget`);
+  }
+});
+
+test("Very long clips drop to the minimum rate", () => {
+  const source = { width: 1080, height: 1920, shortSide: 1080, videoKbps: 1030, durationSec: 600 };
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), delivery.HD_MIN_KBPS);
 });
 
 test("all status categories use the HD re-encode option and do not skip re-encoding", () => {
