@@ -471,7 +471,11 @@ async function downloadCreatorToFile(url, file) {
       headers: { ...UA, Referer: 'https://www.tiktok.com/' }, responseType: 'stream',
       timeout: 20000, maxContentLength: CREATOR_MAX_BYTES, validateStatus: () => true,
     });
-    if (r.status >= 400 || !r.data) { try { r.data && r.data.destroy && r.data.destroy(); } catch {} return 0; }
+    if (r.status >= 400 || !r.data) {
+      try { r.data && r.data.destroy && r.data.destroy(); } catch {}
+      console.log(`[anime-edits][download] HTTP ${r.status} from ${(() => { try { return new URL(url).host; } catch { return 'bad-url'; } })()}`);
+      return 0;
+    }
     let bytes = 0;
     const out = fs.createWriteStream(file);
     await new Promise((resolve, reject) => {
@@ -485,18 +489,19 @@ async function downloadCreatorToFile(url, file) {
       r.data.pipe(out);
     });
     const size = fs.statSync(file).size;
-    if (size < 2048) return 0;
+    if (size < 2048) { console.log(`[anime-edits][download] file too small (${size} bytes)`); return 0; }
     const head = Buffer.alloc(12);
     const fd = fs.openSync(file, 'r');
     try { fs.readSync(fd, head, 0, 12, 0); } finally { fs.closeSync(fd); }
-    return head.subarray(4, 8).toString('ascii') === 'ftyp' ? size : 0;
+    if (head.subarray(4, 8).toString('ascii') !== 'ftyp') { console.log('[anime-edits][download] not an MP4 file'); return 0; }
+    return size;
   };
   try {
     if (_heavyGuard && typeof _heavyGuard.runHeavy === 'function') {
       return await _heavyGuard.runHeavy(run, { tag: 'creator-page-dl', timeoutMs: 120000 });
     }
     return await run();
-  } catch { try { fs.rmSync(file, { force: true }); } catch {} return 0; }
+  } catch (e) { console.log(`[anime-edits][download] failed: ${(e && e.message) || e}`); try { fs.rmSync(file, { force: true }); } catch {} return 0; }
 }
 const NO_REENCODE_CATEGORIES = new Set([
   "fyp", "foryou", "foryoupage",
@@ -511,7 +516,7 @@ function shouldSkipReencode(catKey, item) {
 }
 
 async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null) {
-  if (!CVD) return false;
+  if (!CVD) { console.log('[anime-edits][deliver] disk delivery module is not loaded'); return false; }
   const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mias-anime-"));
   const file = path.join(dir, "edit.mp4");
   try {
@@ -733,7 +738,10 @@ module.exports = {
         // Disk only: the edit is downloaded to a temp folder, sent from disk, and
         // that folder is removed after the send succeeds or fails. No RAM fallback.
         let res = false;
-        try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch { res = false; }
+        try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch (e) {
+          console.log(`[anime-edits][deliver] error from ${where}: ${(e && e.message) || e}`);
+          res = false;
+        }
         const ok = res === true;
         if (ok) {
           plan.delivered(c);
