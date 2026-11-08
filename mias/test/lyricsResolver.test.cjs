@@ -55,16 +55,15 @@ test('music card: artwork is looked up on iTunes and upgraded to 600px', async (
   assert.equal(await fetchArtwork('', '', { fetchImpl }), null);
 });
 
-test('music card: lyrics go in the caption and the rest follows as text', () => {
-  const { splitLyricsCaption, formatLyricsRest } = require('../lib/lyricsResolver.cjs');
-  const found = { title: 'Shape of You', artist: 'Ed Sheeran', source: 'NexRay', lyrics: 'word '.repeat(400) };
-  const { caption, rest } = splitLyricsCaption(found);
+test('music card: one caption holds the lyrics and the source line', () => {
+  const { buildLyricsCaption } = require('../lib/lyricsResolver.cjs');
+  const long = { title: 'Shape of You', artist: 'Ed Sheeran', source: 'NexRay', lyrics: 'word '.repeat(400) };
+  const caption = buildLyricsCaption(long);
   assert.ok(caption.length <= 1024, `caption too long: ${caption.length}`);
-  assert.ok(caption.includes('*Shape of You*'));
-  assert.ok(caption.includes('Ed Sheeran'));
-  assert.ok(rest.length > 0);
-  assert.ok(formatLyricsRest(rest, found).includes('_Source: NexRay_'));
-  const short = splitLyricsCaption({ ...found, lyrics: 'Line one\nLine two' });
-  assert.equal(short.rest, '');
-  assert.ok(short.caption.includes('Line two') && short.caption.includes('_Source: NexRay_'));
+  assert.ok(caption.includes('*Shape of You*') && caption.includes('Ed Sheeran'));
+  assert.ok(caption.endsWith('_Source: NexRay · trimmed_'));
+  const short = buildLyricsCaption({ title: 'T', artist: 'A', source: 'NexRay', lyrics: 'Line one\nLine two' });
+  assert.ok(short.includes('Line one\nLine two'));
+  assert.ok(short.endsWith('_Source: NexRay_'));
+  assert.ok(!short.includes('trimmed'));
 });

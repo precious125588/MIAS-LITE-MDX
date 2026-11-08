@@ -2446,7 +2446,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     await react(sock, msg, emoji);
     try {
       const found = await LYRICS.resolveLyrics(args.join(' '));
-      // Music card: cover art with the lyrics as the caption. Text-only when no artwork is found.
+      // Music card: cover art with the lyrics as one caption. Text-only when no artwork is found.
       let art = null;
       try { art = await LYRICS.fetchArtwork(found.title, found.artist); } catch { art = null; }
       let buf = null;
@@ -2457,9 +2457,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
         } catch { buf = null; }
       }
       if (buf) {
-        const { caption, rest } = LYRICS.splitLyricsCaption(found);
-        await _sendImg(sock, msg, buf, caption);
-        if (rest) await sendReply(sock, msg, LYRICS.formatLyricsRest(rest, found));
+        await _sendImg(sock, msg, buf, LYRICS.buildLyricsCaption(found));
       } else {
         await sendReply(sock, msg, LYRICS.formatLyricsMessage(found));
       }
