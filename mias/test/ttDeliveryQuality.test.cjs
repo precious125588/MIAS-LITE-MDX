@@ -34,10 +34,22 @@ test("HD sources with 1.0 boost preserve bitrate without artificial boost", () =
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, 1.0), 20000);
 });
 
-test("Native 1080p videos apply 1.2 boost", () => {
-  const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 5000 };
-  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), 6000);
-  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), 6000);
+test("Native 1080p sources above the reference keep the 1.2 boost", () => {
+  const source = { width: 1920, height: 1080, shortSide: 1080, videoKbps: 20000 };
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), 24000);
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), 24000);
+});
+
+test("Low-bitrate 1080p sources are lifted to the 1.3 reference rate", () => {
+  const source = { width: 1080, height: 1920, shortSide: 1080, videoKbps: 1030 };
+  assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), delivery.HD_REFERENCE_KBPS);
+});
+
+test("Long clips are capped so the HD file stays under 80 MB", () => {
+  const source = { width: 1080, height: 1920, shortSide: 1080, videoKbps: 1030, durationSec: 60 };
+  const kbps = delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST);
+  assert.ok(kbps >= 10000 && kbps <= 11000, `unexpected cap ${kbps}`);
+  assert.ok(((kbps + 190) * 1000 * 60) / 8 <= 80 * 1024 * 1024);
 });
 
 test("all status categories use the HD re-encode option and do not skip re-encoding", () => {
