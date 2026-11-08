@@ -65,6 +65,17 @@ test("Very long clips drop to the minimum rate", () => {
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, delivery.HIGH_QUALITY_HD_BOOST), delivery.HD_MIN_KBPS);
 });
 
+test("Every source gets the clean floor, including smaller and non-1080p sources", () => {
+  const sd = { width: 1080, height: 1920, shortSide: 720, videoKbps: 500, durationSec: 60 };
+  assert.equal(delivery.pickHdBitrate(sd, delivery.HD_BOOST, delivery.HD_BOOST), delivery.HD_CLEAN_FLOOR_KBPS);
+});
+
+test("Long smaller-source clips are held to the 25 MB budget", () => {
+  const sd = { width: 720, height: 1280, shortSide: 720, videoKbps: 16000, durationSec: 180 };
+  const kbps = delivery.pickHdBitrate(sd, delivery.HD_BOOST, delivery.HD_BOOST);
+  assert.ok(((kbps + 190) * 1000 * 180) / 8 <= 25 * 1024 * 1024, `over budget at ${kbps} kb/s`);
+});
+
 test("all status categories use the HD re-encode option and do not skip re-encoding", () => {
   const edits = require("../precious-anime-edits.cjs");
   assert.equal(edits.shouldSkipReencode("fyp"), false);
