@@ -510,8 +510,8 @@ const NO_REENCODE_CATEGORIES = new Set([
 ]);
 
 function shouldSkipReencode(catKey, item) {
-  // All status menu categories send original file untouched through CDN and cache without re-encoding or brightness boost
-  return true;
+  // All status menu categories use the HD re-encode option with 1.2 quality boost
+  return false;
 }
 
 async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null) {
@@ -551,14 +551,14 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
       return true;
     }
 
-    // The rest of the categories: re-encode to TT command 1.3 HD state with 0.01 boost (clean H.264/AAC 1080p60 faststart)
+    // All status categories: re-encode to TT command 1.3 HD state with 1.2 boost (clean H.264/AAC 1080p60 faststart)
     let hdEncoded = null;
     if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
       try {
         const hdRun = () => TTD.reencodeHdForWhatsApp(file, {
           maxBytes: 95 * 1024 * 1024,
-          boost: 1.0001,
-          sourceQualityBoost: 1.0001,
+          boost: 1.2,
+          sourceQualityBoost: 1.2,
         });
         hdEncoded = (_heavyGuard && typeof _heavyGuard.runHeavy === "function")
           ? await _heavyGuard.runHeavy(hdRun, { tag: "status-hd-reencode", timeoutMs: 25000 })
