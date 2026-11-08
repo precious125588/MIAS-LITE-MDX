@@ -226,15 +226,11 @@ function sizeCapKbps(probe) {
 
 function pickHdBitrate(probe, boost = HD_BOOST, sourceQualityBoost = null) {
   if (!probe || !probe.shortSide || !probe.videoKbps) return Math.round(HD_REFERENCE_KBPS * boost);
-  if (isHighQualitySource(probe)) {
-    const rateBoost = sourceQualityBoost || NATIVE_HD_BOOST;
-    // Never encode a 1080p source below the clean floor, so a low-bitrate TikTok copy is not re-encoded muddy.
-    const wanted = Math.max(Math.round(probe.videoKbps * rateBoost), HD_CLEAN_FLOOR_KBPS);
-    return Math.min(wanted, sizeCapKbps(probe));
-  }
-  const alreadyAtHdState = probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps >= HD_REFERENCE_KBPS;
-  if (!alreadyAtHdState) return Math.min(Math.round((probe.videoKbps || HD_REFERENCE_KBPS) * boost), HD_MAX_KBPS);
-  return Math.min(Math.round(probe.videoKbps * boost), HD_MAX_KBPS);
+  // Native 1080p sources take the gentle source-relative boost; other sources use the given boost.
+  // Every source gets the clean floor, and every clip stays within the size budget.
+  const rate = isHighQualitySource(probe) ? (sourceQualityBoost || NATIVE_HD_BOOST) : boost;
+  const wanted = Math.max(Math.round(probe.videoKbps * rate), HD_CLEAN_FLOOR_KBPS);
+  return Math.min(wanted, sizeCapKbps(probe));
 }
 
 /**
