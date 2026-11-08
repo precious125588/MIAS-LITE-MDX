@@ -2,8 +2,26 @@
 set -e
 cd "."
 
+# Auto-pull latest code from GitHub on startup so bot is never stale
+if [ "${AUTO_PULL:-on}" != "off" ] && [ -d ".git" ] && command -v git >/dev/null 2>&1; then
+  echo "[BUILD-SYNC] Checking GitHub for updates..."
+  git config pull.rebase false 2>/dev/null || true
+  if git fetch origin main --depth=1 --quiet 2>/dev/null || git fetch origin main --quiet 2>/dev/null; then
+    LOCAL_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+    REMOTE_SHA=$(git rev-parse origin/main 2>/dev/null || echo "")
+    if [ -n "$REMOTE_SHA" ] && [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+      echo "[BUILD-SYNC] 🚀 New code detected on GitHub ($REMOTE_SHA)! Auto-pulling now..."
+      if git reset --hard origin/main 2>/dev/null || git pull origin main 2>/dev/null; then
+        echo "[BUILD-SYNC] ✅ Successfully updated to latest GitHub code ($REMOTE_SHA)."
+      fi
+    else
+      echo "[BUILD-SYNC] ✅ Code is up to date ($LOCAL_SHA)."
+    fi
+  fi
+fi
+
 # Install root dependencies if missing
-if [ ! -d node_modules ] || [ ! -d node_modules/chalk ] || [ ! -d node_modules/call-bind-apply-helpers ] || [ ! -d node_modules/express ]; then
+if [ ! -d node_modules ] || [ ! -d node_modules/chalk ] || [ ! -d node_modules/call-bind-apply-helpers ] || [ ! -d node_modules/call-bound ] || [ ! -d node_modules/call-bind ] || [ ! -d node_modules/express ]; then
   echo "[MIAS LITE MDX] Installing main dependencies..."
   bash scripts/robust-install.sh .
 fi
