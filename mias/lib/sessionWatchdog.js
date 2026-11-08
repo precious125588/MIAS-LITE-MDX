@@ -39,6 +39,8 @@ const LATENCY_WINDOW         = 25;           // rolling sample size
 const HIGH_FAIL_RATE         = 0.35;         // 35% failure rate → degraded
 const MIN_CMDS_FOR_RATE      = 15;           // minimum commands before judging fail rate
 const HEAL_COOLDOWN_MS       = 3 * 60_000;   // don't re-heal more than once per 3min
+const PROBE_TIMEOUT_MS       = 10_000;       // WhatsApp must answer a server ping within this
+const PING_JID              = "@s.whatsapp.net";
 
 // ── Module-level state (one watchdog per child process) ───────────
 let _sock             = null;
@@ -47,6 +49,7 @@ let _onReconnect      = null;
 let _watchTimer       = null;
 let _healLock         = false;
 let _lastHealMs       = 0;
+let _lastProbeMs      = 0;
 let _cmdIdSeq         = 0;
 let _inFlight         = new Map();   // id → { name, startMs }
 let _msgUpsertListener = null;
@@ -69,6 +72,7 @@ const _state = {
   healAttempts:    0,
   lastHealMs:      null,
   issues:          [],
+  lastCloseMs:     null,
 };
 
 // ── Command tracking ─────────────────────────────────────────────
@@ -195,6 +199,80 @@ function _computeHealth() {
   return { status, score, issues };
 }
 
+// ── Liveness probes ────────────────────────────────────────────────
+function _alwaysOnlineEnabled() {
+  const onlineSetting = globalThis.__MIAS_ALWAYS_ONLINE_ENABLED__;
+  return typeof onlineSetting !== "function" || onlineSetting() !== false;
+}
+
+function _withTimeout(promise, ms, label) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Returns true when WhatsApp answers a ping, false when the socket is closed,
+ * unresponsive, or the ping fails, and null when the socket is still connecting
+ * (in which case the watchdog must not interfere).
+ */
+async function _probeSocket(sock) {
+  const ws = sock?.ws;
+  const readyState = ws?.readyState ?? ws?.socket?.readyState;
+  if (ws?.isOpen === false || ws?.isClosing === true || ws?.isClosed === true
+    || readyState === 2 || readyState === 3) {
+    return false;
+  }
+  if (readyState !== undefined && readyState !== 1) return null;
+
+  if (typeof sock.query === "function") {
+    try {
+      await _withTimeout(
+        sock.query({ tag: "iq", attrs: { to: PING_JID, type: "get", xmlns: "w:p" }, content: [{ tag: "ping", attrs: {} }] }),
+        PROBE_TIMEOUT_MS,
+        "Server ping",
+      );
+      return true;
+    } catch (err) {
+      console.warn(`[Watchdog] Server ping failed: ${err?.message || err}`);
+      return false;
+    }
+  }
+
+  // Fallback for sockets without query(): presence still proves the socket accepts writes.
+  try {
+    await alwaysOnline.sendPresenceUpdateWithTimeout(sock, "available", PROBE_TIMEOUT_MS);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function _requestReconnect(reason) {
+  if (typeof _onReconnect !== "function") return;
+  console.log(`[Watchdog] 🔴 ${reason} — scheduling reconnect`);
+  setTimeout(() => {
+    try { _onReconnect(reason); } catch {}
+  }, 3_000);
+}
+
+/** Quiet chats are normal; a long silence only triggers a cheap ping, never a full heal. */
+async function _probeOnly() {
+  const now = Date.now();
+  if (!_sock || _healLock || now - _lastProbeMs < HEAL_COOLDOWN_MS) return;
+  _lastProbeMs = now;
+  const alive = await _probeSocket(_sock);
+  if (alive === false) {
+    _requestReconnect("watchdog-silent-zombie");
+  } else if (alive === true) {
+    console.log("[Watchdog] Silent, but server ping answered — socket is alive");
+  }
+}
+
 // ── Self-healing ───────────────────────────────────────────────────
 async function _selfHeal(reason, status) {
   const now = Date.now();
@@ -256,43 +334,23 @@ async function _selfHeal(reason, status) {
       }
     }
 
-    // ── Step 4: Socket responsiveness probe ──────────────────────
-    if (_sock && status !== HEALTH.BROKEN) {
-      try {
-        const onlineSetting = globalThis.__MIAS_ALWAYS_ONLINE_ENABLED__;
-        const shouldAnnounceOnline = typeof onlineSetting !== "function" || onlineSetting() !== false;
-        if (shouldAnnounceOnline) {
-          await alwaysOnline.sendPresenceUpdateWithTimeout(_sock, "available", 5_000);
-          // Socket responded — upgrade from DEGRADED to WARNING
-          if (_state.status === HEALTH.DEGRADED) {
-            _state.status = HEALTH.WARNING;
-            console.log("[Watchdog] Socket responsive after heal — upgraded to WARNING");
-          }
-        } else {
-          const ws = _sock?.ws;
-          const readyState = ws?.readyState ?? ws?.socket?.readyState;
-          if (ws?.isOpen === false || ws?.isClosing === true || ws?.isClosed === true
-            || readyState === 2 || readyState === 3) {
-            throw new Error("socket is closed while Always Online is disabled");
-          }
+    // ── Step 4: Server round-trip probe ──────────────────────────
+    // A presence send only proves the local socket accepted a write, and a dead
+    // but "open" socket accepts writes too. Only a reply from WhatsApp proves
+    // the connection is alive, so the ping decides whether to reconnect.
+    if (_sock) {
+      const alive = await _probeSocket(_sock);
+      if (alive === true) {
+        if (_state.status === HEALTH.DEGRADED) {
+          _state.status = HEALTH.WARNING;
+          console.log("[Watchdog] Server ping answered after heal — upgraded to WARNING");
         }
-      } catch (err) {
-        console.warn("[Watchdog] Socket unresponsive or closed during health probe:", err?.message || err);
-        if (typeof _onReconnect === "function") {
-          console.log("[Watchdog] 🔴 Unresponsive socket probe — scheduling reconnect");
-          setTimeout(() => {
-            try { _onReconnect("watchdog-unresponsive-probe"); } catch {}
-          }, 3_000);
+        if (_alwaysOnlineEnabled()) {
+          try { await alwaysOnline.sendPresenceUpdateWithTimeout(_sock, "available", 5_000); } catch {}
         }
+      } else if (alive === false) {
+        _requestReconnect("watchdog-unresponsive-probe");
       }
-    }
-
-    // ── Step 5: Force reconnect for BROKEN sessions ──────────────
-    if (status === HEALTH.BROKEN && typeof _onReconnect === "function") {
-      console.log("[Watchdog] 🔴 BROKEN — scheduling reconnect");
-      setTimeout(() => {
-        try { _onReconnect("watchdog-broken"); } catch {}
-      }, 3_000);
     }
 
     // ── Step 6: Force GC if available ────────────────────────────
@@ -318,12 +376,15 @@ async function _tick() {
       console.log(`[Watchdog]${tag} score=${score} | ${issues.join(" | ")}`);
     }
 
-    // Trigger self-heal on transition to DEGRADED or BROKEN
-    if (
-      (status === HEALTH.DEGRADED || status === HEALTH.BROKEN) &&
-      prev !== HEALTH.BROKEN
-    ) {
+    // Heal whenever the session is DEGRADED or BROKEN. _selfHeal enforces the
+    // cooldown, so repeated attempts are rate-limited instead of permanently blocked.
+    if (status === HEALTH.DEGRADED || status === HEALTH.BROKEN) {
       await _selfHeal(`transition ${prev} → ${status}`, status);
+      return;
+    }
+
+    if (_state.lastMsgReceived && Date.now() - _state.lastMsgReceived > SILENT_BROKEN_MS) {
+      await _probeOnly();
     }
   } catch (e) {
     console.error(`[Watchdog] Tick error: ${e?.message}`);
@@ -357,6 +418,7 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
   _connUpdateListener = ({ connection }) => {
     if (connection === "open") {
       _state.reconnects++;
+      _state.lastMsgReceived = Date.now();
       // On fresh connect: clear stuck queue and reset to healthy
       _inFlight.clear();
       _state.queueSize = 0;
@@ -365,7 +427,9 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
         _state.issues = [];
       }
     } else if (connection === "close") {
-      _state.status = HEALTH.BROKEN;
+      // Do not pre-set BROKEN here: a socket marked BROKEN before the tick was
+      // skipped by the heal check, so a closed socket was never reconnected.
+      _state.lastCloseMs = Date.now();
     }
   };
   try { sock.ev.on("connection.update", _connUpdateListener); } catch {}
@@ -429,3 +493,21 @@ export async function forceHealthCheck() {
   _state.issues = result.issues;
   return result;
 }
+
+/** Test-only hooks; not used by the bot runtime. */
+export const _testing = {
+  tick: _tick,
+  probeOnly: _probeOnly,
+  reset() {
+    _lastHealMs = 0;
+    _lastProbeMs = 0;
+    _healLock = false;
+    _inFlight.clear();
+    _state.status = HEALTH.HEALTHY;
+    _state.issues = [];
+    _state.lastMsgReceived = null;
+  },
+  setLastMessageAgo(ms) {
+    _state.lastMsgReceived = Date.now() - ms;
+  },
+};
