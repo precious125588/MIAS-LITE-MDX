@@ -209,10 +209,12 @@ async function probeSourceVideo(inPath) {
 }
 
 // Picks the H.264 bitrate for the 1.3 encode from the source probe. Unknown source = reference rate.
-// Keeps the HD file under HD_TARGET_MAX_BYTES for the clip length, so it still goes out as a video message.
-const HD_TARGET_MAX_BYTES = 80 * 1024 * 1024;
+// Keeps the HD file under HD_TARGET_MAX_BYTES for the clip length, so it stays small and goes out as a video message.
+const HD_TARGET_MAX_BYTES = 25 * 1024 * 1024;
 const HD_AUDIO_KBPS = 190;
-const HD_MIN_KBPS = 2500;
+const HD_MIN_KBPS = 800;
+// Clean floor for native 1080p sources. On a 1 Mb/s TikTok copy, 3 Mb/s keeps SSIM at about 0.977 (1.2 Mb/s gave 0.937).
+const HD_CLEAN_FLOOR_KBPS = 3000;
 
 // Largest video bitrate that keeps the file under HD_TARGET_MAX_BYTES for this clip length.
 function sizeCapKbps(probe) {
@@ -226,9 +228,8 @@ function pickHdBitrate(probe, boost = HD_BOOST, sourceQualityBoost = null) {
   if (!probe || !probe.shortSide || !probe.videoKbps) return Math.round(HD_REFERENCE_KBPS * boost);
   if (isHighQualitySource(probe)) {
     const rateBoost = sourceQualityBoost || NATIVE_HD_BOOST;
-    // Never encode a 1080p source below the 1.3 reference rate. A low-bitrate TikTok copy re-encoded
-    // at its own rate (about 1.2 Mb/s) comes out muddy and blocky, which is the "black" look.
-    const wanted = Math.max(Math.round(probe.videoKbps * rateBoost), HD_REFERENCE_KBPS);
+    // Never encode a 1080p source below the clean floor, so a low-bitrate TikTok copy is not re-encoded muddy.
+    const wanted = Math.max(Math.round(probe.videoKbps * rateBoost), HD_CLEAN_FLOOR_KBPS);
     return Math.min(wanted, sizeCapKbps(probe));
   }
   const alreadyAtHdState = probe.shortSide >= HD_REFERENCE_SHORT_SIDE && probe.videoKbps >= HD_REFERENCE_KBPS;
@@ -494,6 +495,8 @@ module.exports = {
   NATIVE_HD_BOOST,
   HIGH_QUALITY_4K_BOOST,
   HD_MAX_KBPS,
+  HD_MIN_KBPS,
+  HD_CLEAN_FLOOR_KBPS,
   isHighQualitySource,
   pickHdBitrate,
   probeSourceVideo,
