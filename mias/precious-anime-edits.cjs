@@ -599,6 +599,17 @@ const deliverCreatorItemFromDisk = deliverItemFromDisk;
 // Each request shuffles the places, then takes one edit from each place before
 // it reuses one. A place whose download fails is skipped for the rest of that
 // request. A creator is not used twice and a video is never sent twice.
+// Links that failed to deliver are skipped for a while, so dead or placeholder
+// links cannot use up the whole delivery budget on every request.
+const _deadLinks = new Map();
+const DEAD_LINK_TTL_MS = 60 * 60 * 1000;
+function markDeadLink(url) { if (url) _deadLinks.set(String(url), Date.now()); }
+function isDeadLink(url) {
+  const t = _deadLinks.get(String(url || ''));
+  if (!t) return false;
+  if (Date.now() - t > DEAD_LINK_TTL_MS) { _deadLinks.delete(String(url)); return false; }
+  return true;
+}
 const DELIVERY_BUDGET_MS = 60 * 1000;   // stop starting new attempts after this
 const MAX_DELIVERY_TRIES = 4;
 function creatorOf(item) {
@@ -667,7 +678,7 @@ module.exports = {
           new Promise((r) => setTimeout(() => r([[], [], []]), 3500)),
         ]);
       }
-      const pool = [zipItems, ...networkParts].flat();
+      const pool = [zipItems, ...networkParts].flat().filter((i) => !isDeadLink(i.url));
       if (!pool.length) {
         await P.react(sock, msg, '❌').catch(() => {});
         return P.sendReply(sock, msg, `❌ No ${cat.label} edits available right now. Try again in a bit.`);
@@ -705,6 +716,7 @@ module.exports = {
           console.log(`[anime-edits][sent] ${cat.label} for ${user}: edit ${sent.length}/2 from ${where}`);
         } else {
           plan.failed(c);
+          markDeadLink(c.item.url);
           console.log(`[anime-edits][failed] ${cat.label} for ${user}: ${where} did not deliver, switching place`);
         }
       }
