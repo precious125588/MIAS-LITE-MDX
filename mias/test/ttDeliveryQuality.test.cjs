@@ -40,17 +40,17 @@ test("Native 1080p videos apply 1.2 boost", () => {
   assert.equal(delivery.pickHdBitrate(source, delivery.HD_BOOST, null), 6000);
 });
 
-test("all status categories bypass re-encoding and send as original file", () => {
+test("all status categories use the HD re-encode option and do not skip re-encoding", () => {
   const edits = require("../precious-anime-edits.cjs");
-  assert.equal(edits.shouldSkipReencode("fyp"), true);
-  assert.equal(edits.shouldSkipReencode("cruise"), true);
-  assert.equal(edits.shouldSkipReencode("feeling"), true);
-  assert.equal(edits.shouldSkipReencode("discipline"), true);
-  assert.equal(edits.shouldSkipReencode("foryou"), true);
-  assert.equal(edits.shouldSkipReencode("cruzz"), true);
-  assert.equal(edits.shouldSkipReencode("discip"), true);
-  assert.equal(edits.shouldSkipReencode("naruto"), true);
-  assert.equal(edits.shouldSkipReencode("jjk"), true);
-  assert.equal(edits.shouldSkipReencode("bleach"), true);
-  assert.equal(edits.shouldSkipReencode("onepiece"), true);
+  assert.equal(edits.shouldSkipReencode("fyp"), false);
+  assert.equal(edits.shouldSkipReencode("cruise"), false);
+  assert.equal(edits.shouldSkipReencode("feeling"), false);
+  assert.equal(edits.shouldSkipReencode("discipline"), false);
+  assert.equal(edits.shouldSkipReencode("foryou"), false);
+  assert.equal(edits.shouldSkipReencode("cruzz"), false);
+  assert.equal(edits.shouldSkipReencode("discip"), false);
+  assert.equal(edits.shouldSkipReencode("naruto"), false);
+  assert.equal(edits.shouldSkipReencode("jjk"), false);
+  assert.equal(edits.shouldSkipReencode("bleach"), false);
+  assert.equal(edits.shouldSkipReencode("onepiece"), false);
 });
