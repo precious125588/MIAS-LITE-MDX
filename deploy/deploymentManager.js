@@ -528,135 +528,29 @@ async function startDeploymentFlow(nexus, numberOrJid, tracker, sessionDir, laun
   rememberContext(userKey, { sessionDir, launcher, nexus, tracker });
   selectorRegistry.attachSocket(userKey, nexus);
 
-  const { sendBotSelectionMenu } = require('./botSelector');
   const { reportQuickDeploy, sendReadyMessage } = require('./progressReporter');
 
+  // Pure session-using bot mode: auto-select primary bot (MIAS MDX) without Telegram dependence
+  const chosen = getBotById('mias-mdx') || bots[0] || _getDefaultBots()[0];
+  console.log(chalk.cyan(`[DeployMgr] ${userKey} session linked — deploying ${chosen.name} (session-only mode)`));
 
-  // ── 1. Already locked to a bot? Re-deploy it, never ask again. ────────────
-  const locked = store.getSelection(userKey);
-  if (locked?.botId) {
-    const bot = getBotById(locked.botId);
-    if (bot) {
-      console.log(chalk.cyan(`[DeployMgr] ${userKey} is locked to ${bot.name} — deploying without a menu`));
-      try {
-        await nexus.sendMessage(jid, {
-          text:
-            `🔒 *${bot.name}* is already your bot.\n\n` +
-            `Starting it up now. To switch bots you must unpair this number and pair again.`,
-        });
-      } catch {}
-      const res = await deployBotForNumber(userKey, bot.id, { source: 'auto-relaunch' , force: true });
-      return res.ok ? bot : null;
-    }
-  }
+  store.setSelection(userKey, chosen, { source: 'session-direct', force: true });
 
-  // ── 2. Mark awaiting + tell every surface ────────────────────────────────
-  store.markPending(userKey, { sessionDir, source: 'pairing' });
-  console.log(chalk.cyan(`[DeployMgr] ${userKey} paired — awaiting bot selection (Telegram /number)`));
-
-  try {
-    const notifier = require('../notify');
-    if (typeof notifier.sendSelectionRequired === 'function') {
-      await notifier.sendSelectionRequired(userKey, bots);
-      store.markNotified(userKey);
-    }
-  } catch (e) {
-    console.warn(chalk.yellow(`[DeployMgr] Telegram notify failed: ${e.message}`));
-  }
-
-  // ── 3. Best-effort WhatsApp menu — never blocks, never required ──────────
-  const selectionPromise = _waitForSelection(userKey, async () => {
-    // If the choice arrived via Telegram/web while we were waiting, stop the
-    // reminder loop but do NOT call cancelSelection — that resolves with null
-    // which sends a spurious "No bot chosen yet" message even though the bot
-    // was already chosen. Instead let the pending waiter be cleaned up by the
-    // deployBotForNumber path (which calls pending.resolve(bot.id) directly).
-    if (store.getSelection(userKey)) {
-      const e = _pendingSelections.get(userKey);
-      if (e) { clearInterval(e.reminder); }
-      return;
-    }
-    console.log(chalk.gray(`[DeployMgr] Re-sending menu to ${jid}`));
-    await sendBotSelectionMenu(nexus, jid, bots).catch(() => {});
-  });
-
-  sendBotSelectionMenu(nexus, jid, bots).catch(e => {
-    console.warn(chalk.yellow(`[DeployMgr] WhatsApp menu unavailable (${e.message}) — Telegram /number still works`));
-  });
-
-  const selectedId = await selectionPromise;
-
-  // ── 4. Nobody tapped the WhatsApp menu ───────────────────────────────────
-  if (!selectedId) {
-    // The choice may have arrived through Telegram while we waited; if it did,
-    // deployBotForNumber already launched the bot.
-    const now = store.getSelection(userKey);
-    if (now?.botId) {
-      console.log(chalk.green(`[DeployMgr] ${userKey} chose ${now.botName} elsewhere`));
-      return getBotById(now.botId);
-    }
-    console.log(chalk.yellow(`[DeployMgr] ${userKey} has not chosen a bot yet — still pending`));
-    try {
-      await nexus.sendMessage(jid, {
-        text:
-          `⌛ *No bot chosen yet*\n\n` +
-          `Open Telegram and send *\/number* to pick your bot.\n` +
-          `Nothing is deployed until you choose.`,
-      });
-    } catch {}
-    return null;
-  }
-
-  // ── 5. WhatsApp menu worked ──────────────────────────────────────────────
-  const chosen = getBotById(selectedId);
-  if (!chosen) {
-    console.error(chalk.red(`[DeployMgr] Unknown bot id "${selectedId}" — not deploying`));
-    return null;
-  }
-
-  // A Telegram/admin choice resolves the same pending waiter after it has
-  // already persisted and locked the selection. Do not treat that expected
-  // handoff as a conflicting second choice or return before launcher.launch().
-  const existingSelection = store.getSelection(userKey);
-  let written;
-  if (existingSelection?.botId === chosen.id) {
-    written = { ok: true, record: existingSelection, handedOff: true };
-  } else {
-    written = _writeSelection(userKey, chosen.id, { source: 'whatsapp' });
-  }
-  if (!written.ok) {
-    try { await nexus.sendMessage(jid, { text: `🔒 ${written.error}` }); } catch {}
-    return null;
-  }
-
-  console.log(chalk.green(`[DeployMgr] ${userKey} chose: ${chosen.name} (${chosen.id})`));
-
-  // ── 5a. Delete the selector EVERYWHERE, immediately ──────────────────────
-  try {
-    await selectorRegistry.revokeAll(userKey, {
-      sock: nexus,
-      replacement: `✅ Bot chosen: *${chosen.name}* for \`${userKey}\`.`,
-    });
-  } catch (e) {
-    console.warn(chalk.yellow(`[DeployMgr] Selector cleanup failed: ${e.message}`));
-  }
-
-  // ── 5b. 3-second spawn: confirm, count down, announce, launch ────────────
+  // 1. WhatsApp confirmation cards
   let progressKey = null;
   try {
     progressKey = await reportQuickDeploy(nexus, jid, chosen);
   } catch (e) {
-    console.warn(chalk.yellow(`[DeployMgr] Progress report failed: ${e.message}`));
+    console.warn(chalk.yellow(`[DeployMgr] Progress notice: ${e.message}`));
   }
 
   try {
-    // The "connected / ready to use" card must go out on the pairing socket,
-    // because the socket is closed a moment later for the handoff.
     await sendReadyMessage(nexus, jid, chosen, userKey, progressKey);
   } catch (e) {
-    console.warn(chalk.yellow(`[DeployMgr] Ready message failed: ${e.message}`));
+    console.warn(chalk.yellow(`[DeployMgr] Ready notice: ${e.message}`));
   }
 
+  // 2. Clean handoff & launch child bot
   try {
     console.log(chalk.cyan(`[DeployMgr] Handing ${jid} over to ${chosen.name}…`));
     ownership.handOffToBot(userKey, chosen.id);
@@ -665,10 +559,8 @@ async function startDeploymentFlow(nexus, numberOrJid, tracker, sessionDir, laun
     try { nexus.ws?.close(); } catch {}
     selectorRegistry.detachSocket(userKey);
 
-    // Starting the child in the same tick as closing the pairing socket makes
-    // both sockets briefly use one Signal session. That causes "closed session"
-    // decrypt errors and can get the newly selected bot replaced immediately.
-    await _sleep(6000);
+    // Give Baileys time to flush Signal keys and release websocket
+    await _sleep(4000);
 
     const envOverrides = {
       ...(chosen.env || {}),
@@ -677,12 +569,9 @@ async function startDeploymentFlow(nexus, numberOrJid, tracker, sessionDir, laun
     };
     if (chosen.cwd) envOverrides.BOT_CWD = chosen.cwd;
 
-    // Canonical launcher key — see the note in deployBotForNumber(). Using the
-    // raw `numberOrJid` here was spawning a duplicate process for numbers that
-    // had already been launched from Telegram/web.
     await launcher.launch(`${userKey}@s.whatsapp.net`, sessionDir, envOverrides);
     store.markDeployed(userKey, true);
-    console.log(chalk.green.bold(`🎉 ${chosen.name} active for ${jid}`));
+    console.log(chalk.green.bold(`🎉 ${chosen.name} active for ${jid} (session-only)`));
     return chosen;
   } catch (e) {
     console.error(chalk.red(`[DeployMgr] Launch failed for ${jid}: ${e.message}`));
