@@ -7,6 +7,8 @@
  */
 
 import { httpClient as axios } from './lib/engineAccess.js';
+import tikwmGate from './lib/tikwmGate.cjs';
+import lyricsResolver from './lib/lyricsResolver.cjs';
 
 const ZERO_BASE  = 'https://zeroapi2-production.up.railway.app';
 const ZERO_KEY   = process.env.ZERO_API_KEY || '';
@@ -248,8 +250,8 @@ const APIs = {
         if (videoUrl) return { videoUrl, title: d?.title || 'TikTok Video' };
       }
     } catch (e) { }
-    // 5. tikwm.com
-    try {
+    // 5. tikwm.com (opt-in: TIKWM_ENABLED=1; Cloudflare blocks it on most hosts)
+    if (tikwmGate.isTikwmEnabled()) try {
       const response = await axios.get(`https://tikwm.com/api/?url=${encodeURIComponent(url)}`, {
         timeout: 15000,
         headers: { 'accept': '*/*', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
@@ -599,15 +601,11 @@ APIs.upscale = async (imageUrl) => {
   return { ok: false, error: 'upscale failed' };
 };
 
-/** Get lyrics — uses nexray /search/lirik */
+/** Get lyrics — NexRay /search/lyrics with LRCLIB fallback */
 APIs.getLyrics = async (query) => {
   try {
-    const r = await nxGet('/search/lirik', { query }, 20000);
-    if (r.ok && r.result) {
-      const d = r.result;
-      if (typeof d === 'string') return { ok: true, lyrics: d, title: query };
-      return { ok: true, lyrics: d?.lyrics || d?.lirik || JSON.stringify(d), title: d?.title || d?.judul || query, artist: d?.artist || d?.artis || '' };
-    }
+    const found = await lyricsResolver.resolveLyrics(query);
+    return { ok: true, lyrics: found.lyrics, title: found.title || query, artist: found.artist || '' };
   } catch (e) { }
   return { ok: false, error: 'Lyrics not found' };
 };

@@ -4,8 +4,9 @@ const fs = require("node:fs");
 
 test("nexray lyrics passes query param to lyrics search endpoint", () => {
   const content = fs.readFileSync("mias/nexray_bot.cjs", "utf8");
-  assert.ok(content.includes("cmd(['lyrics', 'srch-lyrics'], { desc: 'Search song lyrics (English)', category: 'Nexray-Search' }, _search(o => nx.search.lyrics(o), 'Lyrics Search', '🎶', 'query'));"));
-  assert.ok(content.includes("cmd(['search-lirik', 'srch-lirik'], { desc: 'Search song lyrics', category: 'Nexray-Search' }, _search(o => nx.search.lirik(o), 'Lirik Search', '🎵', 'query'));"));
+  assert.ok(content.includes("cmd(['lyrics', 'srch-lyrics'], { desc: 'Search song lyrics (English)', category: 'Nexray-Search' }, _lyricsCmd('lyrics', '🎶'));"));
+  assert.ok(content.includes("LYRICS.resolveLyrics(args.join(' '))"));
+  assert.ok(!content.includes('nx.search.lyrics(o)'));
   assert.ok(content.includes("const param = { text: q, query: q, q };"));
 });
 

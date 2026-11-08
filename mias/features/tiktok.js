@@ -1,3 +1,4 @@
+import tikwmGate from "../lib/tikwmGate.cjs";
 /**
  * TikTok metadata/download adapter.
  * Provider responses are normalized here so the command layer only deals with
@@ -6,6 +7,8 @@
 // The fallback changes the API source, not the user's selected command/mode or
 // delivery format. Normalization keeps provider quality/watermark fields distinct.
 const PROVIDER = (url) => `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
+// Sequential first pass, in this order. TikWM is blocked by Cloudflare on most hosts, so it is opt-in (TIKWM_ENABLED=1).
+const PRIMARY_ORDER = ["prexzy", "nexray-aio", "nexray-tiktok", "davidcyril-rapid"];
 const TIKTOK_PROVIDER_NAMES = Object.freeze([
   "tikwm",
   "prexzy",
@@ -427,12 +430,12 @@ export async function fetchTikTokInfo(url, fetchImpl = fetch) {
   const primaryError = [];
   // HD-first: the first provider that returns a real HD file wins. A provider that answers with only
   // SD is kept as a fallback, and the next provider is asked for HD before SD is accepted.
-  // Order: NexRay AIO (labelled HD/SD), NexRay TikTok, then TikWM (hdplay).
+  // Order: Prexzy, NexRay AIO (labelled HD/SD), NexRay TikTok, DavidCyril rapid. TikWM only when enabled.
   let sdFallback = null;
-  const primaryRoutes = [
-    ...fallbackProviderRequests(url).filter((r) => r.label.startsWith("nexray")),
-    { label: "tikwm", url: PROVIDER(url) },
-  ];
+  const allRoutes = fallbackProviderRequests(url);
+  const primaryRoutes = PRIMARY_ORDER
+    .map((label) => allRoutes.find((r) => r.label === label))
+    .filter(Boolean);
   for (const request of primaryRoutes) {
     try {
       const info = await _fetchOne(request, fetchImpl);
@@ -453,7 +456,10 @@ export async function fetchTikTokInfo(url, fetchImpl = fetch) {
   const controller = new AbortController();
   const fallbackErrors = [];
   const providerGroups = groupProviderRequestsByOrigin(
-    fallbackProviderRequests(url).filter((r) => !r.label.startsWith("nexray")),
+    [
+      ...allRoutes.filter((r) => !PRIMARY_ORDER.includes(r.label)),
+      ...(tikwmGate.isTikwmEnabled() ? [{ label: "tikwm", url: PROVIDER(url) }] : []),
+    ],
   );
   const attempts = providerGroups.map(async (group) => {
     let lastError;
