@@ -1816,8 +1816,27 @@ async function processAutoDownload(sock, msg, body, mode, isOwner) {
 
     if (dlType === "video") {
       let mediaSource = tmpPath;
+      let hdCleanup = null;
+      if (platform === "tiktok") {
+        try {
+          const req = createRequire(import.meta.url);
+          const TTD = req("./ttDelivery.cjs");
+          if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
+            const hdRes = await TTD.reencodeHdForWhatsApp(tmpPath, {
+              maxBytes: 95 * 1024 * 1024,
+              boost: 1.2,
+              sourceQualityBoost: 1.2,
+            });
+            if (hdRes && hdRes.path && hdRes.bytes > 0) {
+              mediaSource = hdRes.path;
+              hdCleanup = hdRes.cleanup;
+            }
+          }
+        } catch (hdErr) {}
+      }
+      try {
       if (downloaded.size > 90 * 1024 * 1024) {
-        await sendDocument(sock, jid, tmpPath, {
+        await sendDocument(sock, jid, mediaSource, {
           caption,
           mimetype: dlMime || "video/mp4",
           fileName,
@@ -1838,6 +1857,9 @@ async function processAutoDownload(sock, msg, body, mode, isOwner) {
             quoted: msg,
           });
         }
+      }
+      } finally {
+        if (typeof hdCleanup === "function") await hdCleanup().catch(() => {});
       }
     } else if (dlType === "audio") {
       await sendAudio(sock, jid, tmpPath, {

@@ -2414,7 +2414,9 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     if (!args.length) return _noArgs(sock, msg, `search-${label.toLowerCase().replace(/ /g,'-')} <query>`);
     await react(sock, msg, emoji);
     try {
-      const param = {}; param[argKey] = args.join(' ');
+      const q = args.join(' ');
+      const param = { text: q, query: q, q };
+      param[argKey] = q;
       const r = await fn(param);
       const t = _jsonFmt(r); if (!t) throw new Error('No results');
       await sendReply(sock, msg, `${emoji} *${label}*\n\n${t}`);
@@ -2437,8 +2439,8 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   cmd(['search-instagram', 'srch-ig'], { desc: 'Search Instagram users', category: 'Nexray-Search' }, _search(o => nx.search.instagram(o), 'Instagram Search', '📸'));
   cmd(['search-islamqa', 'islamqa'], { desc: 'Search Islamic Q&A', category: 'Nexray-Search' }, _search(o => nx.search.islamqa(o), 'IslamQA Search', '☪️'));
   cmd(['search-jkt48', 'jkt48'], { desc: 'Search JKT48 info', category: 'Nexray-Search' }, _search(o => nx.search.jkt48(o), 'JKT48 Search', '🎤'));
-  cmd(['search-lirik', 'srch-lirik'], { desc: 'Search song lyrics', category: 'Nexray-Search' }, _search(o => nx.search.lirik(o), 'Lirik Search', '🎵'));
-  cmd(['lyrics', 'srch-lyrics'], { desc: 'Search song lyrics (English)', category: 'Nexray-Search' }, _search(o => nx.search.lyrics(o), 'Lyrics Search', '🎶'));
+  cmd(['search-lirik', 'srch-lirik'], { desc: 'Search song lyrics', category: 'Nexray-Search' }, _search(o => nx.search.lirik(o), 'Lirik Search', '🎵', 'query'));
+  cmd(['lyrics', 'srch-lyrics'], { desc: 'Search song lyrics (English)', category: 'Nexray-Search' }, _search(o => nx.search.lyrics(o), 'Lyrics Search', '🎶', 'query'));
   cmd(['search-npm', 'srch-npm'], { desc: 'Search NPM packages', category: 'Nexray-Search' }, _search(o => nx.search.npm(o), 'NPM Search', '📦'));
   cmd(['search-pinterest', 'srch-pin'], { desc: 'Search Pinterest images', category: 'Nexray-Search' }, _search(o => nx.search.pinterest(o), 'Pinterest Search', '📌'));
   cmd(['search-playstore', 'srch-play'], { desc: 'Search Google Play Store apps', category: 'Nexray-Search' }, _search(o => nx.search.playstore(o), 'Play Store Search', '📱'));

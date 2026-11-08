@@ -220,5 +220,29 @@ export async function convertToMp4(inPath, outPath, { kind = "video", timeoutMs 
       ok = await attempt(["-i", inPath, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-an", "-movflags", "+faststart"]);
     }
   }
+
+  // HD logic: re-encode converted MP4 with clean WhatsApp HD faststart and 1.2 boost
+  if (ok && fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
+    try {
+      let TTD = null;
+      try {
+        TTD = require("./ttDelivery.cjs");
+      } catch {}
+      if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
+        const hdRes = await TTD.reencodeHdForWhatsApp(outPath, {
+          maxBytes: 95 * 1024 * 1024,
+          boost: 1.2,
+          sourceQualityBoost: 1.2,
+        });
+        if (hdRes && hdRes.path && hdRes.bytes > 0 && hdRes.path !== outPath) {
+          fs.copyFileSync(hdRes.path, outPath);
+          if (typeof hdRes.cleanup === "function") await hdRes.cleanup().catch(() => {});
+        }
+      }
+    } catch (hdErr) {
+      // Keep existing outPath if HD re-encode encounters an issue
+    }
+  }
+
   return { ok, error: lastErr };
 }
