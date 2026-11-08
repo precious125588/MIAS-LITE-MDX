@@ -76,15 +76,20 @@ function checkSignalStores(sessionPath) {
 // ── Memory health check ───────────────────────────────────────────────────────
 function checkMemoryHealth() {
   const mem    = process.memoryUsage();
-  const heapPct = Math.round((mem.heapUsed / mem.heapTotal) * 100);
+  const heapUsedMB  = Math.round(mem.heapUsed / 1024 / 1024);
+  const heapTotalMB = Math.round(mem.heapTotal / 1024 / 1024);
+  const heapPct = heapTotalMB > 0 ? Math.round((mem.heapUsed / mem.heapTotal) * 100) : 0;
   const rssMB   = Math.round(mem.rss / 1024 / 1024);
-  if (heapPct > 90) {
-    return { status: "FAIL", detail: `Heap at ${heapPct}% before startup — likely memory leak from previous run` };
+
+  // At early startup V8 allocates a tiny initial heap (e.g. 15-30MB).
+  // A high used/total ratio on a small initial heap is normal V8 allocation behavior, not an OOM or leak.
+  if (heapPct > 90 && heapUsedMB > 400) {
+    return { status: "FAIL", detail: `Heap at ${heapPct}% (${heapUsedMB}/${heapTotalMB}MB, RSS ${rssMB}MB) before startup — likely memory leak from previous run` };
   }
-  if (heapPct > 75) {
-    return { status: "WARNING", detail: `Heap at ${heapPct}% (RSS ${rssMB}MB) — monitor closely` };
+  if (heapPct > 80 && heapUsedMB > 250) {
+    return { status: "WARNING", detail: `Heap at ${heapPct}% (${heapUsedMB}/${heapTotalMB}MB, RSS ${rssMB}MB) — monitor closely` };
   }
-  return { status: "PASS", detail: `Heap ${heapPct}% (RSS ${rssMB}MB)` };
+  return { status: "PASS", detail: `Heap ${heapPct}% (${heapUsedMB}/${heapTotalMB}MB, RSS ${rssMB}MB)` };
 }
 
 // ── Node.js version check ─────────────────────────────────────────────────────
