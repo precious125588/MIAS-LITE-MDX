@@ -77,3 +77,38 @@ test('a quiet but live socket is not reconnected for silence alone', async () =>
   assert.deepEqual(reasons, []);
   stopWatchdog();
 });
+
+test('a live socket with no inbound messages for an hour is refreshed once', async () => {
+  const sock = makeSocket({ readyState: 1, pingOk: true });
+  const reasons = setup(sock);
+  _testing.setLastMessageAgo(61 * 60_000);
+  await _testing.tick();
+  await wait(3_200);
+  assert.deepEqual(reasons, ['watchdog-no-inbound-messages']);
+  // A second tick inside the window must not refresh again.
+  _testing.setLastMessageAgo(61 * 60_000);
+  await _testing.tick();
+  await wait(3_200);
+  assert.deepEqual(reasons, ['watchdog-no-inbound-messages']);
+  stopWatchdog();
+});
+
+test('an inbound message batch resets the silence clock and is logged without sender data', async () => {
+  const sock = makeSocket({ readyState: 1, pingOk: true });
+  const reasons = setup(sock);
+  const lines = [];
+  const orig = console.log;
+  console.log = (...a) => { lines.push(a.join(' ')); };
+  try {
+    sock.ev.emit('messages.upsert', { type: 'notify', messages: [{ key: { remoteJid: '1234@s.whatsapp.net' } }] });
+  } finally {
+    console.log = orig;
+  }
+  assert.ok(lines.some((l) => l.includes('inbound notify x1')), 'inbound batch should be logged');
+  assert.ok(!lines.some((l) => l.includes('1234@s.whatsapp.net')), 'sender id must not be logged');
+  _testing.setLastMessageAgo(0);
+  await _testing.tick();
+  await wait(100);
+  assert.deepEqual(reasons, []);
+  stopWatchdog();
+});
