@@ -1,12 +1,12 @@
 {
-  "buildId": "auto-20261107-132633",
-  "builtAt": "2026-11-07T13:26:33.718Z",
+  "buildId": "auto-20261108-211357",
+  "builtAt": "2026-11-08T21:13:57.439Z",
   "files": {
-    "server.js": "fbdef5ab45ed9abded422bd3e3caff4e3f6fdc4cf0ee159d58a32613a6262d3f",
-    "mias/index.js": "2f63340a36b37530a0774fc811ca0a4b4f09f466237f014dc8a915ef1412d0be",
+    "server.js": "10213a7048bc0c981fa2589b797758f37338d1d54e957221212221af020cf73e",
+    "mias/index.js": "2024b783ec02a87ab23b83c4c8a0d98ff5bcec7ecb6bd77f8e71261e7285e6d0",
     "lib/precious-cache-clear.cjs": "f40cc625a9b807157d2227861632eaf51708d51dcbb50f963dbc3d47c4230284",
     "lib/precious-stale-guard.cjs": "f885075a84864a8c80f5f9d903a51ecf329df907f14f0a164230c179e4bad3b1",
-    "mias/features/animeGcLibrary.cjs": "18f167a171acfa63936434b5d18cfd27c9d2cb931f77644b9a8e77aa9f6e2440"
+    "mias/features/animeGcLibrary.cjs": "35c27a769061d6ecac129ee9cae36b62b26fa9a048f13bf3cb11a1406f962931"
   },
   "mustNotExist": [
     "mias/lib/nsfwAdultPack.cjs",
@@ -16,6 +16,6 @@
   ],
   "timestamp": 1792324803412,
   "target": "precious-v2.1-fix-whois-target-detection",
-  "commit": "fe7ae1f304a78c92ae0796cbbf983381145b77d3",
-  "sha": "fe7ae1f304a78c92ae0796cbbf983381145b77d3"
+  "commit": "54dcebab7cb6f82461b5ae6bd1a25cf277fb3bf0",
+  "sha": "54dcebab7cb6f82461b5ae6bd1a25cf277fb3bf0"
 }

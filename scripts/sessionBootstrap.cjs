@@ -80,7 +80,8 @@ function tryDecodeBase64String(candidate) {
 
 function extractCredsFromRawSessionId(rawSessionId) {
   if (!rawSessionId) return null;
-  const raw = String(rawSessionId).trim();
+  let raw = String(rawSessionId).trim();
+  raw = raw.replace(/^export\s+/i, "").replace(/^SESSION_ID\s*=\s*/i, "").replace(/^[\"\']+|[\"\']+$/g, "").trim();
 
   // 1. Direct JSON check
   const directJson = tryDecodeJsonPayload(raw);
@@ -104,9 +105,11 @@ function extractCredsFromRawSessionId(rawSessionId) {
   // 4. Known prefixes (case-insensitive)
   const prefixes = [
     'JUST_X', 'JUST-X', 'JUSTX',
-    'MIAS-LITE-MDX', 'MIAS_LITE_MDX', 'MIAS_MDX', 'MIAS-MDX',
+    'MIAS-LITE-MDX-SESSION', 'MIAS_LITE_MDX_SESSION', 'MIAS LITE MDX SESSION', 'MIASLITEMDXSESSION',
+    'MIAS-LITE-MDX', 'MIAS_LITE_MDX', 'MIAS LITE MDX', 'MIASLITEMDX', 'MIAS_MDX', 'MIAS-MDX',
     'MIAS-LITE', 'MIAS_LITE', 'MIASLITE', 'MIAS',
-    'MAIS-LITE-MDX', 'MAIS_MDX', 'MAIS-LITE', 'MAIS',
+    'MAIS-LITE-MDX-SESSION', 'MAIS_LITE_MDX_SESSION', 'MAIS LITE MDX SESSION', 'MAISLITEMDXSESSION',
+    'MAIS-LITE-MDX', 'MAIS_LITE_MDX', 'MAIS LITE MDX', 'MAISLITEMDX', 'MAIS_MDX', 'MAIS-LITE', 'MAIS',
     'SESSION'
   ];
   for (const p of prefixes) {
@@ -117,7 +120,7 @@ function extractCredsFromRawSessionId(rawSessionId) {
   }
 
   // 5. Generic regex: strip any prefix before the first separator [~_:]
-  const genericMatch = raw.match(/^[A-Za-z0-9_-]+[~_:\s]+(.+)$/);
+  const genericMatch = raw.match(/^[A-Za-z0-9_ -]+[~_:\s]+(.+)$/);
   if (genericMatch && genericMatch[1]) {
     candidates.push(genericMatch[1]);
   }
@@ -149,7 +152,14 @@ async function fetchSessionCreds(sessionId, serverUrl) {
   if (!cleanBase) return null;
 
   const idCandidates = [sessionId];
-  const stripped = sessionId.replace(/^(?:JUST[-_ ]?X|MIAS[-_ ]?(?:LITE[-_ ]?)?MDX|MIAS[-_ ]?LITE|MIAS|MAIS)[~_ -]/i, '');
+  const stripped = sessionId.replace(/^(?:JUST[-_ ]?X|(?:MIAS|MAIS)(?:[-_ ]?LITE)?(?:[-_ ]?MDX)?(?:[-_ ]?SESSION)?|SESSION)[~_ -:]+/i, '');
+  if (sessionId.includes('~')) {
+    idCandidates.push(sessionId.slice(sessionId.lastIndexOf('~') + 1));
+    idCandidates.push(sessionId.slice(sessionId.indexOf('~') + 1));
+  }
+  if (sessionId.includes(':')) {
+    idCandidates.push(sessionId.slice(sessionId.lastIndexOf(':') + 1));
+  }
   if (stripped && stripped !== sessionId) {
     idCandidates.push(stripped);
   }
@@ -206,7 +216,9 @@ function resolveCandidateServerUrls(embeddedUrl) {
   // 4. Railway private networking
   const internalHosts = [
     'mias-lite-mdx-session.railway.internal',
+    'mais-lite-mdx-session.railway.internal',
     'mias-session.railway.internal',
+    'mais-session.railway.internal',
     'session.railway.internal',
     'session-service.railway.internal',
     'pairing.railway.internal',
@@ -226,7 +238,9 @@ function resolveCandidateServerUrls(embeddedUrl) {
 
   // 5. Common public service hostnames
   add('https://mias-lite-mdx-session.up.railway.app');
+  add('https://mais-lite-mdx-session.up.railway.app');
   add('https://mias-session.up.railway.app');
+  add('https://mais-session.up.railway.app');
 
   // 6. Localhost fallbacks
   add('http://localhost:3000');
@@ -260,7 +274,7 @@ async function bootstrapSessionFromEnv() {
     let embeddedUrl = null;
 
     // Pattern: [PREFIX~]https://my-session.up.railway.app~TOKEN
-    const embeddedMatch = rawSessionId.match(/^(?:[A-Za-z0-9_-]+~)?(https?:\/\/[^~\s]+)~(.+)$/i);
+    const embeddedMatch = rawSessionId.match(/^(?:[A-Za-z0-9_ -]+[~:])?(https?:\/\/[^~:\s]+)[~:](.+)$/i);
     if (embeddedMatch) {
       embeddedUrl = embeddedMatch[1];
       lookupId = embeddedMatch[2];
