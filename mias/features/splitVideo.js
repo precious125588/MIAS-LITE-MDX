@@ -121,34 +121,55 @@ export function installSplitVideo(ctx) {
   }
 
   async function sendVideoFile(sock, jid, msg, file, caption) {
-    // Deliver through 4K delivery pipeline without re-encoding
+    let fileToSend = file;
+    let hdCleanup = null;
     try {
-      const disk = await import("../lib/tiktokDiskDelivery.cjs");
-      if (disk && typeof disk.sendVideoFromDisk === "function") {
-        const stats = fs.statSync(file);
-        if (stats.size > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
-        if (stats.size > WA_VIDEO_MAX_BYTES) {
-          await disk.sendDocumentFromDisk(sock, jid, file, path.basename(file), caption, msg);
+      const TTD = await import("../lib/ttDelivery.cjs");
+      if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
+        const hdRes = await TTD.reencodeHdForWhatsApp(file, {
+          maxBytes: 95 * 1024 * 1024,
+          boost: 1.2,
+          sourceQualityBoost: 1.2,
+        });
+        if (hdRes && hdRes.path && hdRes.bytes > 0) {
+          fileToSend = hdRes.path;
+          hdCleanup = hdRes.cleanup;
+        }
+      }
+    } catch (hdErr) {}
+
+    try {
+      // Deliver through 4K delivery pipeline
+      try {
+        const disk = await import("../lib/tiktokDiskDelivery.cjs");
+        if (disk && typeof disk.sendVideoFromDisk === "function") {
+          const stats = fs.statSync(fileToSend);
+          if (stats.size > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
+          if (stats.size > WA_VIDEO_MAX_BYTES) {
+            await disk.sendDocumentFromDisk(sock, jid, fileToSend, path.basename(fileToSend), caption, msg);
+            return;
+          }
+          await disk.sendVideoFromDisk(sock, jid, fileToSend, caption, msg);
           return;
         }
-        await disk.sendVideoFromDisk(sock, jid, file, caption, msg);
-        return;
+      } catch (deliveryErr) {
+        // Fallback to direct send if delivery helper fails
       }
-    } catch (deliveryErr) {
-      // Fallback to direct send if delivery helper fails
-    }
-    const isStatus = msg?.key?.remoteJid === "status@broadcast";
-    const sendOpts = isStatus ? {} : { quoted: msg };
-    const buf = fs.readFileSync(file);
-    if (buf.length > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
-    if (buf.length > WA_VIDEO_MAX_BYTES) {
-      await sock.sendMessage(jid, { document: buf, mimetype: "video/mp4", fileName: path.basename(file), caption }, sendOpts);
-    } else {
-      try {
-        await sock.sendMessage(jid, { video: buf, mimetype: "video/mp4", caption }, sendOpts);
-      } catch (sendErr) {
-        await sock.sendMessage(jid, { document: buf, mimetype: "video/mp4", fileName: path.basename(file), caption }, sendOpts);
+      const isStatus = msg?.key?.remoteJid === "status@broadcast";
+      const sendOpts = isStatus ? {} : { quoted: msg };
+      const buf = fs.readFileSync(fileToSend);
+      if (buf.length > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
+      if (buf.length > WA_VIDEO_MAX_BYTES) {
+        await sock.sendMessage(jid, { document: buf, mimetype: "video/mp4", fileName: path.basename(fileToSend), caption }, sendOpts);
+      } else {
+        try {
+          await sock.sendMessage(jid, { video: buf, mimetype: "video/mp4", caption }, sendOpts);
+        } catch (sendErr) {
+          await sock.sendMessage(jid, { document: buf, mimetype: "video/mp4", fileName: path.basename(fileToSend), caption }, sendOpts);
+        }
       }
+    } finally {
+      if (typeof hdCleanup === "function") await hdCleanup().catch(() => {});
     }
   }
 

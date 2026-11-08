@@ -1726,6 +1726,18 @@ function install(ctx) {
       }
     };
     const aioHandler = async (sock, msg, args) => {
+      const rawUrl = String((args || [])[0] || "").trim();
+      if (/^https?:\/\/(?:[\w-]+\.)*(?:tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com)\//i.test(rawUrl)) {
+        const mode = String((args || [])[1] || "").trim();
+        const opts = { silentReactions: false };
+        if (mode) opts.mode = mode;
+        if (typeof globalThis.__miasTikTokHdDownload === "function") {
+          return globalThis.__miasTikTokHdDownload(sock, msg, rawUrl, opts);
+        }
+        if (typeof previousAioHandler === "function") {
+          return previousAioHandler(sock, msg, args);
+        }
+      }
       const url = String((args || [])[0] || '').trim();
       if (!/^https?:\/\//i.test(url)) return sendReply(sock, msg, `📥 *AIO Downloader*\n\nUsage: *${PREFIX}aio <social url>*`);
       await safeReact(sock, msg, '📥');
