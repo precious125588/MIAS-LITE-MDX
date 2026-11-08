@@ -112,3 +112,27 @@ test('an inbound message batch resets the silence clock and is logged without se
   assert.deepEqual(reasons, []);
   stopWatchdog();
 });
+
+test('pre-key top-up is requested from the live socket', async () => {
+  const sock = makeSocket({ readyState: 1, pingOk: true });
+  let calls = 0;
+  sock.uploadPreKeysToServerIfRequired = async () => { calls++; };
+  setup(sock);
+  await _testing.preKeyCheck();
+  assert.equal(calls, 1);
+  stopWatchdog();
+});
+
+test('a device logged out by WhatsApp (401) is not reconnected in a loop', async () => {
+  const sock = makeSocket({ readyState: 3, pingOk: false });
+  const reasons = setup(sock);
+  sock.ev.emit('connection.update', {
+    connection: 'close',
+    lastDisconnect: { error: { output: { statusCode: 401 } } },
+  });
+  _testing.setLastMessageAgo(25 * 60_000);
+  await _testing.tick();
+  await wait(3_200);
+  assert.deepEqual(reasons, []);
+  stopWatchdog();
+});
