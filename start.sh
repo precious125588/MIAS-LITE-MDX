@@ -21,7 +21,7 @@ if [ "${AUTO_PULL:-on}" != "off" ] && [ -d ".git" ] && command -v git >/dev/null
 fi
 
 # Install root dependencies if missing
-if [ ! -d node_modules ] || [ ! -d node_modules/chalk ] || [ ! -d node_modules/call-bind-apply-helpers ] || [ ! -d node_modules/call-bound ] || [ ! -d node_modules/call-bind ] || [ ! -d node_modules/express ]; then
+if [ ! -d node_modules ] || [ ! -d node_modules/chalk ] || [ ! -d node_modules/lodash ] || [ ! -d node_modules/qrcode ] || [ ! -d node_modules/@whiskeysockets/baileys ] || [ ! -d node_modules/call-bind-apply-helpers ] || [ ! -d node_modules/call-bound ] || [ ! -d node_modules/call-bind ] || [ ! -d node_modules/express ]; then
   echo "[MIAS LITE MDX] Installing main dependencies..."
   bash scripts/robust-install.sh .
 fi
