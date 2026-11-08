@@ -92,16 +92,24 @@ function createPool() {
 // bot-settings migrations here or move settings/prefixes between databases.
 let _schemaPool = null;
 let _schemaReady = null;
+let _dbUnreachableNotice = false;
 async function readyPool() {
   const pool = getPool();
   if (!pool || pool === _testPool) return pool;
   if (_schemaPool !== pool || !_schemaReady) {
     _schemaPool = pool;
     _schemaReady = pool.query(fs.readFileSync(path.join(__dirname, 'migrations', '0002_create_whatsapp_sessions.sql'), 'utf8'))
-      .catch(error => { _schemaReady = null; throw error; });
+      .catch(error => {
+        _schemaReady = null;
+        if (!_dbUnreachableNotice) {
+          _dbUnreachableNotice = true;
+          console.warn('[session-persistence] Database unreachable; continuing in JSON file mode:', error.message);
+        }
+        return null;
+      });
   }
-  await _schemaReady;
-  return pool;
+  const ready = await _schemaReady;
+  return ready ? pool : null;
 }
 
 // Coalesce overlapping directory snapshots: an old snapshot must not race a

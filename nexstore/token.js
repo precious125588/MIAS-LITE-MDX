@@ -3,7 +3,7 @@
 require('dotenv').config({ quiet: true });
 
 function getBotToken() {
-  return String(process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '').trim();
+  return '';
 }
 
 function getStartupPassword() {

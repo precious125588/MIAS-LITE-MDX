@@ -6,7 +6,7 @@ const { EventEmitter } = require('events');
 const LOG_DIR = path.join(__dirname, 'logs');
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
 
-const TYPES = ['system','pairing','telegram','error','admin'];
+const TYPES = ['system','pairing','error','admin'];
 const FILES  = {};
 TYPES.forEach(t => { FILES[t] = path.join(LOG_DIR, `${t}.log`); });
 const MAX_LINES = 2000;

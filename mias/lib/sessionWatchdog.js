@@ -17,6 +17,9 @@
 
 import os from "os";
 import alwaysOnline from "./alwaysOnline.cjs";
+import { createRequire as _createRequire } from "module";
+const _req = _createRequire(import.meta.url);
+const { classifyDisconnect } = _req("./connectionPolicy.cjs");
 
 // ── Health state constants ─────────────────────────────────────────
 export const HEALTH = {
@@ -482,13 +485,26 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
         _state.issues = [];
       }
     } else if (connection === "close") {
-      // Do not pre-set BROKEN here: a socket marked BROKEN before the tick was
-      // skipped by the heal check, so a closed socket was never reconnected.
       _state.lastCloseMs = Date.now();
-      // 401 = WhatsApp logged this linked device out. Reconnecting cannot fix it.
-      if (lastDisconnect?.error?.output?.statusCode === 401) {
-        _state.loggedOut = true;
-        console.error("[Watchdog] WhatsApp logged this device out (401). Reconnecting will not fix it: re-pair the number.");
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const decision = classifyDisconnect(statusCode, { reconnects: _state.reconnects });
+      if (decision.action === 'fail') {
+        if (decision.statusCode === 401) {
+          _state.loggedOut = true;
+        }
+        console.error(`[Watchdog] ❌ ${decision.message || 'Connection closed permanently'}`);
+      } else if (decision.action === 'retry') {
+        const delay = decision.delayMs || 800;
+        console.log(`[Watchdog] 🔄 ${decision.isRestartRequired ? 'Restart required (515)' : 'Transient disconnect'} — reconnecting in ${delay}ms`);
+        setTimeout(() => {
+          try {
+            if (typeof _onReconnect === 'function') {
+              _onReconnect(decision.isRestartRequired ? 'restart-required-515' : 'transient-disconnect');
+            }
+          } catch {}
+        }, delay);
+      } else if (decision.action === 'pause') {
+        console.warn(`[Watchdog] ⏸ ${decision.message || 'Connection paused'}`);
       }
     }
   };

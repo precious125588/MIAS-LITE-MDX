@@ -88,8 +88,20 @@ function ensureSessionRoot(root) {
   const r = resolveSessionRoot(root);
   try {
     fs.mkdirSync(r, { recursive: true });
+    return r;
   } catch (e) {
-    console.log('[sessionPaths] could not create session root:', e && e.message);
+    console.log('[sessionPaths] could not create primary session root:', e && e.message);
+  }
+  const fallbacks = [
+    path.join(REPO_ROOT, 'nexstore', 'pairing'),
+    path.join(REPO_ROOT, 'sessions'),
+    path.join(require('os').tmpdir(), 'mias-sessions')
+  ];
+  for (const fb of fallbacks) {
+    try {
+      fs.mkdirSync(fb, { recursive: true });
+      return fb;
+    } catch {}
   }
   return r;
 }

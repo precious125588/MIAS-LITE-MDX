@@ -16,28 +16,26 @@ fi
 
 # Verify sticker engine
 for d in mias; do
-  [ -d "/node_modules/wa-sticker-formatter" ] || continue
-  (cd "" && node -e "const s=require('sharp');require('wa-sticker-formatter');console.log('[MIAS LITE MDX] sticker engine active (sharp '+s.versions.sharp+')')")     || echo "[MIAS LITE MDX] Note: sticker engine running fallback"
+  [ -d "$d/node_modules/wa-sticker-formatter" ] || continue
+  (cd "$d" && node -e "const s=require('sharp');require('wa-sticker-formatter');console.log('[MIAS LITE MDX] sticker engine active (sharp '+s.versions.sharp+')')") \
+    || echo "[MIAS LITE MDX] Note: sticker engine running fallback"
 done
 
 # Setup local helper
 GKTW_PACKAGE="cox"
 for d in mias; do
-  [ -d "" ] || continue
-  if [ "" = "cox" ]; then
-    if [ ! -d "/node_modules/cox" ]; then
-      echo "[MIAS LITE MDX] Linking helper cox into ..."
-      (cd "" && npm install ../cox --save --no-audit --no-fund --legacy-peer-deps) || true
+  [ -d "$d" ] || continue
+  if [ "$GKTW_PACKAGE" = "cox" ]; then
+    if [ ! -d "$d/node_modules/cox" ]; then
+      echo "[MIAS LITE MDX] Linking helper cox into $d..."
+      (cd "$d" && npm install ../cox --save --no-audit --no-fund --legacy-peer-deps) || true
     fi
   fi
 done
 
 # Signal session key cleanup
 if [ "0" != "1" ] && [ -d "prezzy_auth" ]; then
-  cleared=0
-  if [ "" -gt 0 ]; then
-    echo "[MIAS LITE MDX] Cleared  stale state snapshots from auth dir"
-  fi
+  echo "[MIAS LITE MDX] Auth directory preserved"
 fi
 
 # Ensure core client is installed

@@ -83,17 +83,9 @@ function registerWhatsApp(numberOrJid, msgKey, sock) {
   return _write(data);
 }
 
-/** Record a Telegram selector message (chat + message id). */
-function registerTelegram(numberOrJid, chatId, messageId) {
-  const key = jidKey(numberOrJid);
-  if (!key || !chatId || !messageId) return false;
-
-  const data = _read();
-  const e = _entry(data, key);
-  if (!e.telegram.some(t => String(t.chatId) === String(chatId) && t.messageId === messageId)) {
-    e.telegram.push({ chatId: String(chatId), messageId, at: Date.now() });
-  }
-  return _write(data);
+/** Telegram selector removed for session-only bot. */
+function registerTelegram() {
+  return false;
 }
 
 function list(numberOrJid) {
@@ -147,36 +139,8 @@ async function revokeAll(numberOrJid, opts = {}) {
     }
   }
 
-  // ── Telegram ──────────────────────────────────────────────────────────────
-  const tg = opts.telegram || global._miasTelegramBot || null;
-  if (tg && entry.telegram.length) {
-    for (const t of entry.telegram) {
-      let deleted = false;
-      try {
-        await tg.deleteMessage(t.chatId, t.messageId);
-        deleted = true;
-        result.telegram++;
-      } catch { /* too old / already deleted */ }
-
-      if (!deleted && opts.replacement) {
-        // Fall back to stripping the buttons so the stale menu is not tappable.
-        try {
-          await tg.editMessageText(opts.replacement, {
-            chat_id: t.chatId,
-            message_id: t.messageId,
-            parse_mode: 'Markdown',
-          });
-          result.telegram++;
-        } catch {}
-        try {
-          await tg.editMessageReplyMarkup({ inline_keyboard: [] }, {
-            chat_id: t.chatId,
-            message_id: t.messageId,
-          });
-        } catch {}
-      }
-    }
-  }
+  // ── Telegram (removed for session-only bot) ───────────────────────────────
+  // No-op for session-only deployment
 
   forget(key);
   return result;

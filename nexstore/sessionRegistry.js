@@ -43,7 +43,7 @@ function register(jid, source, extra={}) {
     const d=_load(), now=new Date().toISOString();
     d[jid]={jid, number:jid.replace('@s.whatsapp.net',''), source:source||'web',
              pairedAt:d[jid]?.pairedAt||now, lastActivity:now, status:'connecting',
-             telegramUserId:extra.telegramUserId||d[jid]?.telegramUserId||null, ...extra};
+             telegramUserId:null, ...extra};
     _dirty=true; _scheduleSave(); persist(d[jid]); return d[jid];
 }
 function updateStatus(jid, status) {
@@ -60,7 +60,7 @@ function count()         { return Object.keys(_load()).length; }
 function getAnalytics() {
     const all=Object.values(_load()), now=Date.now(), ts=t=>t?new Date(t).getTime():0;
     return { total:all.length, web:all.filter(s=>s.source==='web').length,
-             telegram:all.filter(s=>s.source==='telegram').length,
+             telegram:0,
              today:all.filter(s=>ts(s.pairedAt)>=now-86400000).length,
              week:all.filter(s=>ts(s.pairedAt)>=now-7*86400000).length,
              connected:all.filter(s=>s.status==='connected').length };

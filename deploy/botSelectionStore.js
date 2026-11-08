@@ -31,7 +31,6 @@ const { jidKey } = require('./jid');
 const NEXSTORE       = path.join(__dirname, '..', 'nexstore');
 const SELECTIONS_FILE = path.join(NEXSTORE, 'bot_selections.json');
 const PENDING_FILE    = path.join(NEXSTORE, 'pending_selections.json');
-const OWNERS_FILE     = path.join(NEXSTORE, 'tg_owners.json');
 
 function _read(file, fallback) {
   try {
@@ -188,45 +187,13 @@ function listPending() {
   );
 }
 
-// ── Telegram ownership (who paired which number) ─────────────────────────────
+// ── Telegram ownership (removed for session-only bot) ─────────────────────────
 
-function allOwners() {
-  const raw = _read(OWNERS_FILE, {});
-  return raw && typeof raw === 'object' ? raw : {};
-}
-
-function setOwner(numberOrJid, telegramUser) {
-  const key = jidKey(numberOrJid);
-  if (!key || !telegramUser?.id) return false;
-  const data = allOwners();
-  data[key] = {
-    id: String(telegramUser.id),
-    username: telegramUser.username || null,
-    firstName: telegramUser.first_name || null,
-    linkedAt: new Date().toISOString(),
-  };
-  return _write(OWNERS_FILE, data);
-}
-
-function getOwner(numberOrJid) {
-  return allOwners()[jidKey(numberOrJid)] || null;
-}
-
-function clearOwner(numberOrJid) {
-  const key = jidKey(numberOrJid);
-  if (!key) return false;
-  const data = allOwners();
-  if (!data[key]) return false;
-  delete data[key];
-  return _write(OWNERS_FILE, data);
-}
-
-function numbersOwnedBy(telegramUserId) {
-  const id = String(telegramUserId);
-  return Object.entries(allOwners())
-    .filter(([, v]) => String(v.id) === id)
-    .map(([number]) => number);
-}
+function allOwners() { return {}; }
+function setOwner() { return true; }
+function getOwner() { return null; }
+function clearOwner() { return true; }
+function numbersOwnedBy() { return []; }
 
 /** Single combined record for one number. */
 function get(numberOrJid) {
@@ -243,8 +210,7 @@ function get(numberOrJid) {
 function overview() {
   const selections = allSelections();
   const pending    = allPending();
-  const owners     = allOwners();
-  const keys = new Set([...Object.keys(selections), ...Object.keys(pending)]);
+    const keys = new Set([...Object.keys(selections), ...Object.keys(pending)]);
 
   return [...keys].map(number => ({
     number,
@@ -256,7 +222,7 @@ function overview() {
     deployed:  !!selections[number]?.deployed,
     awaiting:  !!pending[number] && !selections[number]?.botId,
     pairedAt:  pending[number]?.pairedAt || null,
-    telegram:  owners[number] || null,
+    telegram:  null,
   })).sort((a, b) => Number(b.awaiting) - Number(a.awaiting));
 }
 
@@ -264,7 +230,8 @@ module.exports = {
   get,
   SELECTIONS_FILE,
   PENDING_FILE,
-  OWNERS_FILE,
+  
+  allOwners,
   allSelections,
   getSelection,
   isLocked,
