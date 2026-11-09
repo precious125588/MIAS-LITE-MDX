@@ -20,16 +20,23 @@ if [ "${AUTO_PULL:-on}" != "off" ] && [ -d ".git" ] && command -v git >/dev/null
   fi
 fi
 
+# Ensure critical helpers and shims run first to ensure dependencies
+node -e "try{require('./lib/shims/ensure-helpers.cjs')}catch(e){}"
+
 # Install root dependencies if missing
-if [ ! -d node_modules ] || [ ! -d node_modules/chalk ] || [ ! -d node_modules/lodash ] || [ ! -d node_modules/qrcode ] || [ ! -d node_modules/@whiskeysockets/baileys ] || [ ! -d node_modules/call-bind-apply-helpers ] || [ ! -d node_modules/call-bound ] || [ ! -d node_modules/call-bind ] || [ ! -d node_modules/express ]; then
+if [ ! -d node_modules ] || [ ! -d node_modules/chalk ] || [ ! -d node_modules/lodash ] || [ ! -d node_modules/axios ] || [ ! -d node_modules/qrcode ] || [ ! -d node_modules/@whiskeysockets/baileys ] || [ ! -d node_modules/@itsliaaa/starforge ] || [ ! -d node_modules/express ]; then
   echo "[MIAS LITE MDX] Installing main dependencies..."
   bash scripts/robust-install.sh .
 fi
 
-# Install bot engine dependencies if missing
-if [ -d mias ] && [ ! -d mias/node_modules ]; then
-  echo "[MIAS LITE MDX] Installing MIAS bot dependencies..."
-  bash scripts/robust-install.sh mias
+# Ensure mias/node_modules symlinks to root node_modules
+if [ -d mias ]; then
+  if [ -e mias/node_modules ] && [ ! -L mias/node_modules ]; then
+    rm -rf mias/node_modules
+  fi
+  if [ ! -e mias/node_modules ]; then
+    ln -sf ../node_modules mias/node_modules 2>/dev/null || true
+  fi
 fi
 
 # Verify sticker engine
@@ -55,15 +62,6 @@ done
 if [ "0" != "1" ] && [ -d "prezzy_auth" ]; then
   echo "[MIAS LITE MDX] Auth directory preserved"
 fi
-
-# Ensure core client is installed
-if [ -d mias ] && [ ! -d mias/node_modules/axios ]; then
-  echo "[MIAS LITE MDX] Installing missing client dependencies..."
-  bash scripts/robust-install.sh mias || true
-fi
-
-# Ensure critical helpers and shims are present on disk
-node -e "try{require('./lib/shims/ensure-helpers.cjs')}catch(e){}"
 
 echo "[MIAS LITE MDX] Starting web pairing server and bot supervisor..."
 exec node server.js
