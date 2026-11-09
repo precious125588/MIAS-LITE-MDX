@@ -496,8 +496,8 @@ const NO_REENCODE_CATEGORIES = new Set([
 ]);
 
 function shouldSkipReencode(catKey, item) {
-  // All status menu categories use the HD re-encode option with 1.2 quality boost
-  return false;
+  const c = String(catKey || (item && (item.category || item.catKey || item.cat)) || "").toLowerCase().trim();
+  return NO_REENCODE_CATEGORIES.has(c);
 }
 
 async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null) {

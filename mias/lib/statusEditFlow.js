@@ -30,6 +30,12 @@ const DEFAULT_PLATFORM = "tiktok";
 
 const sessions = new Map();
 const APPROVED_PLATFORMS = new Set(PLATFORMS.map((platform) => platform.id));
+const NO_REENCODE_TOPICS = new Set([
+  "fyp", "foryou", "foryoupage",
+  "cruise", "cruzz", "techcruzz",
+  "feeling",
+  "discipline", "discip",
+]);
 let tikwmQueue = Promise.resolve();
 const QUALITY_QUERY_TERMS = [
   "viral trending popular high quality HD 4k anime edit",
@@ -886,13 +892,17 @@ export function createStatusEditFlow({ prefix = ".", animeFlow = null } = {}) {
           sessions.delete(key);
           return true;
         }
+        const isBypass = NO_REENCODE_TOPICS.has(String(session.topic || "").toLowerCase().trim());
         for (let index = 0; index < results.length; index += 1) {
           const result = results[index];
           // Process status edits EXACTLY like the tt 1.3 HD path (same
-          // normalize/remux pipeline) so they arrive playable, fast, in 4:5 HD.
+          // normalize/remux pipeline) so they arrive playable, fast, in 4:5 HD,
+          // while fyp, discipline, cruise, and feeling send untouched original videos.
           let _editBuf = result.buffer;
-          try { _editBuf = await prepareTikTokVideo(result.buffer); } catch (_) {}
-          _editBuf = await applyGentleSourceQualityBoost(_editBuf);
+          if (!isBypass) {
+            try { _editBuf = await prepareTikTokVideo(result.buffer); } catch (_) {}
+            _editBuf = await applyGentleSourceQualityBoost(_editBuf);
+          }
           await sock.sendMessage(
             msg.key.remoteJid,
             buildStatusVideoMessage(_editBuf),
