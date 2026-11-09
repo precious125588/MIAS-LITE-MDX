@@ -506,7 +506,6 @@ module.exports = function installV36(ctx) {
   try { require('jimp'); parts.push('jimp=OK'); } catch { parts.push('jimp=NO'); }
   try { require('sharp'); parts.push('sharp=OK'); } catch { parts.push('sharp=NO'); }
   parts.push('ffmpeg=' + (ffBin === 'ffmpeg' ? 'sys' : 'static'));
-  try { require('./features/animeGcLibrary.cjs'); parts.push('animeLib=OK'); } catch { parts.push('animeLib=NO'); }
   try { require('./features/animeEdits.js'); parts.push('animeEdits=ACTIVE'); } catch { parts.push('animeEdits=?'); }
   const fontFiles = [
     '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',

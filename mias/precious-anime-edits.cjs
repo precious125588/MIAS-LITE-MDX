@@ -38,12 +38,6 @@ const NX = require('./lib/nexrayGate.cjs');
 let axios = (typeof globalThis !== 'undefined' && globalThis.axios) ? globalThis.axios : null;
 try { if (!axios) axios = require('axios'); } catch {}
 
-// SOURCE 3 (additive): WhatsApp Anime GC Library. Fails closed if absent.
-let GC = null;
-try { GC = require('./features/animeGcLibrary.cjs'); } catch (e) {
-  console.log('[anime-edits] GC library module unavailable:', e && e.message);
-}
-
 // Creator pages are read LIVE at request time (creatorVideoStore only fetches;
 // no link or video is saved). Creator-page videos are downloaded to a temp
 // file on disk and that folder is removed after the send succeeds or fails.
@@ -319,15 +313,6 @@ function routeZip(cat) {
   for (const f of cat.files || []) out.push(...loadLinkFile(f));
   return out.filter(i => categoryCreators(cat).length ? true : matchesCat(i, cat))
     .map(i => ({ ...i, src: 'zip', cid: 'zip_' + i.url }));
-}
-// GC library links are already franchise-scoped by group, so the tag check is
-// skipped when there are no hashtags/caption to test against.
-function routeGc(catKey, cat) {
-  if (!GC) return [];
-  try {
-    return GC.linksFor(catKey).map(i => ({ ...i, cid: 'gc_' + i.cid, src: 'gc' }))
-      .filter(i => matchesCat(i, cat));
-  } catch { return []; }
 }
 const NO_SHARED_CREATOR_FILES = new Set(['cruise.txt', 'discipline.txt', 'fyp.txt', 'freefire.txt', 'feeling.txt']);
 async function routePages(cat) {
@@ -672,9 +657,8 @@ async function fetchMoreCandidates(catKey, cat, user, zipItems, attempted) {
   const parts = await Promise.all([
     named('pages', routePages(cat)),
     named('search', routeSearch(cat)),
-    named('gc', Promise.resolve().then(() => routeGc(catKey, cat))),
   ]);
-  console.log(`[anime-edits][refetch] ${cat.label} sources: pages ${parts[0].length}, search ${parts[1].length}, gc ${parts[2].length}`);
+  console.log(`[anime-edits][refetch] ${cat.label} sources: pages ${parts[0].length}, search ${parts[1].length}`);
   const all = [...(zipItems || []), ...parts.flat()].filter((i) => i && !isDeadLink(i.url));
   const candidates = all.filter((i) => !attempted.has(contentKeyOf(i)));
   const seen = new Set(((loadSeen()[user] || {})[catKey]) || []);
@@ -693,18 +677,18 @@ module.exports = {
       const user = (msg.key.participant || msg.key.remoteJid || '').split(':')[0];
       const cat = CATEGORIES[catKey];
       await P.react(sock, msg, '☄️').catch(() => {});
-      // Take local verified zip items first to guarantee instant delivery.
-      const zipItems = routeZip(cat) || [];
+      // Prefer local verified links. Don't wait on external APIs when the
+      // local pool already has enough usable edits for this request.
+      const zipItems = (routeZip(cat) || []).filter((i) => !isDeadLink(i.url));
       let networkParts = [];
-      if (zipItems.length < 10) {
+      if (zipItems.length < 2) {
         const netPromise = Promise.all([
           routePages(cat).catch(() => []),
           routeSearch(cat).catch(() => []),
-          Promise.resolve().then(() => routeGc(catKey, cat)).catch(() => []),
         ]);
         networkParts = await Promise.race([
           netPromise,
-          new Promise((r) => setTimeout(() => r([[], [], []]), 20000)),   // NexRay calls queue one by one and can take 10s+
+          new Promise((r) => setTimeout(() => r([[], []]), 10000)),
         ]);
       }
       const pool = [zipItems, ...networkParts].flat().filter((i) => !isDeadLink(i.url));
@@ -771,28 +755,6 @@ module.exports = {
       }
     }
 
-    // ── owner-only GC library maintenance commands (reuse existing auth) ──
-    const _ownerDigits = String((P.CONFIG && P.CONFIG.OWNER_NUMBER) || process.env.OWNER_NUMBER || '').replace(/[^0-9]/g, '');
-    const _isOwnerMsg = (msg) => {
-      if (!_ownerDigits) return false;
-      const who = String(msg?.key?.participant || msg?.key?.remoteJid || '').split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
-      return !!who && who === _ownerDigits;
-    };
-    try {
-      P.cmd(['animelib', 'animelibrary'], { desc: 'Owner: show Anime GC Library status', category: 'OWNER' }, async (sock, msg) => {
-        if (!GC) return P.sendReply(sock, msg, '⚠️ Anime GC library module is not loaded.');
-        if (!_isOwnerMsg(msg)) return P.sendReply(sock, msg, '⚠️ Owner only.');
-        await P.sendReply(sock, msg, GC.statusText());
-      });
-      P.cmd(['animelibrefresh', 'refreshanimelib'], { desc: 'Owner: re-resolve the 14 anime GC routes', category: 'OWNER' }, async (sock, msg) => {
-        if (!GC) return P.sendReply(sock, msg, '⚠️ Anime GC library module is not loaded.');
-        if (!_isOwnerMsg(msg)) return P.sendReply(sock, msg, '⚠️ Owner only.');
-        await P.sendReply(sock, msg, '🔄 Resolving anime GC routes…');
-        await GC.refresh(sock).catch(() => {});
-        await P.sendReply(sock, msg, GC.statusText());
-      });
-    } catch (e) { console.log('[anime-edits] owner commands failed:', e && e.message); }
-
     const registered = [];
     for (const [key, cat] of Object.entries(CATEGORIES)) {
       if (!cat.files.some(f => { try { return fs.statSync(path.join(editsDir(), f)).size > 0; } catch { return false; } })
@@ -807,18 +769,6 @@ module.exports = {
     }
     return { categories: registered.length, commands: registered };
   },
-  // Called once per live socket (bot session or the library number). The GC
-  // module attaches exactly one listener per socket object, so reconnects are
-  // safe. Also prints the one-time startup health banner.
-  async preloadCreatorEdits() {
-    startCreatorLinks();
-  },
-  attachSocket(sock) {
-    if (!GC) return false;
-    try { GC.printStartupBanner(); } catch {}
-    try { return GC.attach(sock); } catch { return false; }
-  },
-  GC,
   CATEGORIES,
   NO_REENCODE_CATEGORIES,
   shouldSkipReencode,
