@@ -304,11 +304,14 @@ async function pinQuoted(sock, jid, ctxI, secs) {
 function _installPinHandler(names, unpin, flag) {
   const cmds = commands();
   if (!cmds) return false;
-  // Delegates to the shared implementation (lib/pinCommand.cjs). Every alias gets it,
-  // so .pin/.pinmsg/.pinchat and .unpin/.unpinmsg/.unpinchat behave the same.
+  const pinMod = require('../lib/pinCommand.cjs');
   const handler = async (sock, msg, args) => {
     try {
-      await require('../lib/pinCommand.cjs').handlePinCommand(sock, msg, args, { unpin, prefix: prefix() });
+      if (unpin) {
+        await pinMod.handleUnpinCommand(sock, msg, args, { unpin: true, prefix: prefix() });
+      } else {
+        await pinMod.handleMessagePinCommand(sock, msg, args, { unpin: false, prefix: prefix() });
+      }
     } catch (e) {
       warn((unpin ? 'unpin' : 'pin') + ' handler error: ' + (e && e.message));
     }
@@ -322,11 +325,48 @@ function _installPinHandler(names, unpin, flag) {
     if (typeof entry.run === 'function') entry.run = handler;
     touched++;
   }
-  if (touched) log('.' + (unpin ? 'unpin' : 'pin') + ' handlers replaced with the shared real-pin implementation (' + touched + ')');
+  if (touched) log('.' + (unpin ? 'unpin' : 'pin') + ' handlers replaced with XYLO real-pin implementation (' + touched + ')');
   return touched > 0;
 }
-function installPin() { return _installPinHandler(['pin', 'pinmsg', 'pinchat'], false, '__v38PinFix'); }
-function installUnpin() { return _installPinHandler(['unpin', 'unpinmsg', 'unpinchat'], true, '__v38UnpinFix'); }
+
+function _installChatPinHandler(names, unpin, flag) {
+  const cmds = commands();
+  if (!cmds) return false;
+  const pinMod = require('../lib/pinCommand.cjs');
+  const handler = async (sock, msg, args) => {
+    try {
+      if (unpin) {
+        await pinMod.handleUnpinChatCommand(sock, msg, args, { unpin: true, prefix: prefix() });
+      } else {
+        await pinMod.handlePinChatCommand(sock, msg, args, { unpin: false, prefix: prefix() });
+      }
+    } catch (e) {
+      warn((unpin ? 'unpinchat' : 'pinchat') + ' handler error: ' + (e && e.message));
+    }
+  };
+  let touched = 0;
+  for (const n of names) {
+    const entry = cmds.get(n);
+    if (!entry || entry[flag]) continue;
+    entry[flag] = true;
+    entry.handler = handler;
+    if (typeof entry.run === 'function') entry.run = handler;
+    touched++;
+  }
+  if (touched) log('.' + (unpin ? 'unpinchat' : 'pinchat') + ' handlers replaced with XYLO chat-pin implementation (' + touched + ')');
+  return touched > 0;
+}
+
+function installPin() {
+  const m = _installPinHandler(['pin', 'pinmsg'], false, '__v38PinFix');
+  const c = _installChatPinHandler(['pinchat'], false, '__v38PinChatFix');
+  return m || c;
+}
+function installUnpin() {
+  const m = _installPinHandler(['unpin', 'unpinmsg'], true, '__v38UnpinFix');
+  const c = _installChatPinHandler(['unpinchat'], true, '__v38UnpinChatFix');
+  return m || c;
+}
 
 /* ── 5. settings persistence flush ──────────────────────────────────────── */
 function installFlush() {
