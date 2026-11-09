@@ -76,15 +76,15 @@ test("Long smaller-source clips are held to the 25 MB budget", () => {
   assert.ok(((kbps + 190) * 1000 * 180) / 8 <= 25 * 1024 * 1024, `over budget at ${kbps} kb/s`);
 });
 
-test("all status categories use the HD re-encode option and do not skip re-encoding", () => {
+test("fyp, cruise, feeling, discipline bypass re-encoding to send original videos while other categories use HD 1.3", () => {
   const edits = require("../precious-anime-edits.cjs");
-  assert.equal(edits.shouldSkipReencode("fyp"), false);
-  assert.equal(edits.shouldSkipReencode("cruise"), false);
-  assert.equal(edits.shouldSkipReencode("feeling"), false);
-  assert.equal(edits.shouldSkipReencode("discipline"), false);
-  assert.equal(edits.shouldSkipReencode("foryou"), false);
-  assert.equal(edits.shouldSkipReencode("cruzz"), false);
-  assert.equal(edits.shouldSkipReencode("discip"), false);
+  assert.equal(edits.shouldSkipReencode("fyp"), true);
+  assert.equal(edits.shouldSkipReencode("cruise"), true);
+  assert.equal(edits.shouldSkipReencode("feeling"), true);
+  assert.equal(edits.shouldSkipReencode("discipline"), true);
+  assert.equal(edits.shouldSkipReencode("foryou"), true);
+  assert.equal(edits.shouldSkipReencode("cruzz"), true);
+  assert.equal(edits.shouldSkipReencode("discip"), true);
   assert.equal(edits.shouldSkipReencode("naruto"), false);
   assert.equal(edits.shouldSkipReencode("jjk"), false);
   assert.equal(edits.shouldSkipReencode("bleach"), false);
