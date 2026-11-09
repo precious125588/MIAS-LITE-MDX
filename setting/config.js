@@ -5,9 +5,9 @@
  *  Engineered with precision for multi-device stability & rapid deployment.
  *  Dynamic environment variable bindings with robust fallback defaults.
  * 
- *  @author Precious
+ *  @author 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x
  *  @version 2.0.0
- *  @license MIT
+ *  @license Licensed by 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x (MIT)
  * ═══════════════════════════════════════════════════════════════════════
  */
 
