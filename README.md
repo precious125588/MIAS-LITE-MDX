@@ -63,6 +63,14 @@
 
 ---
 
+
+---
+
+### ⚠️ ANTI-TAMPER & DECODE WARNING
+> **STRICT NOTICE:** You are **NOT PERMITTED** to decrypt, decode, deobfuscate, or reverse-engineer any protected files in this project without explicit written authorization from **𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x**. Any unauthorized decoding, re-uploading, or claiming ownership is strictly prohibited and will be reported.
+
+---
+
 ### 📖 STEP-BY-STEP DEPLOYMENT TUTORIALS
 
 > 📄 **All detailed deployment guides have been moved to `deploy.txt`.**
