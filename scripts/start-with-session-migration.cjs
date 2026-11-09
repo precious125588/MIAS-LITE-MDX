@@ -1,9 +1,29 @@
 'use strict';
-try { require("../lib/shims/ensure-helpers.cjs"); } catch {}
-
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
+
+// Direct panel/npm starts must install the complete locked tree once before any
+// app modules load. start.sh and the generated panel starter already satisfy this
+// check, so normal boots only pay a few filesystem stats.
+const appRoot = path.resolve(__dirname, '..');
+const requiredPackages = ['express', 'pg', '@whiskeysockets/baileys', '@itsliaaa/starforge'];
+const missingPackages = requiredPackages.filter((name) => {
+  const packagePath = path.join(appRoot, 'node_modules', ...name.split('/'), 'package.json');
+  return !fs.existsSync(packagePath);
+});
+if (missingPackages.length) {
+  console.log(`[install] Missing ${missingPackages.join(', ')}; running the low-memory lockfile installer once...`);
+  const install = spawnSync('bash', ['scripts/robust-install.sh', '.'], {
+    cwd: appRoot,
+    stdio: 'inherit',
+    env: process.env,
+  });
+  if (install.error) throw install.error;
+  if (install.status !== 0) process.exit(install.status || 1);
+}
+try { require('../lib/shims/ensure-helpers.cjs'); } catch {}
+
 const { constants: osConstants } = require('node:os');
 const { normalizePostgresConnectionString } = require('../mias/lib/pgConnection.cjs');
 const { railwaySslOptions } = require('../mias/lib/railwayPersistence.cjs');

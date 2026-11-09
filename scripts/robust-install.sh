@@ -8,16 +8,47 @@ set -u
 DIR="${1:-.}"
 cd "$DIR" || { echo "[install] $DIR — no such directory"; exit 1; }
 
-# Detect memory limit
-TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "2000000")
-if [ -z "${NPM_HEAPS:-}" ]; then
-  if [ "$TOTAL_MEM_KB" -le 1048576 ]; then
-    HEAPS="192 144 112"
-  else
-    HEAPS="512 384 256"
-  fi
-else
+# Detect the panel/container memory limit (cgroup-aware; MemTotal can expose host RAM).
+read_limit() {
+  for FILE in /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory.limit_in_bytes; do
+    [ -r "$FILE" ] || continue
+    VALUE=$(cat "$FILE" 2>/dev/null | tr -d '[:space:]')
+    case "$VALUE" in ''|max) continue ;; esac
+    if [ "$VALUE" -gt 0 ] 2>/dev/null && [ "$VALUE" -lt 1099511627776 ] 2>/dev/null; then
+      echo $((VALUE / 1024))
+      return
+    fi
+  done
+  grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}'
+}
+TOTAL_MEM_KB=$(read_limit)
+TOTAL_MEM_KB=${TOTAL_MEM_KB:-2000000}
+if [ -n "${NPM_HEAPS:-}" ]; then
   HEAPS="$NPM_HEAPS"
+elif [ "$TOTAL_MEM_KB" -le 393216 ]; then
+  HEAPS="96 72 64"
+elif [ "$TOTAL_MEM_KB" -le 786432 ]; then
+  HEAPS="160 128 96"
+elif [ "$TOTAL_MEM_KB" -le 1572864 ]; then
+  HEAPS="256 192 160"
+else
+  HEAPS="512 384 256"
+fi
+
+# Keep npm's cache on the persistent application disk rather than /tmp, which may
+# be a memory-backed filesystem on hosting panels.
+CACHE_DIR="$PWD/.npm-cache"
+TMP_DIR="$PWD/.npm-tmp"
+mkdir -p "$CACHE_DIR" "$TMP_DIR"
+AVAILABLE_KB=$(df -Pk "$PWD" 2>/dev/null | awk 'NR==2 {print $4}')
+if [ -n "$AVAILABLE_KB" ]; then
+  AVAILABLE_MB=$((AVAILABLE_KB / 1024))
+  echo "[install] $DIR — detected memory limit $((TOTAL_MEM_KB / 1024))MB; available disk ${AVAILABLE_MB}MB"
+  if [ "$AVAILABLE_KB" -lt 102400 ]; then
+    echo "[install] $DIR — less than 100MB disk space is available; free panel disk space before installing."
+    rm -rf "$TMP_DIR"
+    exit 1
+  fi
 fi
 
 ATTEMPT=0
@@ -29,7 +60,6 @@ clean_tree() {
 
 for HEAP in $HEAPS; do
   ATTEMPT=$((ATTEMPT + 1))
-  CACHE_DIR="/tmp/npm-cache-$(echo "$DIR" | tr '/.' '__')-$ATTEMPT"
   echo "[install] $DIR — attempt $ATTEMPT/$TOTAL (heap ${HEAP}MB)"
 
   EXTRA=""
@@ -42,6 +72,8 @@ for HEAP in $HEAPS; do
 
   NODE_OPTIONS="--max-old-space-size=${HEAP}" \
   npm_config_cache="$CACHE_DIR" \
+  npm_config_maxsockets=1 \
+  TMPDIR="$TMP_DIR" \
   npm "$INSTALL_COMMAND" \
       --no-audit --no-fund --no-progress \
       --legacy-peer-deps \
@@ -63,19 +95,16 @@ for HEAP in $HEAPS; do
 
   if [ $CODE -eq 0 ]; then
     echo "[install] $DIR — OK on attempt $ATTEMPT"
-    rm -rf "$CACHE_DIR"
+    rm -rf "$TMP_DIR"
     exit 0
   fi
 
   echo "[install] $DIR — attempt $ATTEMPT failed (exit $CODE); full clean and retry"
   clean_tree
-  rm -rf "$CACHE_DIR"
 done
 
-echo "[install] $DIR — full install attempts exhausted; falling back to critical minimal dependencies..."
-if [ -f "lib/ensure-dependencies.cjs" ]; then
-  node lib/ensure-dependencies.cjs && exit 0
-fi
+echo "[install] $DIR — full lockfile install attempts exhausted; refusing to start with a partial dependency tree."
 
 echo "[install] $DIR — all attempts failed"
+rm -rf "$TMP_DIR"
 exit 1
