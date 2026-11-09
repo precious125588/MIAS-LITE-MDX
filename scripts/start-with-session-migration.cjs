@@ -380,14 +380,14 @@ async function main() {
     env: {
       DOTENV_CONFIG_QUIET: 'true',
       ...process.env,
-      BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB || '128',
-      BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB || '256',
+      BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB || '220',
+      BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB || '320',
       // node:sqlite prints an experimental-feature warning on every start; it is expected here.
       NODE_OPTIONS: [
         process.env.NODE_OPTIONS,
         '--disable-warning=ExperimentalWarning',
         '--expose-gc',
-        '--max-old-space-size=' + (process.env.SERVER_HEAP_MB || '160')
+        '--max-old-space-size=' + (process.env.SERVER_HEAP_MB || '220')
       ].filter(Boolean).join(' '),
     },
     stdio: 'inherit',

@@ -417,9 +417,9 @@ function markSeen(userJid, catKey, keys) {
 const _rr = new Map(); // userJid -> counter
 function routeOrder(userJid, isCreatorCategory = false) {
   if (isCreatorCategory) {
-    return ['pages', 'search', 'zip', 'gc'];
+    return ['pages', 'search', 'zip'];
   }
-  const base = ['zip', 'pages', 'search', 'gc'];
+  const base = ['zip', 'pages', 'search'];
   for (let i = base.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [base[i], base[j]] = [base[j], base[i]];
