@@ -389,6 +389,12 @@ function bootChild(ctx) {
 
   const result = { shield: false, packs: null, verify: false };
 
+  /* 0. Low-memory log policy & periodic cleaner (30 mins). */
+  try {
+    const { installLogFilter } = require('./mias/lib/lowMemLogPolicy.cjs');
+    installLogFilter(globalThis.__RUNTIME_LOGS__ || []);
+  } catch (e) { /* ignore */ }
+
   /* 1. Child crash shield. */
   try { result.shield = installChildShield(); }
   catch (e) { bad('child shield failed: ' + (e && e.message)); }

@@ -346,6 +346,15 @@ let _creatorPending = null;
 let _creatorLastSweep = 0;
 let _creatorKnown = null;
 function startCreatorPageMonitor({ intervalMs = 15 * 60 * 1000, watchMs = 60 * 1000, log = console.log } = {}) {
+  try {
+    const { isLowMemEnv } = require('./lowMemLogPolicy.cjs');
+    if (isLowMemEnv()) {
+      // In low-RAM panels, suppress periodic background creator sweeps to preserve RAM & network
+      if (process.env.ENABLE_CREATOR_MONITOR !== '1') {
+        return null;
+      }
+    }
+  } catch (_) {}
   if (_creatorMonitorTimer) return _creatorMonitorTimer;
   const sweep = async (why) => {
     if (_creatorMonitorRunning) { _creatorPending = why; return; }
