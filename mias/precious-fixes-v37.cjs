@@ -297,69 +297,6 @@ module.exports = function installV37(ctx) {
   }
 
   /* ────────────────────────────────────────────────────────────────────────
-   *  FIX 4 — ANIME GC BAD REQUEST: fall back to invite code resolution
-   *  when groupFetchAllParticipating returns a stale JID
-   * ──────────────────────────────────────────────────────────────────────── */
-  // The animeGcLibrary module already exposes a routes map keyed by invite.
-  // Hook it so groupAccept failures fall through to groupGetInviteInfo + retry.
-  function installAnimeGcRetry(sock) {
-    try {
-      const mod = require('./features/animeGcLibrary.cjs');
-      if (!mod || mod.__v37Wrap) return;
-      mod.__v37Wrap = true;
-      const orig = mod.resolveGroup || mod.findGroup || null;
-      // Wrap every accessor so any "unknown/stale JID" route falls back.
-      const wrapper = async function v37ResolveGroup(sock2, identifier) {
-        try {
-          // 1. Try direct JID
-          if (typeof identifier === 'string' && /@g\.us$/i.test(identifier)) {
-            try {
-              const md = await sock2.groupMetadata(identifier).catch(() => null);
-              if (md && md.id) return { jid: md.id, label: md.subject || '', via: 'jid' };
-            } catch {}
-          }
-          // 2. Try invite code (the canonical key the library uses)
-          if (typeof identifier === 'string') {
-            const code = identifier.match(/chat\.whatsapp\.com\/([A-Za-z0-9_-]+)/i)?.[1] || identifier;
-            const info = await sock2.groupGetInviteInfo(code).catch(() => null);
-            if (info?.id) {
-              try {
-                const md = await sock2.groupMetadata(info.id).catch(() => null);
-                if (md && md.id) return { jid: md.id, label: md.subject || info.subject || '', via: 'invite' };
-              } catch {}
-              return { jid: info.id, label: info.subject || '', via: 'invite' };
-            }
-          }
-        } catch {}
-        return null;
-      };
-      if (typeof mod.resolveGroup === 'function') mod.resolveGroup = wrapper;
-      else mod.resolveGroup = wrapper;
-
-      // Patch acceptInvite to wrap errors with a friendlier message.
-      const origAccept = mod.groupAcceptInvite || mod.acceptInvite;
-      const acceptWrap = async function v37Accept(sock2, codeOrUrl) {
-        try {
-          if (typeof origAccept === 'function')
-            return await origAccept(sock2, codeOrUrl);
-        } catch (e1) {
-          try {
-            const code = String(codeOrUrl).match(/([A-Za-z0-9_-]{6,})/)?.[1];
-            if (code && typeof sock2.groupGetInviteInfo === 'function') {
-              const info = await sock2.groupGetInviteInfo(code).catch(() => null);
-              if (info?.id) return { accepted: true, jid: info.id, source: 'groupGetInviteInfo' };
-            }
-          } catch {}
-          throw e1;
-        }
-      };
-      if (typeof mod.acceptInvite === 'function') mod.acceptInvite = acceptWrap;
-      else mod.acceptInvite = acceptWrap;
-      if (typeof mod.groupAcceptInvite === 'function') mod.groupAcceptInvite = acceptWrap;
-    } catch (e) { /* module not present — fix becomes a no-op */ }
-  }
-
-  /* ────────────────────────────────────────────────────────────────────────
    *  FIX 5 — EMOJI FORWARD: react-with-arbitrary-emoji on a media message
    *  silently forwards the original (decoded view-once) message into
    *  the OWNER DM with the SAME media and a caption showing the emoji.
@@ -690,7 +627,6 @@ module.exports = function installV37(ctx) {
     try { installAnonymousReceiptFix(sock); } catch (e) { console.error('[v37-anon]', e?.message || e); }
     try { installSettingsQuotedFix(sock); } catch (e) { console.error('[v37-set-fix]', e?.message || e); }
     try { installGstTargetResolution(sock); } catch (e) { console.error('[v37-gst]', e?.message || e); }
-    try { installAnimeGcRetry(sock); } catch (e) { console.error('[v37-anime]', e?.message || e); }
     try { installPinFix(sock); } catch (e) { console.error('[v37-pin]', e?.message || e); }
     try { installStatusReplyBadge(sock); } catch (e) { console.error('[v37-status]', e?.message || e); }
     try {
