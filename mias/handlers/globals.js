@@ -49,6 +49,12 @@ async function startDevelopmentWatcher() {
  * @param {object} [config] - Bot configuration object
  */
 export function installHandlerGlobals(sock, config = {}) {
+  // Ensure Prexzy API URL validation & request helpers are universally available
+  globalThis._paIsUrl = globalThis._paIsUrl || function(u) {
+    if (!u || typeof u !== "string") return false;
+    return /^https?:\/\/[^\s]+$/i.test(u.trim());
+  };
+
   // Always update socket + config references
   globalThis.__MIAS_SOCK__   = sock;
   globalThis.__MIAS_CONFIG__ = config;

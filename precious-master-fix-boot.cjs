@@ -345,6 +345,12 @@ function bootParent() {
    Called at the VERY END of mias/index.js (after __PRECIOUS__ and the full
    commands map exist). */
 function bootChild(ctx) {
+  // Global URL validator for downloaders (gitclone, twitter, gofile, etc.)
+  globalThis._paIsUrl = globalThis._paIsUrl || function(u) {
+    if (!u || typeof u !== "string") return false;
+    return /^https?:\/\/[^\s]+$/i.test(u.trim());
+  };
+
   if (globalThis.__PRECIOUS_MASTER_CHILD__) {
     log('child boot already done — skipping (dedup guard)');
     return globalThis.__PRECIOUS_MASTER_CHILD__;
