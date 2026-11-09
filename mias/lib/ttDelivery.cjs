@@ -66,19 +66,22 @@ const HD_ARGS = (inPath, outPath, kbps = HD_REFERENCE_KBPS, opts = {}) => [
   "-i", inPath,
   "-map", "0:v:0", "-map", "0:a:0?",
   "-vf", opts.vf || HD_VIDEO_FILTER,
-  // Matches the reference file: H.264 at 18398 kb/s, preserves source fps via passthrough, SAR 1:1.
-  // Level 4.2 is the lowest level that allows 1080p at 60 fps (4.0 tops out at 30 fps).
-  // veryfast: about 3.5x faster than medium at the same bitrate; the output is visually the same at 18 Mb/s.
-  "-c:v", "libx264", "-preset", opts.preset || "superfast",
-  "-b:v", `${Math.round(kbps)}k`, "-maxrate", `${Math.round(kbps)}k`, "-bufsize", opts.lowMemory ? "8000k" : `${Math.round(kbps * 2)}k`,
-  "-x264-params", opts.lowMemory ? "sliced-threads=1:ref=1:bframes=0:rc-lookahead=0" : "sliced-threads=1:ref=1:bframes=0:rc-lookahead=5",
+  "-c:v", "libx264", "-preset", opts.preset || (opts.lowMemory ? "superfast" : "veryfast"),
+  "-b:v", `${Math.round(kbps)}k`,
+  "-maxrate", `${Math.round(Math.min(HD_MAX_KBPS, Math.max(kbps * 1.5, 6000)))}k`,
+  "-bufsize", opts.lowMemory ? "8000k" : `${Math.round(Math.min(HD_MAX_KBPS * 2, Math.max(kbps * 2, 12000)))}k`,
+  "-x264-params", opts.lowMemory
+    ? "sliced-threads=1:ref=1:bframes=0:rc-lookahead=0"
+    : "sliced-threads=1:ref=2:bframes=2:rc-lookahead=10",
   "-profile:v", "high", "-level", "4.2", "-pix_fmt", "yuv420p",
-  "-fps_mode", "passthrough",
+  "-fps_mode", "cfr",
   "-force_key_frames", "expr:gte(t,n_forced*2)",
   "-max_muxing_queue_size", "1024",
-  // Audio matches the reference: AAC 190 kb/s, 48000 Hz, stereo.
-  "-c:a", "aac", "-b:a", "190k", "-ac", "2", "-ar", "48000",
-  "-af", "asetpts=PTS-STARTPTS,aresample=async=1000:min_hard_comp=0.100000:first_pts=0",
+  // Audio: stream copy if source is already AAC to preserve bit-exact quality and prevent cracking/stuttering.
+  // Otherwise transcode cleanly to AAC without destructive hard-compensation silence filters.
+  ...(opts.copyAudio
+    ? ["-c:a", "copy"]
+    : ["-c:a", "aac", "-b:a", "190k", "-ac", "2", "-ar", "48000"]),
   "-avoid_negative_ts", "make_zero",
   "-shortest",
   "-movflags", "+faststart", "-f", "mp4",
@@ -205,7 +208,9 @@ async function probeSourceVideo(inPath) {
   const durationSec = durationMatch
     ? Number(durationMatch[1]) * 3600 + Number(durationMatch[2]) * 60 + Number(durationMatch[3])
     : null;
-  return { width, height, shortSide: Math.min(width, height), videoKbps: videoKbps || null, durationSec };
+    const audioCodecMatch = audioLine.match(/Audio:\s*(\w+)/);
+  const audioCodec = audioCodecMatch ? audioCodecMatch[1].toLowerCase() : null;
+  return { width, height, shortSide: Math.min(width, height), videoKbps: videoKbps || null, durationSec, audioCodec };
 }
 
 // Picks the H.264 bitrate for the 1.3 encode from the source probe. Unknown source = reference rate.
@@ -254,7 +259,9 @@ async function reencodeHdForWhatsApp(input, {
 
   const kbps = pickHdBitrate(probe, boost, sourceQualityBoost);
   const deadline = Date.now() + timeoutMs;
-  let run = await runFfmpeg(HD_ARGS(inPath, out, kbps), timeoutMs);
+  const copyAudio = Boolean(probe && probe.audioCodec === "aac");
+  const encodeOpts = { copyAudio };
+  let run = await runFfmpeg(HD_ARGS(inPath, out, kbps, encodeOpts), timeoutMs);
   // Killed by the kernel (usually out of memory), not by our timeout: the same encode once more with the low-memory settings.
   if (!run.error && run.signal === "SIGKILL" && !run.timedOut) {
     await fsp.rm(out, { force: true }).catch(() => {});
@@ -262,7 +269,7 @@ async function reencodeHdForWhatsApp(input, {
     const retryKbps = sourceQualityBoost && isHighQualitySource(probe)
       ? kbps
       : Math.min(kbps, HD_REFERENCE_KBPS);
-    if (remaining > 0) run = await runFfmpeg(HD_ARGS(inPath, out, retryKbps, { lowMemory: true }), remaining);
+    if (remaining > 0) run = await runFfmpeg(HD_ARGS(inPath, out, retryKbps, { ...encodeOpts, lowMemory: true }), remaining);
   }
   if (run.error || run.timedOut || run.code !== 0) {
     const killed = run.signal ? ` (killed by ${run.signal}${run.signal === "SIGKILL" ? ", usually out of memory" : ""})` : "";
