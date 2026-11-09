@@ -1,8 +1,8 @@
 {
-  "buildId": "auto-20261108-213013",
-  "builtAt": "2026-11-09T07:39:07Z",
+  "buildId": "auto-20261109-131623",
+  "builtAt": "2026-11-09T13:16:23.360Z",
   "files": {
-    "server.js": "10213a7048bc0c981fa2589b797758f37338d1d54e957221212221af020cf73e",
+    "server.js": "6411cc3acead75855c9216772230746037bcc5343067597a1a37d5cb5f17bf1a",
     "mias/index.js": "2024b783ec02a87ab23b83c4c8a0d98ff5bcec7ecb6bd77f8e71261e7285e6d0",
     "lib/precious-cache-clear.cjs": "fe7211ea67f969f155c1f95b6cb313798f43e0f0b3684b7e4f9b659dc717316c",
     "lib/precious-stale-guard.cjs": "f885075a84864a8c80f5f9d903a51ecf329df907f14f0a164230c179e4bad3b1"
@@ -15,7 +15,7 @@
   ],
   "timestamp": 1792324803412,
   "target": "precious-v2.1-fix-whois-target-detection",
-  "commit": "07f832c701a4cbbd0fc6b19adae140326ecdb6e1",
-  "sha": "07f832c701a4cbbd0fc6b19adae140326ecdb6e1",
+  "commit": "71d3788b4d2963520df1c6b04449f1aaafa057e9",
+  "sha": "71d3788b4d2963520df1c6b04449f1aaafa057e9",
   "stamp": "auto-20261109-073907"
 }

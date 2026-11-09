@@ -379,6 +379,7 @@ async function main() {
     // Keep dotenv's "injected env" banner out of the logs; env values still load.
     env: {
       DOTENV_CONFIG_QUIET: 'true',
+      KEEP_ALIVE_SUPERVISOR_ACTIVE: 'true',
       ...process.env,
       BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB || '220',
       BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB || '320',
@@ -392,6 +393,13 @@ async function main() {
     },
     stdio: 'inherit',
   });
+
+  try {
+    const { startKeepAlive } = require('../lib/keepAlive.cjs');
+    startKeepAlive({ port: process.env.PORT || 3000, isSupervisor: true });
+  } catch (err) {
+    console.warn('[KEEP-ALIVE] Startup notice:', err && err.message);
+  }
 
   let stopping = false;
   for (const signal of ['SIGINT', 'SIGTERM']) {
