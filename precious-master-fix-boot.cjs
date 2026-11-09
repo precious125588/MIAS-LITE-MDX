@@ -358,6 +358,14 @@ function bootParent() {
   /* 3. Session audit: warn if any hard session delete sneaks back in. */
   result.sessionAudit = sessionFixVerify();
 
+  /* 4. Anti-idle keep-alive monitor (prevents Render/free-tier sleep). */
+  try {
+    const { startKeepAlive } = require('./lib/keepAlive.cjs');
+    startKeepAlive({ port: process.env.PORT || 3000 });
+  } catch (e) {
+    warn('keep-alive: ' + (e && e.message));
+  }
+
   /* 4. Real file audit: every source file is read and compiled; only genuine
         failures are printed, with the real error. No claims, just results. */
   try {
