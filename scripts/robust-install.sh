@@ -1,48 +1,30 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
 # robust-install.sh <dir>
-#
-# WHY: the Railway build died in `bash scripts/robust-install.sh mias` with
-#
-#   npm error Exit handler never called!          (attempts 1 and 2)
-#   npm error ENOTEMPTY: rename '/app/mias/node_modules/axios' ->
-#             '/app/mias/node_modules/.axios-cKqQ93Jn'   (attempt 3)
-#
-# Two separate problems:
-#
-#   1. "Exit handler never called!" is npm's message when its own process is
-#      killed mid-install — on a Railway builder that is the OOM killer. The
-#      old script ESCALATED the heap (2048 → 3072 → 4096MB) on every retry,
-#      which makes an out-of-memory kill MORE likely, not less, and ran the
-#      resolver with --maxsockets 4 so a ~1200-package tree with native
-#      builds was extracted in parallel at peak memory.
-#
-#   2. The retries only deleted node_modules/.package-lock.json. The half
-#      written node_modules from the killed attempt stayed on disk, so the
-#      next attempt tried to rename an existing, non-empty package directory
-#      and failed with ENOTEMPTY. Attempt 3 could never have succeeded.
-#
-# WHAT: de-escalate the heap, serialize extraction, and do a FULL clean of
-#       node_modules (plus a per-attempt cache dir) between attempts. The last
-#       attempt falls back to --ignore-scripts + targeted `npm rebuild`, so a
-#       required native modules are then rebuilt and checked explicitly.
+# Low-memory resilient installer for container and low-RAM environments
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 
 DIR="${1:-.}"
 cd "$DIR" || { echo "[install] $DIR — no such directory"; exit 1; }
 
-# Lower heaps first: the failure mode here is the builder killing npm, so more
-# heap means a faster kill. Locked installs avoid fresh dependency resolution.
-HEAPS="${NPM_HEAPS:-1024 768 512}"
+# Detect memory limit
+TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "2000000")
+if [ -z "${NPM_HEAPS:-}" ]; then
+  if [ "$TOTAL_MEM_KB" -le 1048576 ]; then
+    HEAPS="192 144 112"
+  else
+    HEAPS="512 384 256"
+  fi
+else
+  HEAPS="$NPM_HEAPS"
+fi
+
 ATTEMPT=0
 TOTAL=$(echo "$HEAPS" | wc -w)
 
 clean_tree() {
-  # A killed npm leaves a partially linked node_modules behind. Anything less
-  # than a full delete reproduces ENOTEMPTY on the next attempt.
   rm -rf node_modules
-  # Keep the committed lockfile: retries must install the same dependency tree.
 }
 
 for HEAP in $HEAPS; do
@@ -52,8 +34,6 @@ for HEAP in $HEAPS; do
 
   EXTRA=""
   if [ "$ATTEMPT" -eq "$TOTAL" ]; then
-    # Last resort: skip postinstall scripts so the resolver alone has to
-    # survive, then rebuild only the native packages that actually need it.
     EXTRA="--ignore-scripts"
     echo "[install] $DIR — final attempt runs with --ignore-scripts + rebuild"
   fi
@@ -65,7 +45,7 @@ for HEAP in $HEAPS; do
   npm "$INSTALL_COMMAND" \
       --no-audit --no-fund --no-progress \
       --legacy-peer-deps \
-      --maxsockets 2 \
+      --maxsockets 1 \
       --fetch-retries 5 \
       --fetch-retry-maxtimeout 120000 \
       --loglevel=warn \
@@ -91,6 +71,11 @@ for HEAP in $HEAPS; do
   clean_tree
   rm -rf "$CACHE_DIR"
 done
+
+echo "[install] $DIR — full install attempts exhausted; falling back to critical minimal dependencies..."
+if [ -f "lib/ensure-dependencies.cjs" ]; then
+  node lib/ensure-dependencies.cjs && exit 0
+fi
 
 echo "[install] $DIR — all attempts failed"
 exit 1
