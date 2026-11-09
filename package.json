@@ -19,7 +19,7 @@
     "server": "node server.js",
     "postinstall": "node -e \"const fs = require('fs'); const path = require('path'); const target = path.resolve('mias', 'node_modules'); if (!fs.existsSync(target)) { try { fs.symlinkSync('../node_modules', target, 'junction'); console.log('[postinstall] Linked mias/node_modules -> root node_modules'); } catch(e){} }\""
   },
-  "author": "MAIS",
+  "author": "𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x",
   "license": "MIT",
   "engines": {
     "node": ">=22.12.0"

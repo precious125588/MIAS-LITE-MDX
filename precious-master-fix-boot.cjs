@@ -1,55 +1,12 @@
 'use strict';
-/* ══════════════════════════════════════════════════════════════════════════
-   precious-master-fix-boot.cjs  ·  v34 — THE MERGED MASTER FIX BOOT
-   ──────────────────────────────────────────────────────────────────────────
-   ⚠️  THIS IS THE ONLY FIX-BOOT FILE. Every other boot/patch/preflight/verify
-   file has been MERGED INTO THIS ONE and deleted:
-
-     MERGED IN (parent side):  fix_all.cjs, fix_session_401.cjs, PATCH-v25/27/
-       29/30/31.cjs, precious-fix-pack.cjs  → their edits are BAKED INTO the
-       version-controlled tree (this zip). Nothing is patched at runtime any
-       more, so a fresh git clone can never boot unpatched.
-       precious-session-boot.cjs      → sessionBootInline()  below
-       precious-session-fix.cjs       → sessionFixVerify()   below (read-only;
-                                        the rewrites are baked into the tree)
-       precious-packs-preflight.cjs   → preflightInline()    below
-       cleanup.cjs                    → still its own file, but now launched
-                                        from bootParent() so EVERY entry point
-                                        sweeps the volume, not just npm start
-     MERGED IN (child side):   precious-all-packs-boot.cjs → installAll() below
-       mias/fix_pack_child.cjs        → superseded, deleted
-       fix_pack_runtime.cjs           → shield inlined in bootChild()
-       precious-packs-verify.cjs      → scheduleVerify()     below
-
-   ROOT CAUSES THIS v34 FIXES (why "fixes aren't applied" after pairing)
-   -------------------------------------------------------------------
-   1. SPLIT-BRAIN ENTRY POINTS — railway.toml/Procfile ran
-      "node PATCH-v30.cjs && node PATCH-v31.cjs && node server.js", npm start
-      ran another chain, start.sh ran a third. Now EVERY entry is simply
-      "node server.js" and server.js calls bootParent() at the very top.
-   2. RUNTIME PATCHING — the PATCH-vXX scripts rewrote files on every boot of
-      a fresh clone. One of those injections (the "__V27_PACK_ENTRY__" block in
-      precious-all-packs-boot.cjs) installed precious-fixes-v27 AT REQUIRE TIME
-      — BEFORE v20/v21/v24 — so the later packs overwrote v27's handlers.
-      v27's fixes silently "weren't applied". That block is gone; v27 now
-      installs in its correct slot (after v24, before v28/v29) inside
-      installAll() only.
-   3. DOUBLE INSTALLS — mias/index.js also required v20 and v27 directly,
-      bypassing the loader's marker registry, so handlers were wrapped twice
-      and ordering races decided "which fix wins". The direct v27 bootstrap is
-      removed; the direct v20 install now SETS the loader marker so installAll
-      skips it.
-   4. 0 PAIRED SESSIONS ON THE VOLUME — every WhatsApp-facing fix lives in the
-      bot CHILD (mias/index.js), which only spawns once a number is paired AND
-      the session folder sits on the /app/nexstore volume. With 0 usable
-      sessions, no child spawns and NO command fix can load. bootParent now
-      says this plainly in the log; after deploying this build, PAIR ONCE and
-      the session persists on the volume (session deletes are quarantined,
-      never wiped, and legacy session dirs are auto-migrated).
-
-   Everything here is idempotent and marker-guarded: safe on every boot, and a
-   single failing pack can NEVER take the bot down.
-   ══════════════════════════════════════════════════════════════════════════ */
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ *  MIAS LITE MDX — Master Boot Engine
+ * ═══════════════════════════════════════════════════════════════════════
+ *  Licensed by 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x
+ *  Copyright (c) 2026 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x. All rights reserved.
+ * ═══════════════════════════════════════════════════════════════════════
+ */
 
 const fs   = require('fs');
 const path = require('path');
