@@ -9,11 +9,23 @@
 import os from "os";
 import hostMemory from "./hostMemory.cjs";
 
-const CLEANUP_INTERVAL_MS = 30 * 60 * 1000;  // 30 minutes
-const MEMORY_WARN_PCT     = 80;               // warn at 80% heap used
-const MEMORY_CLEAN_PCT    = 90;               // force GC + aggressive clean at 90%
-const MAX_CACHE_SIZE      = 5000;             // soft cap per tracked map
-const STALE_TTL_MS        = 30 * 60 * 1000;  // 30-min TTL for stale entries
+const isLowMemory = (() => {
+  try {
+    const lim = hostMemory.getMemoryLimitBytes?.() || 0;
+    return (lim > 0 && lim <= 600 * 1024 * 1024) ||
+      (os.totalmem() <= 1024 * 1024 * 1024) ||
+      (Number(process.env.BOT_MEMORY_LIMIT_MB) > 0 && Number(process.env.BOT_MEMORY_LIMIT_MB) <= 512) ||
+      (Number(process.env.BOT_CHILD_HEAP_MB) > 0 && Number(process.env.BOT_CHILD_HEAP_MB) <= 256);
+  } catch {
+    return false;
+  }
+})();
+
+const CLEANUP_INTERVAL_MS = isLowMemory ? 3 * 60 * 1000 : 15 * 60 * 1000;
+const MEMORY_WARN_PCT     = isLowMemory ? 70 : 80;
+const MEMORY_CLEAN_PCT    = isLowMemory ? 80 : 90;
+const MAX_CACHE_SIZE      = isLowMemory ? 1000 : 5000;
+const STALE_TTL_MS        = isLowMemory ? 10 * 60 * 1000 : 30 * 60 * 1000;
 // Only auto-remove listeners when count is this many times above the limit
 // (avoids removing intentional multi-listener setups at borderline counts).
 const AUTOFIX_MULTIPLIER  = 2;
@@ -151,13 +163,15 @@ export function runCleanup(force = false) {
     }
   }
 
-  // GC on high heap
-  if (heapPct >= MEMORY_WARN_PCT) {
+  // GC on high heap or low-memory profile
+  if (isLowMemory || heapPct >= MEMORY_WARN_PCT) {
     if (typeof global.gc === "function") {
-      global.gc();
-      const afterPct = Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100);
-      console.log(`[ResourceManager] GC run: heap ${heapPct}% → ${afterPct}%`);
-    } else {
+      try {
+        global.gc();
+        const afterPct = Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100);
+        console.log(`[ResourceManager] GC run: heap ${heapPct}% → ${afterPct}%`);
+      } catch {}
+    } else if (heapPct >= MEMORY_WARN_PCT) {
       console.warn(`[ResourceManager] High heap ${heapPct}% — add --expose-gc to enable GC`);
     }
   }
@@ -175,7 +189,7 @@ export function startResourceManager() {
   if (_cleanupTimer) clearInterval(_cleanupTimer);
   _cleanupTimer = setInterval(() => runCleanup(), CLEANUP_INTERVAL_MS);
   if (_cleanupTimer.unref) _cleanupTimer.unref();
-  console.log("[ResourceManager] Started (cleanup every 30 min)");
+  console.log(`[ResourceManager] Started (cleanup every ${Math.round(CLEANUP_INTERVAL_MS / 60000)} min, lowMemoryMode: ${isLowMemory})`);
 }
 
 export function stopResourceManager() {
