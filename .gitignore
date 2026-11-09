@@ -8,7 +8,6 @@ nexstore/sessions/
 .env
 .env.*
 !.env.example
-media-patch/dist/
 tmp/
 uploads/
 auth_info/
