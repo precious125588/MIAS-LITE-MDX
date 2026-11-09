@@ -1,7 +1,7 @@
 {
   "name": "mias-lite-mdx",
   "version": "1.0.0",
-  "description": "MIAS LITE MDX — High-Performance WhatsApp Multi-Device Automation Bot & Web Pairing Dashboard",
+  "description": "MIAS LITE MDX \u2014 High-Performance WhatsApp Multi-Device Automation Bot & Web Pairing Dashboard",
   "main": "server.js",
   "scripts": {
     "start": "node scripts/start-with-session-migration.cjs",
@@ -88,13 +88,13 @@
     "qs": "^6.16.1",
     "sharp": "^0.35.5",
     "translate-google-api": "^1.0.4",
-    "tree": "^0.1.3",
     "utf-8-validate": "^6.0.6",
     "uuid": "^14.0.3",
     "wa-sticker-formatter": "^4.4.4",
     "ws": "^8.22.2",
     "youtubei.js": "^18.3.0",
-    "yt-search": "^2.13.1"
+    "yt-search": "^2.13.1",
+    "@itsliaaa/starforge": "0.0.0-alpha.10"
   },
   "overrides": {
     "wa-sticker-formatter": {
