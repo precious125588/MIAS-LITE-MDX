@@ -97,79 +97,62 @@ export function installSplitVideo(ctx) {
   const { cmd, sendReply, react, downloadContentFromMessage, CONFIG } = ctx;
   const PREFIX = CONFIG?.PREFIX || ".";
 
-  async function downloadVideo(src) {
+  async function downloadVideoToFile(src, inPath) {
     const work = (async () => {
       const stream = await downloadContentFromMessage(src.node, src.dlType);
       if (!stream) throw new Error("the video download stream could not be opened");
-      const chunks = [];
+      const out = fs.createWriteStream(inPath);
       let total = 0;
-      try {
-        for await (const c of stream) {
+      await new Promise((resolve, reject) => {
+        stream.on("data", (c) => {
           total += c.length;
           if (total > WA_DOC_MAX_BYTES) {
             try { stream.destroy?.(); } catch {}
-            throw new Error("the video is over WhatsApp's 2 GB limit");
+            reject(new Error("the video is over WhatsApp's 2 GB limit"));
           }
-          chunks.push(c);
-        }
-      } finally {
+        });
+        stream.pipe(out);
+        out.on("finish", resolve);
+        out.on("error", reject);
+        stream.on("error", reject);
+      }).finally(() => {
         try { stream.destroy?.(); } catch {}
-      }
-      return Buffer.concat(chunks);
+      });
+      const stats = fs.statSync(inPath);
+      if (stats.size === 0) throw new Error("downloaded video file is empty");
+      return stats.size;
     })();
     return withTimeout(work, DOWNLOAD_TIMEOUT_MS, "Download");
   }
 
   async function sendVideoFile(sock, jid, msg, file, caption) {
-    let fileToSend = file;
-    let hdCleanup = null;
     try {
-      const TTD = await import("../lib/ttDelivery.cjs");
-      if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
-        const hdRes = await TTD.reencodeHdForWhatsApp(file, {
-          maxBytes: 95 * 1024 * 1024,
-          boost: 1.2,
-          sourceQualityBoost: 1.2,
-        });
-        if (hdRes && hdRes.path && hdRes.bytes > 0) {
-          fileToSend = hdRes.path;
-          hdCleanup = hdRes.cleanup;
-        }
-      }
-    } catch (hdErr) {}
-
-    try {
-      // Deliver through 4K delivery pipeline
-      try {
-        const disk = await import("../lib/tiktokDiskDelivery.cjs");
-        if (disk && typeof disk.sendVideoFromDisk === "function") {
-          const stats = fs.statSync(fileToSend);
-          if (stats.size > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
-          if (stats.size > WA_VIDEO_MAX_BYTES) {
-            await disk.sendDocumentFromDisk(sock, jid, fileToSend, path.basename(fileToSend), caption, msg);
-            return;
-          }
-          await disk.sendVideoFromDisk(sock, jid, fileToSend, caption, msg);
+      const disk = await import("../lib/tiktokDiskDelivery.cjs");
+      if (disk && typeof disk.sendVideoFromDisk === "function") {
+        const stats = fs.statSync(file);
+        if (stats.size > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
+        if (stats.size > WA_VIDEO_MAX_BYTES) {
+          await disk.sendDocumentFromDisk(sock, jid, file, path.basename(file), caption, msg);
           return;
         }
-      } catch (deliveryErr) {
-        // Fallback to direct send if delivery helper fails
+        await disk.sendVideoFromDisk(sock, jid, file, caption, msg);
+        return;
       }
-      const isStatus = msg?.key?.remoteJid === "status@broadcast";
-      const sendOpts = isStatus ? {} : { quoted: msg };
-      const buf = fs.readFileSync(fileToSend);
-      if (buf.length > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
-      if (buf.length > WA_VIDEO_MAX_BYTES) {
-        await sock.sendMessage(jid, { document: buf, mimetype: "video/mp4", fileName: path.basename(fileToSend), caption }, sendOpts);
-      } else {
-        try {
-          await sock.sendMessage(jid, { video: buf, mimetype: "video/mp4", caption }, sendOpts);
-        } catch (sendErr) {
-          await sock.sendMessage(jid, { document: buf, mimetype: "video/mp4", fileName: path.basename(fileToSend), caption }, sendOpts);
-        }
+    } catch (deliveryErr) {}
+
+    const isStatus = msg?.key?.remoteJid === "status@broadcast";
+    const sendOpts = isStatus ? {} : { quoted: msg };
+    const stats = fs.statSync(file);
+    if (stats.size > WA_DOC_MAX_BYTES) throw new Error("a part is over WhatsApp's 2 GB limit");
+    const stream = fs.createReadStream(file);
+    if (stats.size > WA_VIDEO_MAX_BYTES) {
+      await sock.sendMessage(jid, { document: stream, mimetype: "video/mp4", fileName: path.basename(file), caption }, sendOpts);
+    } else {
+      try {
+        await sock.sendMessage(jid, { video: stream, mimetype: "video/mp4", caption }, sendOpts);
+      } catch (sendErr) {
+        await sock.sendMessage(jid, { document: fs.createReadStream(file), mimetype: "video/mp4", fileName: path.basename(file), caption }, sendOpts);
       }
-    } finally {
-      if (typeof hdCleanup === "function") await hdCleanup().catch(() => {});
     }
   }
 
@@ -196,11 +179,9 @@ export function installSplitVideo(ctx) {
     await react(sock, msg, "🌀");
     let dir = null;
     try {
-      const buf = await downloadVideo(src);
-      if (!buf.length) throw new Error("the video could not be downloaded from WhatsApp");
       dir = fs.mkdtempSync(path.join(os.tmpdir(), "split-"));
       const inPath = path.join(dir, `in.${src.ext}`);
-      fs.writeFileSync(inPath, buf);
+      await downloadVideoToFile(src, inPath);
 
       const info = await probeFile(inPath);
       if (!info.duration) throw new Error("I couldn't read that video's length");
@@ -244,12 +225,10 @@ export function installSplitVideo(ctx) {
     await react(sock, msg, "🌀");
     let dir = null;
     try {
-      const buf = await downloadVideo(src);
-      if (!buf.length) throw new Error("the video could not be downloaded from WhatsApp");
       dir = fs.mkdtempSync(path.join(os.tmpdir(), "remux-"));
       const inPath = path.join(dir, `in.${src.ext}`);
       const outPath = path.join(dir, "out.mp4");
-      fs.writeFileSync(inPath, buf);
+      await downloadVideoToFile(src, inPath);
       const info = await probeFile(inPath);
       await remuxToMp4(inPath, outPath, info);
       await sendVideoFile(sock, jid, msg, outPath, "Remuxed to MP4 (no re-encode)");
