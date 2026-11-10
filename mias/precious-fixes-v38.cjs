@@ -45,6 +45,8 @@
    globals mias/index.js publishes. Safe to boot repeatedly.
    ══════════════════════════════════════════════════════════════════════════ */
 
+const fs   = require('fs');
+const path = require('path');
 const TAG = '[v38]';
 const log  = (m) => { try { console.log(TAG + ' ' + m); } catch (_) {} };
 const warn = (m) => { try { console.warn(TAG + ' ⚠️ ' + m); } catch (_) {} };
@@ -383,27 +385,288 @@ function installFlush() {
   return true;
 }
 
+
+/* ── 6. owner / creator command (details, bio, DP, max 5 list, MIAS LITE MDX) ── */
+async function fetchBuffer(url) {
+  if (!url || typeof url !== 'string') return null;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const arrayBuf = await res.arrayBuffer();
+    return Buffer.from(arrayBuf);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function handleOwnerCommand(sock, msg, args) {
+  const jid = (msg && msg.key && msg.key.remoteJid) || '';
+  if (!jid) return;
+
+  // React with crown emoji
+  try {
+    const c = ctx();
+    if (typeof c.react === 'function') {
+      await c.react(sock, msg, '👑');
+    } else if (sock && typeof sock.sendMessage === 'function') {
+      await sock.sendMessage(jid, { react: { text: '👑', key: msg.key } });
+    }
+  } catch (_) {}
+
+  // 1. Resolve Owner Number & JID
+  let cleanNum = '';
+  const c = ctx();
+  const cfg = CONFIG();
+  const rawNum = cfg.OWNER_NUMBER || process.env.OWNER_NUMBER || process.env.OWNER || (global && global.ownernumber) || '';
+  cleanNum = String(rawNum).replace(/[^0-9]/g, '');
+
+  if (!cleanNum && cfg.OWNER_JID) {
+    cleanNum = String(cfg.OWNER_JID).split('@')[0].replace(/[^0-9]/g, '');
+  }
+  if (!cleanNum && global && Array.isArray(global.owner) && global.owner[0]) {
+    cleanNum = String(global.owner[0]).replace(/[^0-9]/g, '');
+  }
+  if (!cleanNum && sock && sock.user && sock.user.id) {
+    cleanNum = String(sock.user.id).split(':')[0].split('@')[0].replace(/[^0-9]/g, '');
+  }
+  if (!cleanNum) cleanNum = '234';
+  const oj = cleanNum + '@s.whatsapp.net';
+
+  // 2. Resolve Owner Name
+  let ownerName = '';
+  try {
+    const ownerJsonPath = path.join(__dirname, 'owner.json');
+    if (fs.existsSync(ownerJsonPath)) {
+      const data = JSON.parse(fs.readFileSync(ownerJsonPath, 'utf8'));
+      if (data && typeof data.ownerName === 'string' && data.ownerName.trim()) {
+        ownerName = data.ownerName.trim();
+      }
+    }
+  } catch (_) {}
+
+  if (!ownerName && sock && typeof sock.getName === 'function') {
+    try {
+      const n = await sock.getName(oj);
+      if (n && typeof n === 'string' && !/^(?:undefined|null|Bot Owner)$/i.test(n.trim())) {
+        ownerName = n.trim();
+      }
+    } catch (_) {}
+  }
+
+  if (!ownerName && cfg.OWNER_NAME && !/^(?:undefined|null|Bot Owner)$/i.test(cfg.OWNER_NAME)) {
+    ownerName = String(cfg.OWNER_NAME).trim();
+  }
+  if (!ownerName && process.env.OWNER_NAME && !/^(?:undefined|null|Bot Owner)$/i.test(process.env.OWNER_NAME)) {
+    ownerName = String(process.env.OWNER_NAME).trim();
+  }
+  if (!ownerName && global && global.OWNER_NAME) {
+    ownerName = String(global.OWNER_NAME).trim();
+  }
+  if (!ownerName) ownerName = '𖤐JINX𖤐';
+
+  // 3. Resolve Owner Bio
+  let bio = '';
+  try {
+    if (sock && typeof sock.fetchStatus === 'function') {
+      const statusRes = await sock.fetchStatus(oj);
+      if (statusRes && statusRes.status && typeof statusRes.status === 'string' && statusRes.status.trim()) {
+        bio = statusRes.status.trim();
+      }
+    }
+  } catch (_) {}
+
+  if (!bio) {
+    try {
+      if (sock && typeof sock.getStatus === 'function') {
+        const statusRes2 = await sock.getStatus(oj);
+        if (statusRes2 && statusRes2.status && typeof statusRes2.status === 'string' && statusRes2.status.trim()) {
+          bio = statusRes2.status.trim();
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (!bio) {
+    try {
+      const ownerJsonPath = path.join(__dirname, 'owner.json');
+      if (fs.existsSync(ownerJsonPath)) {
+        const data = JSON.parse(fs.readFileSync(ownerJsonPath, 'utf8'));
+        if (data && typeof data.bio === 'string' && data.bio.trim()) {
+          bio = data.bio.trim();
+        } else if (data && typeof data.status === 'string' && data.status.trim()) {
+          bio = data.status.trim();
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (!bio && process.env.OWNER_BIO) {
+    bio = String(process.env.OWNER_BIO).trim();
+  }
+  if (!bio) {
+    bio = 'Building the future with code & creativity.';
+  }
+
+  // 4. Resolve Owner DP
+  let dpBuffer = null;
+  try {
+    let dpUrl = null;
+    if (sock && typeof sock.profilePictureUrl === 'function') {
+      dpUrl = await sock.profilePictureUrl(oj, 'image').catch(() => null);
+      if (!dpUrl) {
+        dpUrl = await sock.profilePictureUrl(oj).catch(() => null);
+      }
+    }
+    if (dpUrl) {
+      dpBuffer = await fetchBuffer(dpUrl);
+    }
+  } catch (_) {}
+
+  // Fallback DP: Bot pic or thumbnail
+  if (!dpBuffer) {
+    try {
+      if (typeof c.getBotPic === 'function') {
+        dpBuffer = await c.getBotPic().catch(() => null);
+      }
+    } catch (_) {}
+  }
+  if (!dpBuffer && (cfg.BOT_PIC || (global && global.thumbnail))) {
+    try {
+      const fbUrl = cfg.BOT_PIC || global.thumbnail;
+      dpBuffer = await fetchBuffer(fbUrl);
+    } catch (_) {}
+  }
+
+  // 5. Build Compact 5-Item List
+  const caption = [
+    '╭───────────────◆',
+    '│   👑 *OWNER PROFILE*',
+    '╰───────────────◆',
+    '',
+    '┌───────────────',
+    '├  1️⃣ ɴᴀᴍᴇ : *' + ownerName + '*',
+    '├  2️⃣ ᴄᴏɴᴛᴀᴄᴛ : *wa.me/' + cleanNum + '*',
+    '├  3️⃣ ʙɪᴏ : *' + bio + '*',
+    '├  4️⃣ ʙᴏᴛ : *MIAS LITE MDX*',
+    '├  5️⃣ ꜱᴛᴀᴛᴜꜱ : *Active & Available*',
+    '└───────────────',
+    '',
+    '> Powered by MIAS LITE MDX'
+  ].join('\n');
+
+  // 6. Build vCard
+  const vcard = 'BEGIN:VCARD\n'
+    + 'VERSION:3.0\n'
+    + 'FN:' + ownerName + '\n'
+    + 'ORG:MIAS LITE MDX;\n'
+    + 'NOTE:' + bio + '\n'
+    + 'TEL;type=CELL;type=VOICE;waid=' + cleanNum + ':+' + cleanNum + '\n'
+    + 'END:VCARD';
+
+  // 7. Send media and contact
+  let sentMedia = false;
+  if (dpBuffer && Buffer.isBuffer(dpBuffer) && dpBuffer.length > 0) {
+    try {
+      await sock.sendMessage(jid, {
+        image: dpBuffer,
+        caption
+      }, { quoted: msg });
+      sentMedia = true;
+    } catch (_) {}
+  }
+
+  if (!sentMedia) {
+    try {
+      if (typeof c.sendReply === 'function') {
+        await c.sendReply(sock, msg, caption);
+      } else {
+        await sock.sendMessage(jid, { text: caption }, { quoted: msg });
+      }
+    } catch (sendErr) {
+      try {
+        await sock.sendMessage(jid, { text: caption }, { quoted: msg });
+      } catch (_) {}
+    }
+  }
+
+  // Send vCard contact
+  try {
+    await sock.sendMessage(jid, {
+      contacts: {
+        displayName: ownerName + ' — Owner',
+        contacts: [{ vcard }]
+      }
+    }, { quoted: msg });
+  } catch (_) {}
+}
+
+function installOwnerCommand() {
+  const cmds = commands();
+  if (!cmds) return false;
+
+  // Enforce bot name brand
+  try {
+    const BOT_NAME = 'MIAS LITE MDX';
+    if (CONFIG()) CONFIG().BOT_NAME = BOT_NAME;
+    if (globalThis.CONFIG) globalThis.CONFIG.BOT_NAME = BOT_NAME;
+    if (global) {
+      global.BOT_NAME = BOT_NAME;
+      global.botName = BOT_NAME;
+      global.botname = BOT_NAME;
+    }
+    process.env.BOT_NAME = BOT_NAME;
+  } catch (_) {}
+
+  const names = ['owner', 'creator', 'dev', 'developer', 'botcreator'];
+  let touched = 0;
+  for (const name of names) {
+    let entry = cmds.get(name);
+    if (!entry) {
+      entry = {
+        name,
+        desc: 'Show bot owner & developer info',
+        category: 'INFO',
+        canonical: 'owner',
+        isAlias: name !== 'owner',
+        ownerOnly: false
+      };
+      cmds.set(name, entry);
+    }
+    entry.handler = handleOwnerCommand;
+    entry.run = handleOwnerCommand;
+    entry.desc = 'Show bot owner & developer info';
+    entry.category = 'INFO';
+    entry.ownerOnly = false;
+    entry.__v38OwnerCommand = true;
+    touched++;
+  }
+
+  if (touched) log('owner command (.owner, .creator, .dev, etc.) installed for ' + touched + ' aliases');
+  return touched > 0;
+}
+
 /* ── install ────────────────────────────────────────────────────────────── */
 function install() {
   if (globalThis.__V38_INSTALLED__) {
     // re-enter is allowed: command map may appear after the first pass
-    installOwnerGuard(); installPin(); installUnpin();
+    installOwnerGuard(); installPin(); installUnpin(); installOwnerCommand();
     return globalThis.__V38_INSTALLED__;
   }
   globalThis.__V38_INSTALLED__ = true;
-  const result = { vcard: false, guard: false, pin: false, unpin: false, flush: false };
+  const result = { vcard: false, guard: false, pin: false, unpin: false, flush: false, ownerCmd: false };
   try { result.flush = installFlush(); } catch (e) { warn('flush: ' + e.message); }
   try { result.vcard = migrateVcardOff(); } catch (e) { warn('vcard migrate: ' + e.message); }
   try { result.guard = installOwnerGuard(); } catch (e) { warn('owner guard: ' + e.message); }
   try { result.pin = installPin(); } catch (e) { warn('pin: ' + e.message); }
   try { result.unpin = installUnpin(); } catch (e) { warn('unpin: ' + e.message); }
+  try { result.ownerCmd = installOwnerCommand(); } catch (e) { warn('owner command: ' + e.message); }
   log('installed → vcard-off=' + result.vcard + ' ownerGuard=' + result.guard +
-      ' pin=' + result.pin + ' unpin=' + result.unpin + ' flush=' + result.flush);
+      ' pin=' + result.pin + ' unpin=' + result.unpin + ' flush=' + result.flush + ' ownerCmd=' + result.ownerCmd);
   globalThis.__V38_RESULT__ = result;
   // The commands map can be populated a moment after this module loads; retry.
   for (const ms of [3000, 10000, 30000]) {
     try {
-      const t = setTimeout(() => { try { installOwnerGuard(); installPin(); installUnpin(); } catch (_) {} }, ms);
+      const t = setTimeout(() => { try { installOwnerGuard(); installPin(); installUnpin(); installOwnerCommand(); } catch (_) {} }, ms);
       if (t && t.unref) t.unref();
     } catch (_) {}
   }
@@ -416,4 +679,6 @@ module.exports.apply = install;
 module.exports.pinQuoted = pinQuoted;
 module.exports.groupIsProtected = groupIsProtected;
 module.exports.ownerJid = ownerJid;
+module.exports.installOwnerCommand = installOwnerCommand;
+module.exports.handleOwnerCommand = handleOwnerCommand;
 module.exports.TAG = TAG;

@@ -19,7 +19,7 @@ const path = require('node:path');
 // ── 1. Core Bot & Owner Identity ──────────────────────────────────────────
 const rawOwnerNumber = (process.env.OWNER_NUMBER || process.env.OWNER || '').replace(/[^0-9]/g, '');
 const ownerNumber = rawOwnerNumber || '234';
-const ownerName = process.env.OWNER_NAME || process.env.BOT_ACTIVE_USER || 'Precious';
+const ownerName = process.env.OWNER_NAME || process.env.BOT_ACTIVE_USER || '𖤐JINX𖤐';
 const botName = process.env.BOT_NAME || 'MIAS LITE MDX';
 
 global.BOT_NAME = botName;
