@@ -1,14 +1,13 @@
 // Settings command, moved out of mias/index.js. Handler code is unchanged.
 // Everything it needs is passed in through `ctx`.
-import { installUpdateCommand, registerAutoUpdateSettings } from "./updateCommand.js";
+import { installUpdateCommand } from "./updateCommand.js";
 
 export function installSettingsCommand(ctx) {
   const { cmd, getSender, isOwner, isSudo, isGroup, isGroupAdmin, sendReply, settingsSession, getSettings, getBotPic, CONFIG, buildSettingsMenu } = ctx;
 
-  // Install update commands (.update, .autoupdate) and register 45.1/45.2 in SETTINGS_MAP
+  // Install update commands (.update, .check-up, .commits, .rollback, .autoupdate)
   try {
     installUpdateCommand(ctx);
-    registerAutoUpdateSettings(getSettings);
   } catch (err) {
     console.warn("[SETTINGS] Update command setup notice:", err?.message || err);
   }
@@ -56,12 +55,6 @@ export function installSettingsCommand(ctx) {
         ]
       },
       {
-        title: "🔄 Updates & Maintenance",
-        rows: [
-          { id: "45.1", title: `Auto Update [${s.autoUpdate ? "ON" : "OFF"}]`, description: "Automatically detect & apply new GitHub commits" },
-        ]
-      },
-      {
         title: "🏷️ Verified Badges & Context",
         rows: [
           { id: "32.1", title: `Status Reply (Meta AI) [${s.statusReply ? "ON" : "OFF"}]`, description: "Meta AI verified blue badge on replies" },
@@ -98,9 +91,7 @@ Select a setting from the interactive menu below to toggle:`, settingsSections, 
     }
 
     if (!nativeSuccess) {
-      const isAuto = Boolean(s.autoUpdate);
-      const autoUpdateBlock = `\n╭━━❮ *𝗔𝘂𝘁𝗼 𝗨𝗽𝗱𝗮𝘁𝗲* ❯━━╮\n┃ 45.1 ᴇɴᴀʙʟᴇ  ${isAuto ? '✅' : ''}\n┃ 45.2 ᴅɪsᴀʙʟᴇ  ${!isAuto ? '✅' : ''}\n╰━━━━━━━━━━━╯`;
-      const settingsText = buildSettingsMenu(jid) + autoUpdateBlock;
+      const settingsText = buildSettingsMenu(jid);
       if (settingsPic) {
         try {
           await sock.sendMessage(jid, { image: settingsPic, caption: settingsText }, { quoted: msg });
