@@ -263,11 +263,19 @@ function readRollbackState() {
 function writeBuildStamp(sha, message = "Rollback", author = "MIAS LITE MDX") {
   try {
     const stampDir = path.join(REPO_ROOT, "lib");
+    const stampFile = path.join(stampDir, "precious-build-stamp.json");
     if (!fs.existsSync(stampDir)) fs.mkdirSync(stampDir, { recursive: true });
+    let existing = {};
+    if (fs.existsSync(stampFile)) {
+      try {
+        existing = JSON.parse(fs.readFileSync(stampFile, "utf8"));
+      } catch {}
+    }
     fs.writeFileSync(
-      path.join(stampDir, "precious-build-stamp.json"),
+      stampFile,
       JSON.stringify(
         {
+          ...existing,
           sha: String(sha).toLowerCase(),
           commit: String(sha).toLowerCase(),
           buildSha: String(sha).toLowerCase(),
@@ -637,7 +645,7 @@ export function installUpdateCommand(ctx) {
         await sock.sendMessage(jid, { react: { text: "✅", key: msg.key } }).catch(() => {});
         const upToDateText =
           `✅ *All systems up to date!*\n` +
-          `📌 *Commit:* \`${local.sha.slice(0, 7)}\`\n` +
+          `📌 *Commit:* \`${local.sha.slice(0, 7)}\` 🟢 *(current)*\n` +
           `📝 *Fixed:* _${remote.message}_\n` +
           `👤 *Author:* ${remote.author}`;
         await editOrSend(sock, jid, upToDateText, liveKey, msg);
@@ -698,7 +706,7 @@ export function installUpdateCommand(ctx) {
         await sock.sendMessage(jid, { react: { text: "✅", key: msg.key } }).catch(() => {});
         const upToDateText =
           `✅ *Already on latest commit!*\n` +
-          `📌 *Commit:* \`${local.sha.slice(0, 7)}\`\n` +
+          `📌 *Commit:* \`${local.sha.slice(0, 7)}\` 🟢 *(current)*\n` +
           `📝 *Fixed:* _${remote.message}_`;
         await editOrSend(sock, jid, upToDateText, liveKey, msg);
         return;
@@ -770,23 +778,24 @@ export function installUpdateCommand(ctx) {
         return;
       }
 
-      const currentSha = (local.sha || allCommits[0]?.sha || "").slice(0, 7);
+      const currentSha = (local.sha || allCommits[0]?.sha || "").slice(0, 7).toLowerCase();
+      const commitsToShow = allCommits.slice(0, 10);
 
-      // Rollback options are commits starting from the previous commit (index 1)
-      // or if index 0 is current, list previous commits with 1..N
-      const rollbackCandidates = allCommits.filter((c) => c.shortSha !== currentSha).slice(0, 8);
+      // Render recent commits with 🟢 (current) labeled on the running commit
+      let listText = `📜 *Recent Commits:*\n\n📌 *Active (Running):* \`${currentSha}\`\n\n`;
 
-      // If allCommits[0] is current, rollbackCandidates[0] is the previous commit (option 1)
-      let listText = `📜 *Recent Commits:*\n\n📌 *Active:* \`${currentSha}\`\n\n`;
-
-      rollbackCandidates.forEach((c, idx) => {
-        listText += `*[${idx + 1}]* \`${c.shortSha}\` — _${c.message}_\n`;
+      commitsToShow.forEach((c, idx) => {
+        const isCurrent =
+          c.shortSha === currentSha ||
+          (local.sha && c.sha.toLowerCase() === local.sha.toLowerCase());
+        const label = isCurrent ? " 🟢 *(current)*" : "";
+        listText += `*[${idx + 1}]* \`${c.shortSha}\`${label} — _${c.message}_\n`;
       });
 
       listText += `\n💡 Use \`${P}rollback <number>\` or \`${P}rollback\` for previous.`;
 
-      // Cache candidate list for fast lookup in .rollback
-      saveRecentCommitsCache(rollbackCandidates);
+      // Cache commit list for fast lookup in .rollback
+      saveRecentCommitsCache(commitsToShow);
 
       await sendReply(sock, msg, listText);
     }
@@ -805,6 +814,9 @@ export function installUpdateCommand(ctx) {
         await sendReply(sock, msg, "🚫 *Access Denied:* Rollback is restricted to Bot Owner / Sudo.");
         return;
       }
+
+      const local = readLocalCommit();
+      const currentSha = (local.sha || "").slice(0, 7).toLowerCase();
 
       const arg = String(args?.[0] || "").trim();
       let targetSha = null;
@@ -832,19 +844,21 @@ export function installUpdateCommand(ctx) {
       } else {
         // 3. No argument: rollback to previous commit
         const state = readRollbackState();
-        if (state?.previousSha) {
+        if (state?.previousSha && state.previousSha.slice(0, 7).toLowerCase() !== currentSha) {
           targetSha = state.previousSha;
           targetMsg = state.previousMessage || "Previous commit";
         } else {
-          // Fallback to reading HEAD~1 from commits
+          // Fallback to reading first non-current commit from cache/API
           let cached = readRecentCommitsCache();
           if (!cached || cached.length === 0) {
-            cached = await fetchRecentCommits(5);
+            cached = await fetchRecentCommits(10);
           }
           if (cached && cached.length > 0) {
-            const picked = cached[0];
-            targetSha = picked.sha;
-            targetMsg = picked.message;
+            const prev = cached.find((c) => c.shortSha !== currentSha);
+            if (prev) {
+              targetSha = prev.sha;
+              targetMsg = prev.message;
+            }
           }
         }
       }
@@ -859,6 +873,14 @@ export function installUpdateCommand(ctx) {
       }
 
       const shortTarget = targetSha.slice(0, 7);
+      if (currentSha && shortTarget === currentSha) {
+        await sendReply(
+          sock,
+          msg,
+          `⚠️ \`${shortTarget}\` is already the current running version!\nPick an earlier commit from \`${P}commits\` (e.g. \`${P}rollback 2\`).`
+        );
+        return;
+      }
       await sock.sendMessage(jid, { react: { text: "🔄", key: msg.key } }).catch(() => {});
 
       // Frame 1: Rolling back
