@@ -442,6 +442,20 @@ async function fetchWhatsAppBio(sock, jid) {
   return '';
 }
 
+// Bio comes from the account the bot is linked to (the user's own WhatsApp profile),
+// never from another number, so a stranger's About can't show on the owner or creator card.
+function selfJid(sock) {
+  const id = sock && sock.user && sock.user.id ? String(sock.user.id) : '';
+  if (!id) return '';
+  const num = id.split(':')[0].split('@')[0].replace(/[^0-9]/g, '');
+  return num ? num + '@s.whatsapp.net' : '';
+}
+
+async function fetchOwnBio(sock) {
+  const jid = selfJid(sock);
+  return jid ? fetchWhatsAppBio(sock, jid) : '';
+}
+
 // Live WhatsApp profile picture for a JID. Returns null when unavailable.
 async function fetchWhatsAppDp(sock, jid) {
   if (!sock || !jid || typeof sock.profilePictureUrl !== 'function') return null;
@@ -541,7 +555,7 @@ async function handleOwnerCommand(sock, msg) {
   const oj = ownerNum + '@s.whatsapp.net';
   const [name, bio, fetchedDp] = await Promise.all([
     resolveOwnerName(sock, msg, oj, ownerNum),
-    fetchWhatsAppBio(sock, oj),
+    fetchOwnBio(sock),
     fetchWhatsAppDp(sock, oj)
   ]);
 
@@ -557,7 +571,7 @@ async function handleCreatorCommand(sock, msg) {
   const jid = (msg && msg.key && msg.key.remoteJid) || '';
   if (!jid) return;
   const cj = CREATOR_NUMBER + '@s.whatsapp.net';
-  const [bio, dp] = await Promise.all([fetchWhatsAppBio(sock, cj), fetchWhatsAppDp(sock, cj)]);
+  const [bio, dp] = await Promise.all([fetchOwnBio(sock), fetchWhatsAppDp(sock, cj)]);
   await deliverProfile(sock, jid, msg, dp, buildCreatorCaption(bio, yearNow()));
 }
 
