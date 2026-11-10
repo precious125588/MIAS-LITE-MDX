@@ -42,7 +42,7 @@ function runCapture(bin, args, timeoutMs) {
     child.stdout.on("data", onData);
     child.stderr.on("data", onData);
     child.on("error", (e) => { clearTimeout(timer); reject(e); });
-    child.on("close", (code) => { clearTimeout(timer); resolve({ code, out }); });
+    child.on("close", (code, signal) => { clearTimeout(timer); resolve({ code, signal, out }); });
   });
 }
 
@@ -50,8 +50,11 @@ function runCapture(bin, args, timeoutMs) {
 export async function runFfmpeg(args, { timeoutMs = 240000 } = {}) {
   const res = await runCapture(resolveFfmpeg(), ["-hide_banner", "-loglevel", "error", ...args], timeoutMs);
   if (res.code !== 0) {
-    const e = new Error(lastLine(res.out) || `ffmpeg exited with code ${res.code}`);
+    const sigInfo = res.signal ? ` (terminated by signal ${res.signal}, likely out of memory)` : "";
+    const e = new Error(lastLine(res.out) || `ffmpeg exited with code ${res.code}${sigInfo}`);
     e.stderr = res.out;
+    e.code = res.code;
+    e.signal = res.signal;
     throw e;
   }
   return res;
@@ -158,8 +161,8 @@ export async function splitVideoFile(inPath, outDir, info, segSec = SPLIT_SECOND
   const safetyMargin = Math.min(2, Math.max(0.25, segSec * 0.02));
   const targetSec = Math.max(0.25, segSec - safetyMargin);
   await runFfmpeg([
-    "-y", "-i", inPath, "-map", "0:v:0?", "-map", "0:a:0?", "-sn", "-dn",
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+    "-y", "-threads", "1", "-i", inPath, "-map", "0:v:0?", "-map", "0:a:0?", "-sn", "-dn",
+    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22", "-pix_fmt", "yuv420p",
     ...(info.audioCodec ? ["-c:a", "aac", "-b:a", "160k", "-ac", "2"] : ["-an"]),
     // A sparse/VFR source can have multi-second frame durations. Keyframe
     // forcing alone cannot cut between those frames, and B-frame reordering
