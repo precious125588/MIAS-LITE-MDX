@@ -20,6 +20,7 @@ import alwaysOnline from "./alwaysOnline.cjs";
 import { createRequire as _createRequire } from "module";
 const _req = _createRequire(import.meta.url);
 const { classifyDisconnect } = _req("./connectionPolicy.cjs");
+const { notifyOnline } = _req("./lowMemLogPolicy.cjs");
 
 // ── Health state constants ─────────────────────────────────────────
 export const HEALTH = {
@@ -249,7 +250,7 @@ async function _probeSocket(sock) {
       );
       return true;
     } catch (err) {
-      console.warn(`[Watchdog] Server ping failed: ${err?.message || err}`);
+      console.error(`[Watchdog] Server ping failed: ${err?.message || err}`);
       return false;
     }
   }
@@ -269,7 +270,7 @@ function _requestReconnect(reason) {
     console.error("[Watchdog] Not reconnecting: WhatsApp logged this device out. Re-pair the number.");
     return;
   }
-  console.log(`[Watchdog] 🔴 ${reason} — scheduling reconnect`);
+  console.error(`[Watchdog] Reconnect scheduled: ${reason}`);
   setTimeout(() => {
     try { _onReconnect(reason); } catch {}
   }, 3_000);
@@ -305,7 +306,7 @@ async function _silentInboundRecheck() {
   if (alive === false) {
     _requestReconnect("watchdog-silent-zombie");
   } else if (alive === true) {
-    console.log(`[Watchdog] No inbound messages for ${silentMin}min, ping answered — refreshing connection to restore the message stream`);
+    console.error(`[Watchdog] No inbound messages for ${silentMin}min; refreshing the WhatsApp connection`);
     _requestReconnect("watchdog-no-inbound-messages");
   }
 }
@@ -332,7 +333,7 @@ async function _selfHeal(reason, status) {
   _state.healAttempts++;
   _state.lastHealMs = now;
 
-  console.log(`[Watchdog] 🔧 Self-heal: ${reason} (status=${status})`);
+  console.error(`[Watchdog] Recovery started: ${reason} (status=${status})`);
 
   try {
     // ── Step 1: Clear stuck in-flight queue ──────────────────────
@@ -345,7 +346,7 @@ async function _selfHeal(reason, status) {
         }
       }
       _state.queueSize = _inFlight.size;
-      if (stuck.length) console.log(`[Watchdog] Cleared ${stuck.length} stuck commands: ${stuck.slice(0, 5).join(", ")}`);
+      if (stuck.length) console.error(`[Watchdog] Cleared ${stuck.length} stuck commands`);
     }
 
     // ── Step 2: Refresh group metadata cache ─────────────────────
@@ -364,7 +365,7 @@ async function _selfHeal(reason, status) {
             refreshed++;
           } catch {}
         }
-        console.log(`[Watchdog] Group meta refreshed: ${refreshed} groups`);
+        // Routine maintenance is intentionally silent.
       } catch (e) {
         console.warn(`[Watchdog] Group meta refresh failed: ${e?.message}`);
       }
@@ -377,9 +378,9 @@ async function _selfHeal(reason, status) {
           _sock.fetchAppState?.(["critical_block", "critical_unblock_to_primary"]) ?? Promise.resolve(),
           new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 10_000)),
         ]);
-        console.log("[Watchdog] App-state resynced");
+        // Routine maintenance is intentionally silent.
       } catch (e) {
-        if (!/timeout/i.test(e?.message)) console.warn(`[Watchdog] App-state sync failed: ${e?.message}`);
+        if (!/timeout/i.test(e?.message)) console.error(`[Watchdog] App-state sync failed: ${e?.message}`);
       }
     }
 
@@ -392,7 +393,7 @@ async function _selfHeal(reason, status) {
       if (alive === true) {
         if (_state.status === HEALTH.DEGRADED) {
           _state.status = HEALTH.WARNING;
-          console.log("[Watchdog] Server ping answered after heal — upgraded to WARNING");
+          // Healthy response is intentionally silent.
         }
         if (_alwaysOnlineEnabled()) {
           try { await alwaysOnline.sendPresenceUpdateWithTimeout(_sock, "available", 5_000); } catch {}
@@ -422,7 +423,7 @@ async function _tick() {
 
     if (issues.length > 0) {
       const tag = status === HEALTH.HEALTHY ? "" : ` [${status}]`;
-      console.log(`[Watchdog]${tag} score=${score} | ${issues.join(" | ")}`);
+      if (status !== HEALTH.HEALTHY) console.error(`[Watchdog]${tag} score=${score} | ${issues.join(" | ")}`);
     }
 
     // Heal whenever the session is DEGRADED or BROKEN. _selfHeal enforces the
@@ -474,6 +475,7 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
   // ── Observe connection state ─────────────────────────────────
   _connUpdateListener = ({ connection, lastDisconnect }) => {
     if (connection === "open") {
+      notifyOnline();
       _state.loggedOut = false;
       _state.reconnects++;
       _state.lastMsgReceived = Date.now();
@@ -495,7 +497,7 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
         console.error(`[Watchdog] ❌ ${decision.message || 'Connection closed permanently'}`);
       } else if (decision.action === 'retry') {
         const delay = decision.delayMs || 800;
-        console.log(`[Watchdog] 🔄 ${decision.isRestartRequired ? 'Restart required (515)' : 'Transient disconnect'} — reconnecting in ${delay}ms`);
+        console.error(`[Watchdog] Connection interrupted; retrying in ${delay}ms`);
         setTimeout(() => {
           try {
             if (typeof _onReconnect === 'function') {
@@ -504,7 +506,7 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
           } catch {}
         }, delay);
       } else if (decision.action === 'pause') {
-        console.warn(`[Watchdog] ⏸ ${decision.message || 'Connection paused'}`);
+        console.error(`[Watchdog] Connection paused: ${decision.message || 'unknown reason'}`);
       }
     }
   };
@@ -516,7 +518,7 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
   _preKeyTimer = setInterval(_preKeyCheck, PREKEY_CHECK_MS);
   if (_preKeyTimer?.unref) _preKeyTimer.unref();
 
-  console.log("[Watchdog] Started — health check every 60s");
+  // Startup status is logged once by the primary runtime after WhatsApp opens.
 }
 
 export function stopWatchdog() {

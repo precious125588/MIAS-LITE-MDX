@@ -1,47 +1,84 @@
-// lowMemLogPolicy.cjs — adaptive log filtering and periodic log clearing
-// Enforces low-RAM panel requirements:
-//  - In low-memory containers (or when PANEL_LOW_MEM is set), suppresses routine logs
-//  - Only logs: "[CONNECTED]", "connected to WhatsApp", critical errors, and panic messages
-//  - Clears retained logs periodically (every 30 mins)
+// lowMemLogPolicy.cjs — Strict clean log policy and memory protection
+// Enforces clean panel & bot logs:
+//  - Suppresses all routine noise, debug lines, and startup spam
+//  - ONLY prints: "MIAS LITE MDX is online" upon successful WhatsApp connection
+//  - ONLY prints critical error logs (console.error) so issues can be diagnosed
+//  - Clears retained logs periodically to keep RAM footprint minimal
 
-const os = require('os');
 
-function isLowMemEnv() {
-  if (process.env.PANEL_LOW_MEM === '1' || process.env.LOW_MEM === '1') return true;
-  if (process.env.PANEL_LOW_MEM === '0') return false;
-  const total = os.totalmem ? (os.totalmem() / (1024 * 1024)) : 1024;
-  return total <= 600; // <= 512MB or 600MB panel container
+let _onlineLogged = false;
+let _origLog = null;
+let _origInfo = null;
+let _origWarn = null;
+let _origError = null;
+
+function isQuietMode() {
+  if (process.env.DEBUG_LOGS === '1' || process.env.VERBOSE === '1') return false;
+  return true;
+}
+
+function formatLogArgument(value) {
+  if (value && typeof value === 'object' && typeof value.message === 'string') return value.message;
+  if (typeof value === 'string') return value;
+  try { return JSON.stringify(value); } catch { return String(value); }
+}
+
+function notifyOnline() {
+  if (!_onlineLogged) {
+    _onlineLogged = true;
+    const printer = _origLog || console.log;
+    printer('MIAS LITE MDX is online');
+  }
+}
+
+function resetOnlineFlag() {
+  _onlineLogged = false;
+}
+
+function isOnlineIndicator(str) {
+  return /connected to whatsapp|mais is connected|mias is connected|\[connected\]|session registered|online & ready|connection opened/i.test(str);
 }
 
 function installLogFilter(runtimeLogs = [], maxAgeMs = 30 * 60 * 1000) {
-  const isLow = isLowMemEnv();
-  const origLog = console.log;
-  const origInfo = console.info || console.log;
-  const origWarn = console.warn || console.log;
-  const origError = console.error;
+  if (globalThis.__LOG_FILTER_INSTALLED__) {
+    return { alreadyInstalled: true };
+  }
+  globalThis.__LOG_FILTER_INSTALLED__ = true;
 
-  const isImportantLog = (str) => {
-    return /connected|mais is connected|mias is connected|pairing code|session registered|ready/i.test(str);
-  };
+  _origLog = console.log;
+  _origInfo = console.info || console.log;
+  _origWarn = console.warn || console.log;
+  _origError = console.error;
 
-  if (isLow) {
+  const quiet = isQuietMode();
+
+  if (quiet) {
     console.log = function(...args) {
-      const msg = args.map(a => (a && a.message) || (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-      if (isImportantLog(msg)) {
-        return origLog.apply(console, args);
+      const msg = args.map(formatLogArgument).join(' ');
+      if (isOnlineIndicator(msg)) {
+        notifyOnline();
       }
+      // Everything else suppressed by default
     };
+
     console.info = function(...args) {
-      const msg = args.map(a => (a && a.message) || (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-      if (isImportantLog(msg)) {
-        return origInfo.apply(console, args);
+      const msg = args.map(formatLogArgument).join(' ');
+      if (isOnlineIndicator(msg)) {
+        notifyOnline();
       }
     };
+
     console.warn = function(...args) {
-      const msg = args.map(a => (a && a.message) || (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-      if (/error|warn|fail|critical/i.test(msg)) {
-        return origWarn.apply(console, args);
+      const msg = args.map(formatLogArgument).join(' ');
+      // Only permit real critical warnings through
+      if (/critical|panic|fatal|unhandled/i.test(msg)) {
+        return _origWarn.apply(console, args);
       }
+    };
+
+    console.error = function(...args) {
+      // Errors are ALWAYS logged in full
+      return _origError.apply(console, args);
     };
   }
 
@@ -58,7 +95,13 @@ function installLogFilter(runtimeLogs = [], maxAgeMs = 30 * 60 * 1000) {
   }, maxAgeMs);
   if (cleanerInterval.unref) cleanerInterval.unref();
 
-  return { isLow, cleanerInterval };
+  return { quiet, cleanerInterval, notifyOnline, resetOnlineFlag };
 }
 
-module.exports = { isLowMemEnv, installLogFilter };
+module.exports = {
+  isLowMemEnv: () => true,
+  isQuietMode,
+  installLogFilter,
+  notifyOnline,
+  resetOnlineFlag,
+};
