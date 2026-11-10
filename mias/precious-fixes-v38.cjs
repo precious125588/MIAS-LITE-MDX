@@ -419,14 +419,24 @@ function pickStatusText(res, depth) {
 }
 
 // Live WhatsApp About/bio for a JID. Returns '' when unavailable (no hardcoded bio).
+// Baileys returns a list like [{ id, status: { status, setAt } }]; only entries for the requested
+// account are used, so another account's About can never be shown.
 async function fetchWhatsAppBio(sock, jid) {
   if (!sock || !jid) return '';
+  const want = digits(jid);
   const getters = [sock.fetchStatus, sock.getStatus];
   for (const fn of getters) {
     if (typeof fn !== 'function') continue;
     try {
-      const text = pickStatusText(await fn.call(sock, jid));
-      if (text) return text.replace(/\s+/g, ' ').trim();
+      const res = await fn.call(sock, jid);
+      const items = Array.isArray(res) ? res : [res];
+      for (const item of items) {
+        const id = item && typeof item === 'object' ? String(item.id || '') : '';
+        const got = digits(id);
+        if (got && want && got !== want && !/@lid$/.test(id)) continue;   // a different account
+        const text = pickStatusText(item);
+        if (text) return text.replace(/\s+/g, ' ').trim();
+      }
     } catch (_) {}
   }
   return '';
