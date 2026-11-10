@@ -24,6 +24,8 @@ const REPO_BRANCH = process.env.REPO_BRANCH || "main";
 const PENDING_FILE = path.join(REPO_ROOT, "nexstore", "pending-update.json");
 const PENDING_FALLBACK = path.join(REPO_ROOT, "database", "pending-update.json");
 const AUTO_UPDATE_NOTICE = path.join(REPO_ROOT, "nexstore", "pending-auto-notice.json");
+const ROLLBACK_FILE = path.join(REPO_ROOT, "nexstore", "rollback-state.json");
+const ROLLBACK_FALLBACK = path.join(REPO_ROOT, "database", "rollback-state.json");
 
 let settingsHelper = null;
 try {
@@ -121,6 +123,52 @@ export function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || null) {
 }
 
 /**
+ * Save the last known-good commit before an updater reset so the owner can roll back.
+ */
+function saveRollbackState(previousSha, nextSha, message = "") {
+  if (!previousSha || !/^[0-9a-f]{7,40}$/i.test(String(previousSha))) return false;
+  const record = {
+    previousSha: String(previousSha),
+    updatedToSha: nextSha ? String(nextSha) : null,
+    previousMessage: message,
+    savedAt: new Date().toISOString(),
+  };
+  for (const target of [ROLLBACK_FILE, ROLLBACK_FALLBACK]) {
+    try {
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      const tmp = `${target}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(record, null, 2), "utf8");
+      fs.renameSync(tmp, target);
+      return true;
+    } catch {}
+  }
+  return false;
+}
+
+function readRollbackState() {
+  for (const target of [ROLLBACK_FILE, ROLLBACK_FALLBACK]) {
+    try {
+      const record = JSON.parse(fs.readFileSync(target, "utf8"));
+      if (/^[0-9a-f]{7,40}$/i.test(String(record?.previousSha || ""))) return record;
+    } catch {}
+  }
+  return null;
+}
+
+function writeBuildStamp(sha, message = "Rollback", author = "MIAS LITE MDX") {
+  try {
+    const stampDir = path.join(REPO_ROOT, "lib");
+    if (!fs.existsSync(stampDir)) fs.mkdirSync(stampDir, { recursive: true });
+    fs.writeFileSync(path.join(stampDir, "precious-build-stamp.json"), JSON.stringify({
+      sha, commit: sha, buildSha: sha, message, author,
+      updatedAt: new Date().toISOString(), source: "mias-updater",
+    }, null, 2), "utf8");
+  } catch (err) {
+    console.error("[UPDATER] Could not write build-stamp:", err?.message || err);
+  }
+}
+
+/**
  * Apply git pull / hard reset and update build stamp
  */
 export async function applyUpdateCode(remoteSha, commitMessage, author) {
@@ -129,6 +177,7 @@ export async function applyUpdateCode(remoteSha, commitMessage, author) {
   // 1. Pull via git if .git directory exists
   if (fs.existsSync(path.join(REPO_ROOT, ".git"))) {
     try {
+      const previousSha = execSync("git rev-parse HEAD", { cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
       execSync("git config pull.rebase false", { cwd: REPO_ROOT, stdio: "ignore" });
       execSync(`git fetch origin ${REPO_BRANCH} --depth=1 --quiet || git fetch origin ${REPO_BRANCH} --quiet`, {
         cwd: REPO_ROOT,
@@ -138,36 +187,16 @@ export async function applyUpdateCode(remoteSha, commitMessage, author) {
         cwd: REPO_ROOT,
         stdio: "ignore",
       });
+      const installedSha = execSync("git rev-parse HEAD", { cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+      if (previousSha !== installedSha) saveRollbackState(previousSha, installedSha, commitMessage);
       pulled = true;
     } catch (err) {
-      console.warn("[UPDATER] Git reset/pull notice:", err?.message || err);
+      console.error("[UPDATER] Git reset/pull failed:", err?.message || err);
     }
   }
 
-  // 2. Always write updated build stamp so local build reflects the new SHA
-  try {
-    const stampDir = path.join(REPO_ROOT, "lib");
-    if (!fs.existsSync(stampDir)) fs.mkdirSync(stampDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(stampDir, "precious-build-stamp.json"),
-      JSON.stringify(
-        {
-          sha: remoteSha,
-          commit: remoteSha,
-          buildSha: remoteSha,
-          message: commitMessage,
-          author: author || "precious125588",
-          updatedAt: new Date().toISOString(),
-          source: "mias-updater",
-        },
-        null,
-        2
-      ),
-      "utf8"
-    );
-  } catch (err) {
-    console.warn("[UPDATER] Could not write build-stamp:", err?.message || err);
-  }
+  // 2. Always write updated build stamp so local build reflects the new SHA.
+  writeBuildStamp(remoteSha, commitMessage, author || "precious125588");
 
   return pulled;
 }
@@ -630,7 +659,51 @@ export function installUpdateCommand(ctx) {
     }
   );
 
-  // 2. Direct Auto-Update command toggle
+  // 2. Restore the previous update commit. Restricted to owner/sudo.
+  cmd(
+    ["rollback", "revertupdate", "undoupdate"],
+    { desc: "Roll back the latest updater change to the previous commit", category: "OWNER", ownerOnly: true },
+    async (sock, msg) => {
+      const jid = msg.key.remoteJid;
+      const sender = getSender(msg);
+      const isFromOwner = msg.key.fromMe || isOwner(sender) || (typeof isSudo === "function" && isSudo(sender));
+      if (!isFromOwner) {
+        await sendReply(sock, msg, "🚫 Rollback is restricted to the bot owner / sudo.");
+        return;
+      }
+
+      const state = readRollbackState();
+      if (!state) {
+        await sendReply(sock, msg, "No saved rollback point is available. Run a successful .update first.");
+        return;
+      }
+      if (!fs.existsSync(path.join(REPO_ROOT, ".git"))) {
+        await sendReply(sock, msg, "Rollback is unavailable in this deployment: the code checkout has no .git history. Use the hosting panel's previous deployment rollback.");
+        return;
+      }
+
+      const targetSha = String(state.previousSha);
+      if (!/^[0-9a-f]{7,40}$/i.test(targetSha)) {
+        await sendReply(sock, msg, "Rollback was cancelled because the saved commit ID is invalid.");
+        return;
+      }
+
+      try {
+        execSync(`git cat-file -e ${targetSha}^{commit}`, { cwd: REPO_ROOT, stdio: "ignore" });
+        execSync(`git reset --hard ${targetSha}`, { cwd: REPO_ROOT, stdio: "ignore" });
+        const installedSha = execSync("git rev-parse HEAD", { cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+        if (installedSha !== targetSha) throw new Error("commit verification failed");
+        writeBuildStamp(installedSha, `Rollback to ${installedSha.slice(0, 7)}`, "MIAS LITE MDX");
+        await sendReply(sock, msg, `✅ Rolled back to commit ${installedSha.slice(0, 7)}. Restarting now.`);
+        setTimeout(() => process.exit(0), 1200);
+      } catch (err) {
+        console.error("[UPDATER] Rollback failed:", err?.message || err);
+        await sendReply(sock, msg, "❌ Rollback failed. Check the error log and use the hosting panel's deployment rollback if needed.");
+      }
+    }
+  );
+
+  // 3. Direct Auto-Update command toggle
   cmd(
     ["autoupdate", "autoupdater"],
     { desc: "Toggle automatic background commit updates (enable / disable)", category: "OWNER", ownerOnly: true },
@@ -703,7 +776,7 @@ export function installUpdateCommand(ctx) {
     }
   );
 
-  // 3. Fallback direct handlers for 45.1 and 45.2 replies
+  // 4. Fallback direct handlers for 45.1 and 45.2 replies
   cmd(["45.1"], { desc: "Enable Auto Update", category: "SETTINGS" }, async (sock, msg) => {
     const jid = msg.key.remoteJid;
     const sender = getSender(msg);

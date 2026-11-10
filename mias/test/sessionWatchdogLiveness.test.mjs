@@ -93,7 +93,7 @@ test('a live socket with no inbound messages for an hour is refreshed once', asy
   stopWatchdog();
 });
 
-test('an inbound message batch resets the silence clock and is logged without sender data', async () => {
+test('an inbound message batch resets the silence clock without routine log output', async () => {
   const sock = makeSocket({ readyState: 1, pingOk: true });
   const reasons = setup(sock);
   const lines = [];
@@ -104,8 +104,7 @@ test('an inbound message batch resets the silence clock and is logged without se
   } finally {
     console.log = orig;
   }
-  assert.ok(lines.some((l) => l.includes('inbound notify x1')), 'inbound batch should be logged');
-  assert.ok(!lines.some((l) => l.includes('1234@s.whatsapp.net')), 'sender id must not be logged');
+  assert.deepEqual(lines, [], 'routine inbound batches should not create log spam');
   _testing.setLastMessageAgo(0);
   await _testing.tick();
   await wait(100);
