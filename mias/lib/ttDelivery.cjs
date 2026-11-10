@@ -248,6 +248,7 @@ async function reencodeHdForWhatsApp(input, {
   maxBytes = TT_INLINE_VIDEO_MAX_BYTES,
   boost = HD_BOOST,
   sourceQualityBoost = null,
+  copyAudio: optCopyAudio = undefined,
 } = {}) {
   const inPath = typeof input === "string" ? input : input.path;
   ensureWorkDir();
@@ -259,7 +260,9 @@ async function reencodeHdForWhatsApp(input, {
 
   const kbps = pickHdBitrate(probe, boost, sourceQualityBoost);
   const deadline = Date.now() + timeoutMs;
-  const copyAudio = Boolean(probe && probe.audioCodec === "aac");
+  const copyAudio = optCopyAudio !== undefined
+    ? Boolean(optCopyAudio)
+    : Boolean(!probe || !probe.audioCodec || probe.audioCodec === "aac" || probe.audioCodec === "mp3");
   const encodeOpts = { copyAudio };
   let run = await runFfmpeg(HD_ARGS(inPath, out, kbps, encodeOpts), timeoutMs);
   // Killed by the kernel (usually out of memory), not by our timeout: the same encode once more with the low-memory settings.

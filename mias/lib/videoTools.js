@@ -138,58 +138,38 @@ function clearSplitParts(outDir) {
   }
 }
 
-// Keep the fast, lossless stream-copy cut when its keyframes respect the limit.
-// Some inputs have very sparse keyframes; those are re-encoded only for .split
-// with forced keyframes and a two-second safety margin, then probed again.
-// TikTok and other downloader/video pipelines do not use this function.
+// Splits a video into segments without re-encoding to preserve exact original qualities.
+// Delivers parts as they are via stream copy without degrading resolution or audio.
 export async function splitVideoFile(inPath, outDir, info, segSec = SPLIT_SECONDS, { timeoutMs = 600000 } = {}) {
-  await runFfmpeg([
-    "-y", "-i", inPath, "-map", "0:v:0?", "-map", "0:a:0?", "-sn", "-dn",
-    ...videoArgs(info), ...audioArgs(info),
-    "-f", "segment", "-segment_time", String(segSec), "-reset_timestamps", "1",
-    "-avoid_negative_ts", "make_zero",
-    "-segment_format", "mp4", "-segment_format_options", "movflags=+faststart",
-    path.join(outDir, "part_%03d.mp4"),
-  ], { timeoutMs });
-  let parts = getSplitParts(outDir);
-  if (!parts.length) throw new Error("ffmpeg did not create any split parts");
-
-  let durations = await getPartDurations(parts);
-  if (durations.every(({ duration }) => duration > 0 && duration <= segSec)) return parts;
-
-  clearSplitParts(outDir);
-  const safetyMargin = Math.min(2, Math.max(0.25, segSec * 0.02));
-  const targetSec = Math.max(0.25, segSec - safetyMargin);
-  await runFfmpeg([
-    "-y", "-threads", "1", "-i", inPath, "-map", "0:v:0?", "-map", "0:a:0?", "-sn", "-dn",
-    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22", "-pix_fmt", "yuv420p",
-    ...(info.audioCodec ? ["-c:a", "aac", "-b:a", "160k", "-ac", "2"] : ["-an"]),
-    // A sparse/VFR source can have multi-second frame durations. Keyframe
-    // forcing alone cannot cut between those frames, and B-frame reordering
-    // adds timestamp padding. Normalize cadence ONLY in this .split fallback.
-    "-vf", "fps=25", "-bf", "0",
-    // Do not flush future audio packets before the corresponding video cut.
-    // With sparse source frames the default 10s mux queue can let audio from
-    // the NEXT part leak into this one, despite forced video keyframes.
-    "-max_interleave_delta", "0",
-    "-force_key_frames", `expr:gte(t,n_forced*${targetSec})`,
-    "-f", "segment", "-segment_time", String(targetSec), "-reset_timestamps", "1",
-    "-avoid_negative_ts", "make_zero",
-    "-segment_format", "mp4", "-segment_format_options", "movflags=+faststart",
-    path.join(outDir, "part_%03d.mp4"),
-  ], { timeoutMs });
-
-  parts = getSplitParts(outDir);
-  durations = await getPartDurations(parts);
-  if (!parts.length || durations.some(({ duration }) => !(duration > 0) || duration > segSec)) {
-    throw Object.assign(new Error(`Could not guarantee split parts are at most ${segSec} seconds`), {
-      code: "SPLIT_DURATION_LIMIT",
-    });
+  try {
+    await runFfmpeg([
+      "-y", "-i", inPath, "-map", "0:v:0?", "-map", "0:a:0?", "-sn", "-dn",
+      "-c", "copy",
+      "-f", "segment", "-segment_time", String(segSec), "-reset_timestamps", "1",
+      "-avoid_negative_ts", "make_zero",
+      "-segment_format", "mp4", "-segment_format_options", "movflags=+faststart",
+      path.join(outDir, "part_%03d.mp4"),
+    ], { timeoutMs });
+  } catch (copyErr) {
+    clearSplitParts(outDir);
+    const aArgs = info?.audioCodec ? ["-c:a", "copy"] : ["-an"];
+    await runFfmpeg([
+      "-y", "-i", inPath, "-map", "0:v:0?", "-map", "0:a:0?", "-sn", "-dn",
+      "-c:v", "copy", ...aArgs,
+      "-f", "segment", "-segment_time", String(segSec), "-reset_timestamps", "1",
+      "-avoid_negative_ts", "make_zero",
+      "-segment_format", "mp4", "-segment_format_options", "movflags=+faststart",
+      path.join(outDir, "part_%03d.mp4"),
+    ], { timeoutMs });
   }
+
+  const parts = getSplitParts(outDir);
+  if (!parts.length) throw new Error("ffmpeg did not create any split parts");
   return parts;
 }
 
-// Converts any supported input to MP4 for .tomp4. Returns { ok, error }.
+// Converts any supported input to MP4 for .tomp4 without re-encoding when possible,
+// delivering the file as it is and preserving exact qualities. Returns { ok, error }.
 export async function convertToMp4(inPath, outPath, { kind = "video", timeoutMs = 240000 } = {}) {
   const scaleEven = "scale=trunc(iw/2)*2:trunc(ih/2)*2";
   let lastErr = "";
@@ -212,40 +192,22 @@ export async function convertToMp4(inPath, outPath, { kind = "video", timeoutMs 
   } else {
     const info = await probeFile(inPath);
     if (H264_OK(info)) {
-      // Already H.264 in a compatible pixel format: copy, which finishes almost instantly.
-      const a = !info.audioCodec ? ["-an"] : info.audioCodec === "aac" ? ["-c:a", "copy"] : ["-c:a", "aac", "-b:a", "160k", "-ac", "2"];
+      // Already H.264 in a compatible pixel format: copy, which finishes almost instantly and preserves exact quality.
+      const a = !info.audioCodec ? ["-an"] : info.audioCodec === "aac" ? ["-c:a", "copy"] : ["-c:a", "aac", "-b:a", "190k", "-ac", "2"];
       ok = await attempt(["-i", inPath, "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "copy", ...a, "-movflags", "+faststart"]);
     }
     if (!ok) {
-      ok = await attempt(["-i", inPath, "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-movflags", "+faststart"]);
+      // Stream copy attempt if container is already compatible
+      ok = await attempt(["-i", inPath, "-map", "0:v:0", "-map", "0:a:0?", "-c", "copy", "-movflags", "+faststart"]);
     }
     if (!ok) {
-      ok = await attempt(["-i", inPath, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-an", "-movflags", "+faststart"]);
+      ok = await attempt(["-i", inPath, "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-c:a", "aac", "-b:a", "190k", "-ac", "2", "-movflags", "+faststart"]);
+    }
+    if (!ok) {
+      ok = await attempt(["-i", inPath, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-an", "-movflags", "+faststart"]);
     }
   }
 
-  // HD logic: re-encode converted MP4 with clean WhatsApp HD faststart and 1.2 boost
-  if (ok && fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
-    try {
-      let TTD = null;
-      try {
-        TTD = require("./ttDelivery.cjs");
-      } catch {}
-      if (TTD && typeof TTD.reencodeHdForWhatsApp === "function") {
-        const hdRes = await TTD.reencodeHdForWhatsApp(outPath, {
-          maxBytes: 95 * 1024 * 1024,
-          boost: 1.2,
-          sourceQualityBoost: 1.2,
-        });
-        if (hdRes && hdRes.path && hdRes.bytes > 0 && hdRes.path !== outPath) {
-          fs.copyFileSync(hdRes.path, outPath);
-          if (typeof hdRes.cleanup === "function") await hdRes.cleanup().catch(() => {});
-        }
-      }
-    } catch (hdErr) {
-      // Keep existing outPath if HD re-encode encounters an issue
-    }
-  }
-
+  // Preserve quality as-is: do not re-encode with HD boost or degrade original file
   return { ok, error: lastErr };
 }

@@ -79,7 +79,11 @@ function buildFfmpegArgs(inputPath, outputPath, opts, profile) {
   const bufsize = sourceBoostKbps
     ? `${Math.max(sourceBoostKbps * 2, 250)}k`
     : (lowMemory ? "8M" : "16M");
-  const copyAudio = Boolean(opts.sourceProbe && opts.sourceProbe.audioCodec === "aac");
+    // TT HD 1.3 audio strategy: stream copy audio to preserve bit-exact quality and prevent cracking/stuttering.
+  // When copyAudio is requested or source is AAC/MP3/compatible audio, copy the audio stream without re-encoding.
+  const copyAudio = opts.copyAudio !== undefined
+    ? Boolean(opts.copyAudio)
+    : Boolean(!opts.sourceProbe || !opts.sourceProbe.audioCodec || opts.sourceProbe.audioCodec === "aac" || opts.sourceProbe.audioCodec === "mp3");
   return [
     "-y",
     "-v", "error",
@@ -104,7 +108,7 @@ function buildFfmpegArgs(inputPath, outputPath, opts, profile) {
     "-force_key_frames", "expr:gte(t,n_forced*2)",
     ...(copyAudio
       ? ["-c:a", "copy"]
-      : ["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-ar", "44100"]),
+      : ["-c:a", "aac", "-b:a", "190k", "-ac", "2", "-ar", "48000"]),
     "-avoid_negative_ts", "make_zero",
     "-shortest",
     "-max_muxing_queue_size", "1024",
@@ -232,6 +236,15 @@ async function processVideoTo4k(input, opts = {}) {
       const maxOutputBytes = Number(opts.maxOutputBytes) > 0 ? Number(opts.maxOutputBytes) : MAX_4K_OUTPUT_BYTES;
       let run = await runFfmpeg(ffmpegBin, buildFfmpegArgs(inputPath, outputPath, processingOpts, "normal"), timeoutMs);
 
+      // If stream copy audio failed on an incompatible container/codec, retry with TT HD 1.3 clean AAC transcode
+      if ((run.code !== 0 || run.error) && !run.timedOut && run.signal !== "SIGKILL" && processingOpts.copyAudio !== false) {
+        removeFile(outputPath);
+        const remaining = deadline - Date.now();
+        if (remaining > 0) {
+          run = await runFfmpeg(ffmpegBin, buildFfmpegArgs(inputPath, outputPath, { ...processingOpts, copyAudio: false }, "normal"), remaining);
+        }
+      }
+
       // Killed by the kernel (usually out of memory), not by our timeout: retry once with the low-memory profile.
       if (!run.error && run.signal === "SIGKILL" && !run.timedOut) {
         removeFile(outputPath);
@@ -339,6 +352,7 @@ async function processVideoTo4k(input, opts = {}) {
 }
 
 module.exports = {
+  buildFfmpegArgs,
   processVideoTo4k,
   resolveFfmpegPath,
 };
