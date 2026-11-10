@@ -284,7 +284,7 @@ async function _probeOnly() {
   if (alive === false) {
     _requestReconnect("watchdog-silent-zombie");
   } else if (alive === true) {
-    console.log("[Watchdog] Silent, but server ping answered — socket is alive");
+    // ping log silenced
   }
 }
 
@@ -466,7 +466,7 @@ export function startWatchdog(sock, sessionPath, onReconnect) {
   _msgUpsertListener = ({ messages = [], type } = {}) => {
     if (messages.length > 0) {
       recordMessageReceived();
-      console.log(`[Watchdog] inbound ${type || "?"} x${messages.length}`);
+      // inbound message log silenced
     }
   };
   try { sock.ev.on("messages.upsert", _msgUpsertListener); } catch {}

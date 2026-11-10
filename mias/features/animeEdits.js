@@ -864,7 +864,7 @@ async function normalizeHdVideo(input) {
     const result = await fs.promises.readFile(output);
     return validVideoBuffer(result) ? result : null;
   } catch (error) {
-    console.warn("[anime-edits] HD conversion skipped candidate:", error?.message || error);
+    // warn silenced
     return null;
   } finally {
     await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
@@ -1457,7 +1457,7 @@ export function createAnimeEditFlow({ prefix = "." } = {}) {
           videoBuffer = boosted;
         }
       } catch (boostErr) {
-        console.warn("[animeEdits] Video HD boost skipped:", boostErr?.message || boostErr);
+        // warn silenced
       }
       await sock.sendMessage(jid, {
         video: videoBuffer,

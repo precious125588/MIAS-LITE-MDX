@@ -44,21 +44,21 @@ try { if (!axios) axios = require('axios'); } catch {}
 const os = require('os');
 let CVS = null;
 try { CVS = require('./lib/creatorVideoStore.cjs'); } catch (e) {
-  console.log('[anime-edits] creator page reader unavailable:', e && e.message);
+  // console.log silenced
 }
 let CVD = null;
 try { CVD = require('./lib/tiktokDiskDelivery.cjs'); } catch (e) {
-  console.log('[anime-edits] disk delivery unavailable:', e && e.message);
+  // console.log silenced
 }
 // Makes each downloaded edit play in WhatsApp (H.264 remux, or H.264 CRF 18 re-encode
 // for HEVC/other codecs; resolution and frame rate are kept).
 let WP = null;
 try { WP = require('./lib/whatsappPlayable.cjs'); } catch (e) {
-  console.log('[anime-edits] playable normalizer unavailable:', e && e.message);
+  // console.log silenced
 }
 let TTD = null;
 try { TTD = require('./lib/ttDelivery.cjs'); } catch (e) {
-  console.log('[anime-edits] ttDelivery unavailable:', e && e.message);
+  // console.log silenced
 }
 // Status menu categories process to HD only (no 4K upscale needed).
 
@@ -267,7 +267,7 @@ async function resolveTikTok(videoUrl) {
       plays: 0,
     };
   } catch (e) {
-    console.log('[anime-edits][resolve] TikTok provider chain failed:', (e && e.message) || 'request failed');
+    
     return null;
   }
 }
@@ -343,7 +343,7 @@ async function routePages(cat) {
   });
   const fromCat = catCands.map(toItem).filter(i => Boolean(i.url && (i.play || i.cid)));
   const fromFile = fileCands.map(toItem).filter(i => qualityOk(i) && matchesCat(i, cat));
-  console.log(`[anime-edits][pages] ${cat.label}: category creators ${catNames.length ? catCands.length : 0} videos, edits/_usernames.txt ${fileOnly.length} creators → ${fileCands.length} videos (${fromFile.length} match ${cat.label})`);
+  
   return [...fromCat, ...fromFile];
 }
 async function routeSearch(cat) {
@@ -439,13 +439,13 @@ function allCategoryCreators() {
 function startCreatorLinks() {
   const users = loadUsernames();
   const cats = allCategoryCreators();
-  console.log(`[anime-edits][fetch] Creator pages registered: ${users.length} in edits/_usernames.txt + ${cats.length} category creators (read live per request; no links saved)`);
+  
   // The monitor logs every creator from both lists: video count, followers, and status.
   try {
     const CPS = require('./lib/creatorPageStatus.cjs');
     CPS.addCreatorSource('category-creators', allCategoryCreators);
-    CPS.startCreatorPageMonitor({ intervalMs: 15 * 60 * 1000, log: console.log });
-  } catch (e) { console.log('[anime-edits] creator page monitor unavailable:', e && e.message); }
+    CPS.startCreatorPageMonitor({ intervalMs: 15 * 60 * 1000, log: () => {} });
+  } catch (e) {  }
 }
 
 // ── creator-page delivery: temp file on disk, removed after the send ─────
@@ -458,7 +458,7 @@ async function downloadCreatorToFile(url, file) {
     });
     if (r.status >= 400 || !r.data) {
       try { r.data && r.data.destroy && r.data.destroy(); } catch {}
-      console.log(`[anime-edits][download] HTTP ${r.status} from ${(() => { try { return new URL(url).host; } catch { return 'bad-url'; } })()}`);
+      
       return 0;
     }
     let bytes = 0;
@@ -474,11 +474,11 @@ async function downloadCreatorToFile(url, file) {
       r.data.pipe(out);
     });
     const size = fs.statSync(file).size;
-    if (size < 2048) { console.log(`[anime-edits][download] file too small (${size} bytes)`); return 0; }
+    if (size < 2048) {  return 0; }
     const head = Buffer.alloc(12);
     const fd = fs.openSync(file, 'r');
     try { fs.readSync(fd, head, 0, 12, 0); } finally { fs.closeSync(fd); }
-    if (head.subarray(4, 8).toString('ascii') !== 'ftyp') { console.log('[anime-edits][download] not an MP4 file'); return 0; }
+    if (head.subarray(4, 8).toString('ascii') !== 'ftyp') {  return 0; }
     return size;
   };
   try {
@@ -486,7 +486,7 @@ async function downloadCreatorToFile(url, file) {
       return await _heavyGuard.runHeavy(run, { tag: 'creator-page-dl', timeoutMs: 120000 });
     }
     return await run();
-  } catch (e) { console.log(`[anime-edits][download] failed: ${(e && e.message) || e}`); try { fs.rmSync(file, { force: true }); } catch {} return 0; }
+  } catch (e) {  try { fs.rmSync(file, { force: true }); } catch {} return 0; }
 }
 const NO_REENCODE_CATEGORIES = new Set([
   "fyp", "foryou", "foryoupage",
@@ -501,7 +501,7 @@ function shouldSkipReencode(catKey, item) {
 }
 
 async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null) {
-  if (!CVD) { console.log('[anime-edits][deliver] disk delivery module is not loaded'); return false; }
+  if (!CVD) {  return false; }
   const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mias-anime-"));
   const file = path.join(dir, "edit.mp4");
   try {
@@ -528,7 +528,7 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
     // Direct delivery without re-encoding for fyp, cruise, feeling, and discipline
     const categoryName = String(catKey || (item && (item.category || item.catKey || item.cat)) || "").toLowerCase().trim();
     if (shouldSkipReencode(catKey, item)) {
-      console.log(`[anime-edits][direct] sending ${categoryName || "edit"} untouched (no re-encode): ${file}`);
+      
       const stat = await fs.promises.stat(file).catch(() => null);
       if (!stat || stat.size < 2048) {
         throw new Error("Downloaded video file is empty or corrupted");
@@ -556,9 +556,9 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
               hdRun(),
               new Promise((_, reject) => setTimeout(() => reject(new Error("reencode timeout")), 120000))
             ]);
-        console.log(`[anime-edits][hd] 1.3 HD state re-encoded: ${hdEncoded.path} (${hdEncoded.bytes} bytes)`);
+        
       } catch (err) {
-        console.warn(`[anime-edits][hd] HD re-encode skipped/timed out: ${err?.message}, delivering source video directly`);
+        
         hdEncoded = null;
       }
     }
@@ -581,7 +581,7 @@ async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null)
       }
     }
   } catch (e) {
-    console.log("[anime-edits][delivery] disk delivery failed:", (e && e.message) || e);
+    
     return false;
   } finally {
     await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
@@ -651,14 +651,14 @@ function makeDeliveryPlan(fresh) {
 // tried in this request and any link that recently failed to deliver.
 async function fetchMoreCandidates(catKey, cat, user, zipItems, attempted) {
   const named = (label, p) => Promise.resolve(p).catch((e) => {
-    console.log(`[anime-edits][refetch] ${cat.label} ${label} failed: ${(e && e.message) || e}`);
+    
     return [];
   });
   const parts = await Promise.all([
     named('pages', routePages(cat)),
     named('search', routeSearch(cat)),
   ]);
-  console.log(`[anime-edits][refetch] ${cat.label} sources: pages ${parts[0].length}, search ${parts[1].length}`);
+  
   const all = [...(zipItems || []), ...parts.flat()].filter((i) => i && !isDeadLink(i.url));
   const candidates = all.filter((i) => !attempted.has(contentKeyOf(i)));
   const seen = new Set(((loadSeen()[user] || {})[catKey]) || []);
@@ -699,7 +699,7 @@ module.exports = {
       const fresh = pickUnseen(user, catKey, pool, pool.length);
       const countBySrc = {};
       for (const i of pool) countBySrc[i.src || 'other'] = (countBySrc[i.src || 'other'] || 0) + 1;
-      console.log(`[anime-edits][pick] ${cat.label} for ${user}: pool ${JSON.stringify(countBySrc)}`);
+      
       let plan = makeDeliveryPlan(fresh);
       const sent = [];
       const attempted = new Set();   // every candidate tried in this request, delivered or not
@@ -713,7 +713,7 @@ module.exports = {
           // The first pool is used up or failed: fetch new candidates once and keep going.
           refetched = true;
           const more = await fetchMoreCandidates(catKey, cat, user, zipItems, attempted);
-          console.log(`[anime-edits][refetch] ${cat.label} for ${user}: ${more.length} new candidates`);
+          
           if (more.length) { plan = makeDeliveryPlan(more); c = plan.next(); }
         }
         if (!c) break;
@@ -727,24 +727,29 @@ module.exports = {
         // that folder is removed after the send succeeds or fails. No RAM fallback.
         let res = false;
         try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch (e) {
-          console.log(`[anime-edits][deliver] error from ${where}: ${(e && e.message) || e}`);
+          
           res = false;
         }
         const ok = res === true;
         if (ok) {
           plan.delivered(c);
           sent.push(c.key);
-          console.log(`[anime-edits][sent] ${cat.label} for ${user}: edit ${sent.length}/2 from ${where}`);
+          
         } else {
           // Failed candidate: remember it, skip it, and move on to the next one.
           if (res && res.error) fourKError = res.error;
           plan.failed(c);
           markDeadLink(c.item.url);
-          console.log(`[anime-edits][failed] ${cat.label} for ${user}: ${where} did not deliver, skipping to next`);
+          
         }
       }
       if (sent.length) {
         markSeen(user, catKey, sent);
+        const username = msg.pushName || (user ? user.split('@')[0] : 'User');
+        const rawText = String(msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.body || '').trim();
+        const cmd = (rawText.startsWith('.') || rawText.startsWith('/') || rawText.startsWith('!')) ? rawText.split(/\s+/)[0] : ('.' + catKey);
+        const vidWord = sent.length === 1 ? '+1 video' : `+${sent.length} videos`;
+        console.log(`${username} with the ${cmd} ${vidWord}`);
         await P.react(sock, msg, '✅').catch(() => {});
         if (sent.length < 2 && !fourKError) await P.sendReply(sock, msg, '⚠️ Only one edit could be delivered this time (some sources were down).');
         if (fourKError) await P.sendReply(sock, msg, fourKError);
@@ -765,7 +770,7 @@ module.exports = {
         P.cmd(cat.aliases, { desc: `Random ${cat.label} TikTok edits (2 per request)`, category: 'STATUS' },
           async (sock, msg) => runEditCmd(key, sock, msg));
         registered.push(cat.aliases[0]);
-      } catch (e) { console.log('[anime-edits] register failed for', key, e && e.message); }
+      } catch (e) {  }
     }
     return { categories: registered.length, commands: registered };
   },

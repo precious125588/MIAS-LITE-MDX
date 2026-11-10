@@ -25,3 +25,19 @@ test('status item objects correctly respect skip re-encode for fyp/cruise/feelin
   assert.equal(edits.shouldSkipReencode(null, { catKey: 'discipline' }), true);
   assert.equal(edits.shouldSkipReencode(null, { catKey: 'feeling' }), true);
 });
+
+test('anime edit logger formats cleanly and eliminates debug spam lines', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const src = fs.readFileSync(path.join(__dirname, '../precious-anime-edits.cjs'), 'utf8');
+
+  // Verify spam log patterns are absent
+  assert.equal(src.includes('[anime-edits][pick]'), false);
+  assert.equal(src.includes('[anime-edits][download]'), false);
+  assert.equal(src.includes('[anime-edits][sent]'), false);
+  assert.equal(src.includes('[anime-edits][failed]'), false);
+  assert.equal(src.includes('[anime-edits][deliver]'), false);
+
+  // Verify concise user log format
+  assert.match(src, /\$\{username\} with the \$\{cmd\} \$\{vidWord\}/);
+});
