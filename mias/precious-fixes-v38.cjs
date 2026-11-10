@@ -386,7 +386,13 @@ function installFlush() {
 }
 
 
-/* ── 6. owner / creator command (details, bio, DP, max 5 list, MIAS LITE MDX) ── */
+/* ── 6. owner + creator profile cards (live WhatsApp name / bio / DP, no vCard) ── */
+const BOT_NAME_BRAND = 'MIAS LITE MDX';
+const CREATOR_NUMBER = '2349068551055';   // contact shown on the .creator card; its DP and bio are fetched live
+const PROFILE_NUMS = ['1\uFE0F\u20E3', '2\uFE0F\u20E3', '3\uFE0F\u20E3', '4\uFE0F\u20E3', '5\uFE0F\u20E3'];
+
+function yearNow() { return new Date().getFullYear(); }
+
 async function fetchBuffer(url) {
   if (!url || typeof url !== 'string') return null;
   try {
@@ -399,205 +405,150 @@ async function fetchBuffer(url) {
   }
 }
 
-async function handleOwnerCommand(sock, msg, args) {
-  const jid = (msg && msg.key && msg.key.remoteJid) || '';
-  if (!jid) return;
+// WhatsApp About text may come back as a string, {status}, {status:{status}} or an array of those.
+function pickStatusText(res, depth) {
+  depth = depth || 0;
+  if (!res || depth > 4) return '';
+  if (typeof res === 'string') return res.trim();
+  if (Array.isArray(res)) {
+    for (const item of res) { const t = pickStatusText(item, depth + 1); if (t) return t; }
+    return '';
+  }
+  if (typeof res === 'object' && 'status' in res) return pickStatusText(res.status, depth + 1);
+  return '';
+}
 
-  // React with crown emoji
-  try {
-    const c = ctx();
-    if (typeof c.react === 'function') {
-      await c.react(sock, msg, '👑');
-    } else if (sock && typeof sock.sendMessage === 'function') {
-      await sock.sendMessage(jid, { react: { text: '👑', key: msg.key } });
-    }
-  } catch (_) {}
+// Live WhatsApp About/bio for a JID. Returns '' when unavailable (no hardcoded bio).
+async function fetchWhatsAppBio(sock, jid) {
+  if (!sock || !jid) return '';
+  const getters = [sock.fetchStatus, sock.getStatus];
+  for (const fn of getters) {
+    if (typeof fn !== 'function') continue;
+    try {
+      const text = pickStatusText(await fn.call(sock, jid));
+      if (text) return text.replace(/\s+/g, ' ').trim();
+    } catch (_) {}
+  }
+  return '';
+}
 
-  // 1. Resolve Owner Number & JID
-  let cleanNum = '';
-  const c = ctx();
+// Live WhatsApp profile picture for a JID. Returns null when unavailable.
+async function fetchWhatsAppDp(sock, jid) {
+  if (!sock || !jid || typeof sock.profilePictureUrl !== 'function') return null;
+  let url = null;
+  try { url = await sock.profilePictureUrl(jid, 'image'); } catch (_) {}
+  if (!url) { try { url = await sock.profilePictureUrl(jid); } catch (_) {} }
+  return url ? await fetchBuffer(url) : null;
+}
+
+function cleanName(v) {
+  const n = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  if (!n || /^(?:undefined|null|bot owner)$/i.test(n)) return '';
+  if (/^\+?[\d\s-]+$/.test(n)) return '';   // a bare number is not a name
+  return n;
+}
+
+// Owner's WhatsApp display name: their own pushName when they send the command,
+// then the linked account name, the saved contact name, then a number fallback.
+async function resolveOwnerName(sock, msg, ownerJid, ownerNum) {
+  const sender = digits((msg && msg.key && (msg.key.participant || msg.key.remoteJid)) || '');
+  const fromOwner = !!(msg && msg.key && msg.key.fromMe) || (!!ownerNum && sender === ownerNum);
+  let n = '';
+  if (fromOwner) n = cleanName(msg && msg.pushName);
+  if (!n && sock && sock.user && digits(sock.user.id) === ownerNum) n = cleanName(sock.user.name || sock.user.notify);
+  if (!n && sock && sock.store && sock.store.contacts) {
+    const ct = sock.store.contacts[ownerJid] || {};
+    n = cleanName(ct.notify || ct.name || ct.verifiedName);
+  }
+  if (!n && sock && typeof sock.getName === 'function') {
+    try { n = cleanName(await sock.getName(ownerJid)); } catch (_) {}
+  }
+  return n || ('+' + ownerNum);
+}
+
+function resolveOwnerNumber(sock) {
   const cfg = CONFIG();
-  const rawNum = cfg.OWNER_NUMBER || process.env.OWNER_NUMBER || process.env.OWNER || (global && global.ownernumber) || '';
-  cleanNum = String(rawNum).replace(/[^0-9]/g, '');
+  let num = String(cfg.OWNER_NUMBER || process.env.OWNER_NUMBER || process.env.OWNER || (global && global.ownernumber) || '').replace(/[^0-9]/g, '');
+  if (!num && cfg.OWNER_JID) num = String(cfg.OWNER_JID).split('@')[0].replace(/[^0-9]/g, '');
+  if (!num && global && Array.isArray(global.owner) && global.owner[0]) num = String(global.owner[0]).replace(/[^0-9]/g, '');
+  if (!num && sock && sock.user && sock.user.id) num = String(sock.user.id).split(':')[0].split('@')[0].replace(/[^0-9]/g, '');
+  return num || '234';
+}
 
-  if (!cleanNum && cfg.OWNER_JID) {
-    cleanNum = String(cfg.OWNER_JID).split('@')[0].replace(/[^0-9]/g, '');
-  }
-  if (!cleanNum && global && Array.isArray(global.owner) && global.owner[0]) {
-    cleanNum = String(global.owner[0]).replace(/[^0-9]/g, '');
-  }
-  if (!cleanNum && sock && sock.user && sock.user.id) {
-    cleanNum = String(sock.user.id).split(':')[0].split('@')[0].replace(/[^0-9]/g, '');
-  }
-  if (!cleanNum) cleanNum = '234';
-  const oj = cleanNum + '@s.whatsapp.net';
-
-  // 2. Resolve Owner Name
-  let ownerName = '';
-  try {
-    const ownerJsonPath = path.join(__dirname, 'owner.json');
-    if (fs.existsSync(ownerJsonPath)) {
-      const data = JSON.parse(fs.readFileSync(ownerJsonPath, 'utf8'));
-      if (data && typeof data.ownerName === 'string' && data.ownerName.trim()) {
-        ownerName = data.ownerName.trim();
-      }
-    }
-  } catch (_) {}
-
-  if (!ownerName && sock && typeof sock.getName === 'function') {
-    try {
-      const n = await sock.getName(oj);
-      if (n && typeof n === 'string' && !/^(?:undefined|null|Bot Owner)$/i.test(n.trim())) {
-        ownerName = n.trim();
-      }
-    } catch (_) {}
-  }
-
-  if (!ownerName && cfg.OWNER_NAME && !/^(?:undefined|null|Bot Owner)$/i.test(cfg.OWNER_NAME)) {
-    ownerName = String(cfg.OWNER_NAME).trim();
-  }
-  if (!ownerName && process.env.OWNER_NAME && !/^(?:undefined|null|Bot Owner)$/i.test(process.env.OWNER_NAME)) {
-    ownerName = String(process.env.OWNER_NAME).trim();
-  }
-  if (!ownerName && global && global.OWNER_NAME) {
-    ownerName = String(global.OWNER_NAME).trim();
-  }
-  if (!ownerName) ownerName = '𖤐JINX𖤐';
-
-  // 3. Resolve Owner Bio
-  let bio = '';
-  try {
-    if (sock && typeof sock.fetchStatus === 'function') {
-      const statusRes = await sock.fetchStatus(oj);
-      if (statusRes && statusRes.status && typeof statusRes.status === 'string' && statusRes.status.trim()) {
-        bio = statusRes.status.trim();
-      }
-    }
-  } catch (_) {}
-
-  if (!bio) {
-    try {
-      if (sock && typeof sock.getStatus === 'function') {
-        const statusRes2 = await sock.getStatus(oj);
-        if (statusRes2 && statusRes2.status && typeof statusRes2.status === 'string' && statusRes2.status.trim()) {
-          bio = statusRes2.status.trim();
-        }
-      }
-    } catch (_) {}
-  }
-
-  if (!bio) {
-    try {
-      const ownerJsonPath = path.join(__dirname, 'owner.json');
-      if (fs.existsSync(ownerJsonPath)) {
-        const data = JSON.parse(fs.readFileSync(ownerJsonPath, 'utf8'));
-        if (data && typeof data.bio === 'string' && data.bio.trim()) {
-          bio = data.bio.trim();
-        } else if (data && typeof data.status === 'string' && data.status.trim()) {
-          bio = data.status.trim();
-        }
-      }
-    } catch (_) {}
-  }
-
-  if (!bio && process.env.OWNER_BIO) {
-    bio = String(process.env.OWNER_BIO).trim();
-  }
-  if (!bio) {
-    bio = 'Building the future with code & creativity.';
-  }
-
-  // 4. Resolve Owner DP
-  let dpBuffer = null;
-  try {
-    let dpUrl = null;
-    if (sock && typeof sock.profilePictureUrl === 'function') {
-      dpUrl = await sock.profilePictureUrl(oj, 'image').catch(() => null);
-      if (!dpUrl) {
-        dpUrl = await sock.profilePictureUrl(oj).catch(() => null);
-      }
-    }
-    if (dpUrl) {
-      dpBuffer = await fetchBuffer(dpUrl);
-    }
-  } catch (_) {}
-
-  // Fallback DP: Bot pic or thumbnail
-  if (!dpBuffer) {
-    try {
-      if (typeof c.getBotPic === 'function') {
-        dpBuffer = await c.getBotPic().catch(() => null);
-      }
-    } catch (_) {}
-  }
-  if (!dpBuffer && (cfg.BOT_PIC || (global && global.thumbnail))) {
-    try {
-      const fbUrl = cfg.BOT_PIC || global.thumbnail;
-      dpBuffer = await fetchBuffer(fbUrl);
-    } catch (_) {}
-  }
-
-  // 5. Build Compact 5-Item List
-  const caption = [
+function buildOwnerCaption(o) {
+  const rows = [['ɴᴀᴍᴇ', o.name], ['ᴄᴏɴᴛᴀᴄᴛ', 'wa.me/' + o.number]];
+  if (o.bio) rows.push(['ʙɪᴏ', o.bio]);
+  rows.push(['ʙᴏᴛ', BOT_NAME_BRAND], ['ꜱᴛᴀᴛᴜꜱ', 'Active & Available']);
+  return [
     '╭───────────────◆',
     '│   👑 *OWNER PROFILE*',
     '╰───────────────◆',
     '',
     '┌───────────────',
-    '├  1️⃣ ɴᴀᴍᴇ : *' + ownerName + '*',
-    '├  2️⃣ ᴄᴏɴᴛᴀᴄᴛ : *wa.me/' + cleanNum + '*',
-    '├  3️⃣ ʙɪᴏ : *' + bio + '*',
-    '├  4️⃣ ʙᴏᴛ : *MIAS LITE MDX*',
-    '├  5️⃣ ꜱᴛᴀᴛᴜꜱ : *Active & Available*',
+    ...rows.map((r, i) => '├  ' + PROFILE_NUMS[i] + ' ' + r[0] + ' : *' + r[1] + '*'),
     '└───────────────',
     '',
-    '> Powered by MIAS LITE MDX'
+    '> Powered by ' + BOT_NAME_BRAND
   ].join('\n');
+}
 
-  // 6. Build vCard
-  const vcard = 'BEGIN:VCARD\n'
-    + 'VERSION:3.0\n'
-    + 'FN:' + ownerName + '\n'
-    + 'ORG:MIAS LITE MDX;\n'
-    + 'NOTE:' + bio + '\n'
-    + 'TEL;type=CELL;type=VOICE;waid=' + cleanNum + ':+' + cleanNum + '\n'
-    + 'END:VCARD';
+function buildCreatorCaption(bio, year) {
+  const lines = [
+    '╭━━〔 CREATOR PROFILE 〕━━╮',
+    '',
+    'Name: PRECIOUS',
+    'Role: Bot Developer',
+    'Specialty: WhatsApp Automation',
+    'Project: PRECIOUS x',
+    'Passion: Technology & Innovation',
+    'Hobbies: Coding, Anime & Exploring Tech',
+    'Mindset: Build. Improve. Repeat.',
+    'Contact: ' + CREATOR_NUMBER
+  ];
+  if (bio) lines.push('Bio: ' + bio);
+  lines.push('', '╰━━━━━━━━━━━━━━━━━━━━╯', '', 'PRECIOUS x © ' + year);
+  return lines.join('\n');
+}
 
-  // 7. Send media and contact
-  let sentMedia = false;
-  if (dpBuffer && Buffer.isBuffer(dpBuffer) && dpBuffer.length > 0) {
-    try {
-      await sock.sendMessage(jid, {
-        image: dpBuffer,
-        caption
-      }, { quoted: msg });
-      sentMedia = true;
-    } catch (_) {}
+// One image message with the caption. Without a usable picture, send the caption as text (never the bot logo).
+async function deliverProfile(sock, jid, msg, dp, caption) {
+  if (dp && Buffer.isBuffer(dp) && dp.length > 0) {
+    try { await sock.sendMessage(jid, { image: dp, caption }, { quoted: msg }); return; } catch (_) {}
   }
+  try { await sock.sendMessage(jid, { text: caption }, { quoted: msg }); } catch (_) {}
+}
 
-  if (!sentMedia) {
-    try {
-      if (typeof c.sendReply === 'function') {
-        await c.sendReply(sock, msg, caption);
-      } else {
-        await sock.sendMessage(jid, { text: caption }, { quoted: msg });
-      }
-    } catch (sendErr) {
-      try {
-        await sock.sendMessage(jid, { text: caption }, { quoted: msg });
-      } catch (_) {}
-    }
-  }
-
-  // Send vCard contact
+async function handleOwnerCommand(sock, msg) {
+  const jid = (msg && msg.key && msg.key.remoteJid) || '';
+  if (!jid) return;
+  const c = ctx();
   try {
-    await sock.sendMessage(jid, {
-      contacts: {
-        displayName: ownerName + ' — Owner',
-        contacts: [{ vcard }]
-      }
-    }, { quoted: msg });
+    if (typeof c.react === 'function') await c.react(sock, msg, '👑');
+    else if (sock && typeof sock.sendMessage === 'function') await sock.sendMessage(jid, { react: { text: '👑', key: msg.key } });
   } catch (_) {}
+
+  const ownerNum = resolveOwnerNumber(sock);
+  const oj = ownerNum + '@s.whatsapp.net';
+  const [name, bio, fetchedDp] = await Promise.all([
+    resolveOwnerName(sock, msg, oj, ownerNum),
+    fetchWhatsAppBio(sock, oj),
+    fetchWhatsAppDp(sock, oj)
+  ]);
+
+  // Owner card keeps its original picture fallback (bot picture) when the owner has no DP.
+  let dp = fetchedDp;
+  if (!dp) { try { if (typeof c.getBotPic === 'function') dp = await c.getBotPic().catch(() => null); } catch (_) {} }
+  if (!dp && (CONFIG().BOT_PIC || (global && global.thumbnail))) dp = await fetchBuffer(CONFIG().BOT_PIC || global.thumbnail);
+
+  await deliverProfile(sock, jid, msg, dp, buildOwnerCaption({ name, number: ownerNum, bio }));
+}
+
+async function handleCreatorCommand(sock, msg) {
+  const jid = (msg && msg.key && msg.key.remoteJid) || '';
+  if (!jid) return;
+  const cj = CREATOR_NUMBER + '@s.whatsapp.net';
+  const [bio, dp] = await Promise.all([fetchWhatsAppBio(sock, cj), fetchWhatsAppDp(sock, cj)]);
+  await deliverProfile(sock, jid, msg, dp, buildCreatorCaption(bio, yearNow()));
 }
 
 function installOwnerCommand() {
@@ -606,7 +557,7 @@ function installOwnerCommand() {
 
   // Enforce bot name brand
   try {
-    const BOT_NAME = 'MIAS LITE MDX';
+    const BOT_NAME = BOT_NAME_BRAND;
     if (CONFIG()) CONFIG().BOT_NAME = BOT_NAME;
     if (globalThis.CONFIG) globalThis.CONFIG.BOT_NAME = BOT_NAME;
     if (global) {
@@ -617,31 +568,29 @@ function installOwnerCommand() {
     process.env.BOT_NAME = BOT_NAME;
   } catch (_) {}
 
-  const names = ['owner', 'creator', 'dev', 'developer', 'botcreator'];
+  const sets = [
+    { names: ['owner', 'dev', 'developer', 'botcreator'], handler: handleOwnerCommand, canonical: 'owner', desc: 'Show bot owner profile' },
+    { names: ['creator'], handler: handleCreatorCommand, canonical: 'creator', desc: 'Show creator profile card' }
+  ];
   let touched = 0;
-  for (const name of names) {
-    let entry = cmds.get(name);
-    if (!entry) {
-      entry = {
-        name,
-        desc: 'Show bot owner & developer info',
-        category: 'INFO',
-        canonical: 'owner',
-        isAlias: name !== 'owner',
-        ownerOnly: false
-      };
-      cmds.set(name, entry);
+  for (const set of sets) {
+    for (const name of set.names) {
+      let entry = cmds.get(name);
+      if (!entry) {
+        entry = { name, category: 'INFO', canonical: set.canonical, isAlias: name !== set.canonical };
+        cmds.set(name, entry);
+      }
+      entry.handler = set.handler;
+      entry.run = set.handler;
+      entry.desc = set.desc;
+      entry.category = 'INFO';
+      entry.ownerOnly = false;
+      entry.__v38OwnerCommand = true;
+      touched++;
     }
-    entry.handler = handleOwnerCommand;
-    entry.run = handleOwnerCommand;
-    entry.desc = 'Show bot owner & developer info';
-    entry.category = 'INFO';
-    entry.ownerOnly = false;
-    entry.__v38OwnerCommand = true;
-    touched++;
   }
 
-  if (touched) log('owner command (.owner, .creator, .dev, etc.) installed for ' + touched + ' aliases');
+  if (touched) log('owner + creator profile commands installed for ' + touched + ' names');
   return touched > 0;
 }
 
@@ -681,4 +630,10 @@ module.exports.groupIsProtected = groupIsProtected;
 module.exports.ownerJid = ownerJid;
 module.exports.installOwnerCommand = installOwnerCommand;
 module.exports.handleOwnerCommand = handleOwnerCommand;
+module.exports.handleCreatorCommand = handleCreatorCommand;
+module.exports.buildOwnerCaption = buildOwnerCaption;
+module.exports.buildCreatorCaption = buildCreatorCaption;
+module.exports.fetchWhatsAppBio = fetchWhatsAppBio;
+module.exports.pickStatusText = pickStatusText;
+module.exports.resolveOwnerName = resolveOwnerName;
 module.exports.TAG = TAG;
