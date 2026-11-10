@@ -93,9 +93,9 @@ function clearBotCache() { _botCache = null; }
 function _getDefaultBots() {
   return [
     {
-      id: 'mias-mdx', name: 'MIAS MDX', tagline: 'Stable • Full Features',
+      id: 'mias-mdx', name: 'MIAS LITE MDX', tagline: 'Stable • Full Features',
       version: '2.0.1', status: 'stable', entry: 'mias/index.js',
-      env: { BOT_NAME: 'MIAS MDX' },
+      env: { BOT_NAME: 'MIAS LITE MDX' },
       deploySteps: ['Session created', 'Plugins loaded', 'Database initialized', 'Deployment complete'],
     },
   ];
