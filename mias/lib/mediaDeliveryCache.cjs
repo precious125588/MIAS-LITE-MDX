@@ -601,7 +601,7 @@ async function deliverWithMediaCache({
         ...relayOptions,
       });
       if (result?.key?.id) {
-        console.log(`[CDN-CACHE] SUCCESS method=cdn_keys media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=hit`);
+        // cache hit log silenced
         return result;
       }
     } catch (primaryErr) {
@@ -612,7 +612,7 @@ async function deliverWithMediaCache({
     try {
       const result = await sendViaForwardFallback(sock, jid, cached, { quoted, relayOptions });
       if (result?.key?.id) {
-        console.log(`[CDN-CACHE] SUCCESS method=forward media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=hit`);
+        // forward hit log silenced
         return result;
       }
     } catch (fallback1Err) {
@@ -632,7 +632,7 @@ async function deliverWithMediaCache({
   if (!freshResult?.key?.id) {
     console.error(`[CDN-CACHE] FAILED method=fresh media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=${cached ? "fallback" : "miss"} error=no-message-id`);
   } else {
-    console.log(`[CDN-CACHE] SUCCESS method=fresh media=${type} target=${jid === "status@broadcast" ? "status" : "chat"} cache=${cached ? "fallback" : "miss"}`);
+    // fresh send success silenced
   }
 
   // 6. Index new send for future reuse with 4-day TTL
@@ -642,7 +642,7 @@ async function deliverWithMediaCache({
       for (const k of keysToCheck) {
         setCachedMedia(k, { ...extracted, rawMessage: freshResult });
       }
-      console.log(`[CDN-CACHE] Indexed ${type} CDN media keys for reuse (TTL: 4 days)`);
+      // index log silenced
     }
   } catch (indexErr) {
     console.warn(`[media-cache] Failed to index fresh send: ${indexErr?.message || indexErr}`);

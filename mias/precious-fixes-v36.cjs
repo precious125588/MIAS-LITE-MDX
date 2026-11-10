@@ -539,7 +539,7 @@ module.exports = function installV36(ctx) {
     const animeEdits = require('./precious-anime-edits.cjs');
     if (typeof animeEdits.install === 'function') {
       const res = animeEdits.install(P, { sendVideoRobust, isRealMedia, axios: ctx.axios });
-      console.log('[v36] anime-edits installed:', res);
+      console.log('[v36] anime-edits installed:', res?.categories ? `${res.categories} categories` : res);
     }
   } catch (_aeErr) {
     console.log('[v36] anime-edits install notice:', _aeErr?.message || _aeErr);

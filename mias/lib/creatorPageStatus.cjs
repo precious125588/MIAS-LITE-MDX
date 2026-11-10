@@ -50,7 +50,7 @@ function statusLines() {
 }
 
 function printCreatorStatus() {
-  try { console.log(statusLines().join('\n')); } catch {}
+  // startup status silenced
 }
 
 function usernamesFile() {
@@ -299,7 +299,7 @@ function collectCreatorEntries(file) {
   return out;
 }
 
-async function checkCreatorPages({ axios, log = console.log, file, names, gapMs = 600, chunk = 4 } = {}) {
+async function checkCreatorPages({ axios, log = () => {}, file, names, gapMs = 600, chunk = 4 } = {}) {
   const entries = names ? names.map(n => _entry(n)).filter(Boolean) : collectCreatorEntries(file);
   if (!entries.length) {
     log('[creator-pages] no usernames in edits/_usernames.txt');
@@ -345,7 +345,7 @@ let _creatorMonitorRunning = false;
 let _creatorPending = null;
 let _creatorLastSweep = 0;
 let _creatorKnown = null;
-function startCreatorPageMonitor({ intervalMs = 15 * 60 * 1000, watchMs = 60 * 1000, log = console.log } = {}) {
+function startCreatorPageMonitor({ intervalMs = 15 * 60 * 1000, watchMs = 60 * 1000, log = () => {} } = {}) {
   try {
     const { isLowMemEnv } = require('./lowMemLogPolicy.cjs');
     if (isLowMemEnv()) {
