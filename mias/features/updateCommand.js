@@ -15,6 +15,7 @@ import https from "https";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { isStampOnlyChange } from "../lib/stampOnlyUpdate.mjs";
 
 const require = createRequire(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -78,6 +79,48 @@ export function readLocalCommit() {
   } catch {}
 
   return { sha: null, source: "none" };
+}
+
+/**
+ * Files changed between two commits. Returns { files } when GitHub answered,
+ * { unknown: true } when the commits cannot be compared (treated as a code change),
+ * or null on a transient failure (the poller retries on its next cycle).
+ */
+export function fetchChangedFiles(baseSha, headSha, token = process.env.GITHUB_TOKEN || null) {
+  return new Promise((resolve) => {
+    const req = https.request(
+      {
+        host: "api.github.com",
+        path: `/repos/${REPO_SLUG}/compare/${encodeURIComponent(baseSha)}...${encodeURIComponent(headSha)}`,
+        method: "GET",
+        timeout: 10000,
+        headers: {
+          "User-Agent": "mias-lite-mdx-updater",
+          "Accept": "application/vnd.github+json",
+          ...(token ? { Authorization: "Bearer " + token } : {}),
+        },
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (chunk) => { body += chunk; });
+        res.on("end", () => {
+          if (res.statusCode === 404 || res.statusCode === 422) return resolve({ unknown: true });
+          if (res.statusCode !== 200) return resolve(null);
+          try {
+            const files = (JSON.parse(body)?.files || []).map((f) => f.filename);
+            // GitHub lists at most 300 files; a longer list cannot prove the change is stamp-only.
+            if (files.length >= 300) return resolve({ unknown: true });
+            resolve({ files });
+          } catch {
+            resolve(null);
+          }
+        });
+      }
+    );
+    req.on("error", () => resolve(null));
+    req.on("timeout", () => req.destroy());
+    req.end();
+  });
 }
 
 /**
@@ -532,6 +575,7 @@ async function handleAutoUpdateBackgroundNotice() {
  * Background auto-update check daemon: runs 20s after boot, then every 3 minutes
  */
 let _autoUpdateTimer = null;
+let _lastStampOnlySha = null;
 function startAutoUpdatePoller(ctx) {
   if (_autoUpdateTimer) return;
   const { getSettings, CONFIG } = ctx;
@@ -548,6 +592,16 @@ function startAutoUpdatePoller(ctx) {
       if (!remote.sha || !local.sha) return;
 
       if (remote.sha.toLowerCase() !== local.sha.toLowerCase()) {
+        if (remote.sha.toLowerCase() === _lastStampOnlySha) return;
+        const diff = await fetchChangedFiles(local.sha, remote.sha);
+        if (!diff) return; // GitHub unreachable right now; try again on the next poll
+        if (!diff.unknown && isStampOnlyChange(diff.files)) {
+          // Only the build-stamp commit changed: there is no new code to load, so no restart.
+          _lastStampOnlySha = remote.sha.toLowerCase();
+          writeBuildStamp(remote.sha, remote.message, remote.author);
+          console.log(`[AUTO-UPDATE] ${remote.sha.slice(0, 7)} only refreshed the build stamp; no restart needed.`);
+          return;
+        }
         console.log(`[AUTO-UPDATE] Detected new GitHub commit: ${remote.sha.slice(0, 7)} — "${remote.message}". Applying update...`);
         await applyUpdateCode(remote.sha, remote.message, remote.author);
 
