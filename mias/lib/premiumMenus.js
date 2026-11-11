@@ -24,7 +24,7 @@ enhance3 entoid faceswap fauxcyrillic fauxethiopic fdroid fullwidthtext getfile
 hdvideo2 hostcheck html2img htmlencode htmlencrypt idtoen img2qr jatoid jsobfuscate
 kotoid mathbolditalic mathboldscript mathboldtext mathdoublestruck mathfraktur
 mathmonospace mathsansbold mathsansbolditalic mathsansitalic mathsanstext nikparse
-nsfw-check ocr parenthesized price reencode removebg2 removebg removebg3 removevocal
+nsfw-check ocr parenthesized price reencode remux removebg2 removebg removebg3 removevocal
 reversedtext rockdotstext sendemail setjs skip-adlinksumo smallcapstext spamngl
 squarednegtext squaredtext ssweb strokedtext subdomain-finder subscripttext
 superscripttext sync syncstatus syntaxcheck tagtext textgif textimage textmp4

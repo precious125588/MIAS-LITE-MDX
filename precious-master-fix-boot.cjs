@@ -275,6 +275,38 @@ function installAll(ctx) {
     }
   } catch (e) { result.v38 = false; pbad('precious-fixes-v38 require failed: ' + (e && e.message)); }
 
+  /* [v39] Media Enhancement Pack:
+     - Renames HD command to .4k (Lanczos + 4K transcode + 4K TikTok 1.8)
+     - Powers .hd with TikTok 1.3 Full HD 1080p pipeline + 1.2x boost + faststart
+     - Full support for image, video, TikTok link, video link, image link
+     - 🌀 -> ✅ / ❌ reaction pipeline
+     - Complete removal of .remux command */
+  try {
+    const v39 = multiRequire('./mias/precious-fixes-v39.cjs');
+    if (v39.mod) {
+      const fn = (typeof v39.mod === 'function') ? v39.mod : v39.mod.install;
+      if (typeof fn === 'function') {
+        try {
+          const r39 = fn(globalThis.__PRECIOUS__ || ctx);
+          result.v39 = true;
+          plog('precious-fixes-v39: INSTALLED (4k|hd-1.3|media-links|remux-removed) ' + safeJson(r39 || {}));
+        } catch (e39) {
+          result.v39 = false;
+          pbad('precious-fixes-v39 error: ' + (e39 && e39.message));
+        }
+      } else {
+        result.v39 = false;
+        pbad('precious-fixes-v39 has no install()');
+      }
+    } else {
+      result.v39 = false;
+      pbad('precious-fixes-v39 failed to load: ' + (v39.err && v39.err.message));
+    }
+  } catch (e) {
+    result.v39 = false;
+    pbad('precious-fixes-v39 require failed: ' + (e && e.message));
+  }
+
   const slots = Object.keys(result).length;
   const good  = Object.values(result).filter(Boolean).length;
   const dt    = Date.now() - t0;

@@ -1,8 +1,7 @@
-// .split and .remux — reply to (or send with the caption) a video or a video
+// .split — reply to (or send with the caption) a video or a video
 // document. .split cuts it into MP4 parts and sends each part in order.
 // Default part length is 90 seconds; a length can be given, e.g. .split 30s,
-// .split 30 seconds, .split 1m, .split 2 min. .remux repackages it as MP4
-// without re-encoding when the codecs allow.
+// .split 30 seconds, .split 1m, .split 2 min.
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -210,35 +209,4 @@ export function installSplitVideo(ctx) {
     }
   });
 
-  cmd(["remux"], {
-    desc: "Repackage a video as MP4 without re-encoding when possible — reply to a video or video file",
-    category: "MEDIA",
-  }, async (sock, msg) => {
-    const isStatus = msg?.key?.remoteJid === "status@broadcast";
-    const jid = isStatus ? (msg?.key?.participant || msg?.participant) : msg?.key?.remoteJid;
-    const src = pickVideoSource(msg);
-    if (!src) {
-      await react(sock, msg, "❌");
-      await sendReply(sock, msg, `Reply to a *video* or *video file* with ${PREFIX}remux.`);
-      return;
-    }
-    await react(sock, msg, "🌀");
-    let dir = null;
-    try {
-      dir = fs.mkdtempSync(path.join(os.tmpdir(), "remux-"));
-      const inPath = path.join(dir, `in.${src.ext}`);
-      const outPath = path.join(dir, "out.mp4");
-      await downloadVideoToFile(src, inPath);
-      const info = await probeFile(inPath);
-      await remuxToMp4(inPath, outPath, info);
-      await sendVideoFile(sock, jid, msg, outPath, "Remuxed to MP4 (no re-encode)");
-      await react(sock, msg, "✅");
-    } catch (e) {
-      console.error("[remux] error:", e?.message || e);
-      await react(sock, msg, "❌");
-      await sendReply(sock, msg, `❌ Remux failed: ${e?.message || e}`).catch(() => {});
-    } finally {
-      if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
-    }
-  });
 }
