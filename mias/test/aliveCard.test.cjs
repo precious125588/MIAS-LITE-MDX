@@ -1,17 +1,21 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { sendOwnerAliveCard, LINK_URL } = require('../lib/aliveCard.cjs');
+const { sendOwnerAliveCard, LINK_URL, CREATOR_JID } = require('../lib/aliveCard.cjs');
 
-const JID = '2349068551055@s.whatsapp.net';
+const JID = '2348000000001@s.whatsapp.net';
 const TEXT = 'Bright Emmanuel is ALIVE\n\nBy X\n\nFor external plugins commands\nVisit here https://levanter.site/plugin';
 const realFetch = global.fetch;
 
-function fakeSock(url) {
+function fakeSock(url, creatorUrl = null) {
   const sent = [];
   return {
     sent,
-    profilePictureUrl: async () => { if (url instanceof Error) throw url; return url; },
+    profilePictureUrl: async (jid) => {
+      const u = jid === JID ? url : creatorUrl;
+      if (u instanceof Error) throw u;
+      return u;
+    },
     sendMessage: async (jid, content) => { sent.push({ jid, content }); return { ok: true }; },
   };
 }
@@ -61,4 +65,36 @@ test('oversized picture is ignored', async () => {
     await sendOwnerAliveCard(sock, JID, { text: TEXT });
     assert.deepEqual(sock.sent[0].content, { text: TEXT });
   } finally { global.fetch = realFetch; }
+});
+
+test('owner has no picture -> creator picture is used', async () => {
+  const fetched = [];
+  global.fetch = async (url) => { fetched.push(url); return { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }; };
+  try {
+    const sock = fakeSock(null, 'https://pps.example/creator.jpg');
+    await sendOwnerAliveCard(sock, JID, { text: TEXT });
+    assert.deepEqual(fetched, ['https://pps.example/creator.jpg']);
+    assert.ok(Buffer.isBuffer(sock.sent[0].content.contextInfo.externalAdReply.thumbnail));
+    assert.equal(sock.sent[0].content.text, TEXT);
+  } finally { global.fetch = realFetch; }
+});
+
+test('owner picture wins over creator picture', async () => {
+  const fetched = [];
+  global.fetch = async (url) => { fetched.push(url); return { ok: true, arrayBuffer: async () => new Uint8Array([1]).buffer }; };
+  try {
+    const sock = fakeSock('https://pps.example/owner.jpg', 'https://pps.example/creator.jpg');
+    await sendOwnerAliveCard(sock, JID, { text: TEXT });
+    assert.deepEqual(fetched, ['https://pps.example/owner.jpg']);
+  } finally { global.fetch = realFetch; }
+});
+
+test('neither owner nor creator has a picture -> plain text', async () => {
+  const sock = fakeSock(null, null);
+  await sendOwnerAliveCard(sock, JID, { text: TEXT });
+  assert.deepEqual(sock.sent[0].content, { text: TEXT });
+});
+
+test('creator constant matches the .creator card contact', () => {
+  assert.equal(CREATOR_JID, '2349068551055@s.whatsapp.net');
 });
