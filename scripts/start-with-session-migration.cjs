@@ -366,6 +366,13 @@ async function prepareSessionDatabase() {
 }
 
 async function main() {
+  // Load the newest GitHub code before anything starts (git or plain folder).
+  try {
+    const { syncLatestCode } = require('../lib/code-updater.cjs');
+    await syncLatestCode({ root: path.join(__dirname, '..'), log: (line) => console.log(line) });
+  } catch (e) {
+    console.warn('[CODE-UPDATE] skipped:', e && e.message);
+  }
   await prepareSessionDatabase();
   try {
     const sessionDebug = require('./sessionDebug.cjs');

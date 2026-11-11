@@ -63,5 +63,8 @@ if [ "0" != "1" ] && [ -d "prezzy_auth" ]; then
   echo "[MIAS LITE MDX] Auth directory preserved"
 fi
 
+# Pull the newest code first (also works without a .git folder)
+node lib/code-updater.cjs || true
+
 echo "[MIAS LITE MDX] Starting web pairing server and bot supervisor..."
 exec node server.js
