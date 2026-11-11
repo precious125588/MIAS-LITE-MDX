@@ -295,17 +295,17 @@ test('handleViewOnceCommand (.vv2): delivers to sender DM in group chat', async 
     },
   };
 
-  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true }, deps);
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
   assert.equal(res.ok, true);
-  assert.equal(reactions.includes('✅'), true);
+  assert.equal(reactions.length, 0, 'vv2 must not react');
 
   // Delivered media to sender DM
   const dmMsg = sock.sent.find(s => s.to === '2348011112222@s.whatsapp.net');
   assert.ok(dmMsg, 'Media must be sent to sender DM');
   assert.deepEqual(dmMsg.content.video, fakeVideoBytes);
 
-  // Sent group confirmation
-  assert.equal(replies.some(r => /View-Once Revealed[\s\S]*Private Chat \(DM\)/i.test(r)), true);
+  // vv2 is silent: no confirmation text in the chat
+  assert.equal(replies.length, 0, 'vv2 must not send chat text');
 });
 
 test('v41 Fix Pack: installs vv, viewonce, vv2 and aliases into registry', () => {
@@ -334,4 +334,79 @@ test('v41 Fix Pack: installs vv, viewonce, vv2 and aliases into registry', () =>
   assert.equal(aliases.get('viewonce'), 'vv');
   assert.equal(aliases.get('lol'), 'vv2');
   assert.equal(aliases.get('wow'), 'vv2');
+});
+
+test('handleViewOnceCommand: re-uploads media when WhatsApp drops its link', async () => {
+  const sock = createMockSocket();
+  const reactions = [];
+  const freshBytes = Buffer.from('fresh-jpeg-bytes');
+  const reuploadCalls = [];
+  sock.updateMediaMessage = async (waMsg) => {
+    reuploadCalls.push(waMsg);
+    waMsg.message.imageMessage.url = 'https://mmg.whatsapp.net/fresh';
+    waMsg.message.imageMessage.directPath = '/v/fresh';
+    return waMsg;
+  };
+  const deps = {
+    react: async (s, m, r) => reactions.push(r),
+    sendReply: async () => {},
+    downloadContentFromMessage: async (node) => {
+      if (!node.url && !node.directPath) {
+        throw new Error('No valid media URL or directPath present in message');
+      }
+      return (async function* () { yield freshBytes; })();
+    },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          stanzaId: 'ABC123',
+          quotedMessage: {
+            viewOnceMessageV2: { message: { imageMessage: { mediaKey: 'k', caption: 'pic' } } },
+          },
+        },
+      },
+    },
+  };
+
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+  assert.equal(res.ok, true);
+  assert.equal(reuploadCalls.length, 1);
+  assert.equal(reuploadCalls[0].key.id, 'ABC123');
+  assert.deepEqual(sock.sent[0].content.image, freshBytes);
+  assert.equal(reactions.includes('✅'), true);
+});
+
+test('handleViewOnceCommand (.vv2): stays completely silent when the download fails', async () => {
+  const sock = createMockSocket();
+  const reactions = [];
+  const replies = [];
+  const deps = {
+    react: async (s, m, r) => reactions.push(r),
+    sendReply: async (s, m, t) => replies.push(t),
+    downloadContentFromMessage: async () => { throw new Error('410 Gone'); },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = {
+    key: { remoteJid: 'group123@g.us', participant: '2348011112222@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv2',
+        contextInfo: {
+          quotedMessage: {
+            viewOnceMessage: { message: { videoMessage: { url: 'https://wa.net/vid' } } },
+          },
+        },
+      },
+    },
+  };
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
+  assert.equal(res.ok, false);
+  assert.equal(reactions.length, 0);
+  assert.equal(replies.length, 0);
+  assert.equal(sock.sent.length, 0);
 });
