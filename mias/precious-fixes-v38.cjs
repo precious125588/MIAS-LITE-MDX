@@ -387,7 +387,7 @@ function installFlush() {
 
 
 /* ── 6. owner + creator profile cards (live WhatsApp name / bio / DP, no vCard) ── */
-const BOT_NAME_BRAND = 'MIAS LITE MDX';
+const BOT_NAME_FALLBACK = 'MIAS LITE MDX';   // only used when the linked account has no profile name
 const CREATOR_NUMBER = '2349068551055';   // contact shown on the .creator card; its DP and bio are fetched live
 const PROFILE_NUMS = ['1\uFE0F\u20E3', '2\uFE0F\u20E3', '3\uFE0F\u20E3', '4\uFE0F\u20E3', '5\uFE0F\u20E3'];
 
@@ -490,6 +490,12 @@ async function resolveOwnerName(sock, msg, ownerJid, ownerNum) {
   return n || ('+' + ownerNum);
 }
 
+// Bot name comes from the linked WhatsApp account's own profile name, never from config.
+function sessionBotName(sock) {
+  const u = (sock && sock.user) || {};
+  return cleanName(u.name || u.notify || u.verifiedName) || BOT_NAME_FALLBACK;
+}
+
 function resolveOwnerNumber(sock) {
   const cfg = CONFIG();
   let num = String(cfg.OWNER_NUMBER || process.env.OWNER_NUMBER || process.env.OWNER || (global && global.ownernumber) || '').replace(/[^0-9]/g, '');
@@ -502,7 +508,7 @@ function resolveOwnerNumber(sock) {
 function buildOwnerCaption(o) {
   const rows = [['ɴᴀᴍᴇ', o.name], ['ᴄᴏɴᴛᴀᴄᴛ', 'wa.me/' + o.number]];
   if (o.bio) rows.push(['ʙɪᴏ', o.bio]);
-  rows.push(['ʙᴏᴛ', BOT_NAME_BRAND], ['ꜱᴛᴀᴛᴜꜱ', 'Active & Available']);
+  rows.push(['ʙᴏᴛ', o.botName], ['ꜱᴛᴀᴛᴜꜱ', 'Active & Available']);
   return [
     '╭───────────────◆',
     '│   👑 *OWNER PROFILE*',
@@ -512,7 +518,7 @@ function buildOwnerCaption(o) {
     ...rows.map((r, i) => '├  ' + PROFILE_NUMS[i] + ' ' + r[0] + ' : *' + r[1] + '*'),
     '└───────────────',
     '',
-    '> Powered by ' + BOT_NAME_BRAND
+    '> Powered by ' + o.botName
   ].join('\n');
 }
 
@@ -564,7 +570,7 @@ async function handleOwnerCommand(sock, msg) {
   if (!dp) { try { if (typeof c.getBotPic === 'function') dp = await c.getBotPic().catch(() => null); } catch (_) {} }
   if (!dp && (CONFIG().BOT_PIC || (global && global.thumbnail))) dp = await fetchBuffer(CONFIG().BOT_PIC || global.thumbnail);
 
-  await deliverProfile(sock, jid, msg, dp, buildOwnerCaption({ name, number: ownerNum, bio }));
+  await deliverProfile(sock, jid, msg, dp, buildOwnerCaption({ name, number: ownerNum, bio, botName: sessionBotName(sock) }));
 }
 
 async function handleCreatorCommand(sock, msg) {
@@ -578,19 +584,6 @@ async function handleCreatorCommand(sock, msg) {
 function installOwnerCommand() {
   const cmds = commands();
   if (!cmds) return false;
-
-  // Enforce bot name brand
-  try {
-    const BOT_NAME = BOT_NAME_BRAND;
-    if (CONFIG()) CONFIG().BOT_NAME = BOT_NAME;
-    if (globalThis.CONFIG) globalThis.CONFIG.BOT_NAME = BOT_NAME;
-    if (global) {
-      global.BOT_NAME = BOT_NAME;
-      global.botName = BOT_NAME;
-      global.botname = BOT_NAME;
-    }
-    process.env.BOT_NAME = BOT_NAME;
-  } catch (_) {}
 
   const sets = [
     { names: ['owner', 'dev', 'developer', 'botcreator'], handler: handleOwnerCommand, canonical: 'owner', desc: 'Show bot owner profile' },

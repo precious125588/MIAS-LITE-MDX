@@ -22,8 +22,6 @@ const path = require('node:path');
 // Secrets such as SESSION_ID are never read from this file.
 const CONFIG_FILE_KEYS = [
   'OWNER_NUMBER',
-  'OWNER_NAME',
-  'BOT_NAME',
   'PREFIX',
   'CREATOR_USERNAME',
   'TIKWM_ENABLED',
@@ -57,7 +55,8 @@ applyConfigFile();
 // ── 1. Core Bot & Owner Identity ──────────────────────────────────────────
 const rawOwnerNumber = (process.env.OWNER_NUMBER || process.env.OWNER || '').replace(/[^0-9]/g, '');
 const ownerNumber = rawOwnerNumber || '234';
-const ownerName = process.env.OWNER_NAME || process.env.BOT_ACTIVE_USER || '𖤐JINX𖤐';
+// Names come from the linked WhatsApp session (BOT_ACTIVE_USER), never from config.
+const ownerName = process.env.BOT_ACTIVE_USER || 'Owner';
 const botName = process.env.BOT_NAME || 'MIAS LITE MDX';
 
 global.BOT_NAME = botName;
