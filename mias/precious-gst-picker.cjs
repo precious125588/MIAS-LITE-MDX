@@ -127,65 +127,30 @@ module.exports = {
         }
       }
 
-      async function convertMediaForStatus(rawBuf, mediaInfo) {
-        const id = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      // Posts media exactly as WhatsApp delivered it. No ffmpeg, no re-encoding:
+      // only the kind is decided from the media type so the right status
+      // envelope is built.
+      function rawKindFor(mediaInfo) {
         const { kind, mime = '', fileName = '' } = mediaInfo;
-
-        if (kind === 'image' && !/webp|gif/.test(mime)) {
-          return { kind: 'image', buf: rawBuf, caption: mediaInfo.caption };
+        const hint = (mime + ' ' + fileName).toLowerCase();
+        if (kind === 'ptv') return 'video';
+        if (kind === 'sticker') return 'image';
+        if (kind === 'document') {
+          if (/video|mp4|mkv|webm|avi|mov|quicktime/.test(hint)) return 'video';
+          if (/audio|ogg|mp3|m4a|opus|aac|wav/.test(hint)) return 'audio';
+          if (/image|png|jpe?g|webp|gif/.test(hint)) return 'image';
+          return 'document';
         }
-        if (kind === 'video' && /mp4/.test(mime) && !mediaInfo.raw?.gifPlayback) {
-          return { kind: 'video', buf: rawBuf, caption: mediaInfo.caption };
-        }
+        return kind;
+      }
 
-        const inPath = path.join(os.tmpdir(), `gst_in_${id}.bin`);
-        const outPath = path.join(os.tmpdir(), `gst_out_${id}.mp4`);
-        fs.writeFileSync(inPath, rawBuf);
-
-        try {
-          if (kind === 'sticker') {
-            // Convert webp sticker to MP4 video status
-            try {
-              await execFF(['-y', '-i', inPath, '-movflags', '+faststart', '-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', outPath]);
-              const resBuf = fs.readFileSync(outPath);
-              return { kind: 'video', buf: resBuf, caption: mediaInfo.caption };
-            } catch {
-              // Static image fallback
-              const outImg = path.join(os.tmpdir(), `gst_out_${id}.jpg`);
-              await execFF(['-y', '-i', inPath, outImg]);
-              const resBuf = fs.readFileSync(outImg);
-              try { fs.unlinkSync(outImg); } catch {}
-              return { kind: 'image', buf: resBuf, caption: mediaInfo.caption };
-            }
-          } else if (kind === 'ptv' || kind === 'video' || (kind === 'document' && /video|mp4|mkv|webm|avi|mov/.test(mime + fileName))) {
-            // Convert Video Note (ptv) or document video to real MP4
-            await execFF(['-y', '-i', inPath, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-map', '0:v:0', '-map', '0:a?', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2', '-movflags', '+faststart', '-preset', 'veryfast', outPath]);
-            const resBuf = fs.readFileSync(outPath);
-            return { kind: 'video', buf: resBuf, caption: mediaInfo.caption };
-          } else if (kind === 'audio' || (kind === 'document' && /audio|ogg|mp3|m4a|opus/.test(mime + fileName))) {
-            // Convert to genuine ogg/opus
-            const outOgg = path.join(os.tmpdir(), `gst_out_${id}.ogg`);
-            await execFF(['-y', '-i', inPath, '-vn', '-ac', '1', '-ar', '48000', '-c:a', 'libopus', '-b:a', '64k', outOgg]);
-            const resBuf = fs.readFileSync(outOgg);
-            try { fs.unlinkSync(outOgg); } catch {}
-            return { kind: 'audio', buf: resBuf, caption: mediaInfo.caption };
-          } else if (kind === 'document' && /image|png|jpeg|jpg/.test(mime + fileName)) {
-            // Convert document image to standard jpg
-            const outJpg = path.join(os.tmpdir(), `gst_out_${id}.jpg`);
-            await execFF(['-y', '-i', inPath, outJpg]);
-            const resBuf = fs.readFileSync(outJpg);
-            try { fs.unlinkSync(outJpg); } catch {}
-            return { kind: 'image', buf: resBuf, caption: mediaInfo.caption };
-          }
-        } catch (convErr) {
-          console.error('[gst-media-convert] error:', convErr?.message || convErr);
-        } finally {
-          try { fs.unlinkSync(inPath); } catch {}
-          try { fs.unlinkSync(outPath); } catch {}
-        }
-
-        // Return original if conversion failed or unneeded
-        return { kind: kind === 'ptv' ? 'video' : kind, buf: rawBuf, caption: mediaInfo.caption };
+      async function convertMediaForStatus(rawBuf, mediaInfo) {
+        return {
+          kind: rawKindFor(mediaInfo),
+          buf: rawBuf,
+          caption: mediaInfo.caption,
+          mime: mediaInfo.mime || '',
+        };
       }
 
       async function uploadAndRelay(sock, groupId, payload) {
@@ -206,36 +171,23 @@ module.exports = {
         const genOpts = upload ? { upload } : {};
         let inner = null;
         try {
+          // Relayed as delivered: no transcoding, no status-video conversion.
           if (payload.kind === 'text') {
             inner = await g({ text: payload.text || '' }, genOpts);
           } else if (payload.kind === 'image') {
-            inner = await g({ image: payload.buf, caption: payload.caption || '' }, genOpts);
+            const imgMime = /^image\//.test(payload.mime || '') ? payload.mime : undefined;
+            inner = await g({ image: payload.buf, caption: payload.caption || '', ...(imgMime ? { mimetype: imgMime } : {}) }, genOpts);
           } else if (payload.kind === 'video') {
-            let vidBuf = payload.buf;
+            const vidBuf = payload.buf;
             const maxVidBytes = 95 * 1024 * 1024;
             if (vidBuf && vidBuf.length > maxVidBytes) {
               return { ok: false, error: 'Video exceeds WhatsApp 95 MiB limit (compression permanently disabled).' };
             }
-            inner = await g({ video: vidBuf, caption: payload.caption || '', mimetype: 'video/mp4' }, genOpts);
+            const vidMime = /^video\//.test(payload.mime || '') ? payload.mime : 'video/mp4';
+            inner = await g({ video: vidBuf, caption: payload.caption || '', mimetype: vidMime }, genOpts);
           } else if (payload.kind === 'audio') {
-            // WhatsApp rejects groupStatusMessageV2 with raw audioMessage on modern clients.
-            // Convert audio to a status video or upload directly to status@broadcast
-            try {
-              const cp = require('child_process');
-              const os = require('os');
-              const path = require('path');
-              const tmpIn = path.join(os.tmpdir(), 'gst_a_' + Date.now() + '.ogg');
-              const tmpOut = path.join(os.tmpdir(), 'gst_v_' + Date.now() + '.mp4');
-              fs.writeFileSync(tmpIn, payload.buf);
-              let ff = 'ffmpeg';
-              try { const ffs = require('ffmpeg-static'); if (ffs && fs.existsSync(ffs)) ff = ffs; } catch {}
-              cp.execFileSync(ff, ['-y', '-f', 'lavfi', '-i', 'color=c=black:s=720x720:r=25', '-i', tmpIn, '-c:v', 'libx264', '-tune', 'stillimage', '-c:a', 'aac', '-b:a', '128k', '-pix_fmt', 'yuv420p', '-shortest', '-movflags', '+faststart', tmpOut], { timeout: 60000 });
-              const vBuf = fs.readFileSync(tmpOut);
-              try { fs.unlinkSync(tmpIn); fs.unlinkSync(tmpOut); } catch {}
-              inner = await g({ video: vBuf, caption: payload.caption || '', mimetype: 'video/mp4' }, genOpts);
-            } catch (_vErr) {
-              inner = await g({ audio: payload.buf, mimetype: 'audio/ogg; codecs=opus', ptt: true }, genOpts);
-            }
+            const audMime = /^audio\//.test(payload.mime || '') ? payload.mime : 'audio/ogg; codecs=opus';
+            inner = await g({ audio: payload.buf, mimetype: audMime, ptt: true }, genOpts);
           }
         } catch (e) {
           return { ok: false, error: 'media upload failed: ' + ((e && e.message) || e) };
@@ -280,6 +232,7 @@ module.exports = {
         return {
           kind: converted.kind,
           buf: converted.buf,
+          mime: converted.mime,
           caption: converted.caption || inner.caption || undefined
         };
       }
