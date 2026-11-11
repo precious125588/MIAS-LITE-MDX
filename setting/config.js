@@ -16,6 +16,44 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+// ── 0. Optional config.json (repo root) ───────────────────────────────────
+// Fill in the non-secret values you want in /config.json and redeploy.
+// Blank values are ignored. Environment variables always win over the file.
+// Secrets such as SESSION_ID are never read from this file.
+const CONFIG_FILE_KEYS = [
+  'OWNER_NUMBER',
+  'OWNER_NAME',
+  'BOT_NAME',
+  'PREFIX',
+  'CREATOR_USERNAME',
+  'TIKWM_ENABLED',
+  'STORAGE_MODE',
+  'LOG_LEVEL',
+  'APP_URL',
+  'SELF_PING_INTERVAL_MINUTES',
+];
+
+function applyConfigFile() {
+  try {
+    const file = path.join(__dirname, '..', 'config.json');
+    if (!fs.existsSync(file)) return;
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+    for (const key of CONFIG_FILE_KEYS) {
+      if (data[key] === undefined || data[key] === null) continue;
+      const text = String(data[key]).trim();
+      if (!text) continue;
+      const fromEnv = process.env[key];
+      if (fromEnv !== undefined && fromEnv !== '') continue;
+      process.env[key] = text;
+    }
+  } catch (err) {
+    console.warn('[config] config.json could not be read:', err.message);
+  }
+}
+
+applyConfigFile();
+
 // ── 1. Core Bot & Owner Identity ──────────────────────────────────────────
 const rawOwnerNumber = (process.env.OWNER_NUMBER || process.env.OWNER || '').replace(/[^0-9]/g, '');
 const ownerNumber = rawOwnerNumber || '234';
