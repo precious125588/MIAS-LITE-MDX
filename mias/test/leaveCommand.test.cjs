@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   isGroupJid,
+  resolveLeaveTarget,
   canExecuteLeave,
   handleLeaveCommand,
 } = require('../../lib/leaveCommand.cjs');
@@ -56,6 +57,10 @@ function createMockSocket(options = {}) {
       participantUpdates.push({ jid, participants, action });
       return true;
     },
+    async groupGetInviteInfo(code) {
+      if (options.inviteInfoThrows) throw new Error('invalid invite');
+      return options.inviteInfo || { id: '12345@g.us', subject: 'Invite Squad', code };
+    },
     async groupMetadata(jid) {
       if (options.groupMeta) return options.groupMeta;
       return {
@@ -77,6 +82,15 @@ test('isGroupJid: correctly identifies group and non-group JIDs', () => {
   assert.equal(isGroupJid('11111111111111@lid'), false);
   assert.equal(isGroupJid(''), false);
   assert.equal(isGroupJid(null), false);
+});
+
+test('resolveLeaveTarget: accepts current group, explicit JID, invite link and code', async () => {
+  const sock = createMockSocket({ inviteInfo: { id: '76543@g.us' } });
+  assert.equal(await resolveLeaveTarget(sock, [], '111@g.us'), '111@g.us');
+  assert.equal(await resolveLeaveTarget(sock, ['76543@g.us'], '111@g.us'), '76543@g.us');
+  assert.equal(await resolveLeaveTarget(sock, ['https://chat.whatsapp.com/abc_DEF-123'], ''), '76543@g.us');
+  assert.equal(await resolveLeaveTarget(sock, ['abc_DEF-123'], ''), '76543@g.us');
+  assert.equal(await resolveLeaveTarget(sock, ['bad'] , ''), null);
 });
 
 test('canExecuteLeave: allows bot itself (fromMe)', async () => {
@@ -131,9 +145,26 @@ test('handleLeaveCommand: rejects non-group chat', async () => {
   const msg = { key: { remoteJid: '2348000000002@s.whatsapp.net' } };
   const res = await handleLeaveCommand(sock, msg, []);
   assert.equal(res.ok, false);
-  assert.equal(res.reason, 'not_a_group');
+  assert.equal(res.reason, 'invalid_target');
   assert.equal(sock.sent.length, 1);
-  assert.match(sock.sent[0].content.text, /only be used in groups/i);
+  assert.match(sock.sent[0].content.text, /group JID or WhatsApp invite/i);
+});
+
+test('handleLeaveCommand: resolves a supplied invite link from a direct chat and leaves the target', async () => {
+  const sock = createMockSocket({
+    botIsAdmin: false,
+    inviteInfo: { id: '654321@g.us', subject: 'Target Squad' },
+  });
+  const msg = {
+    key: { remoteJid: '2348000000002@s.whatsapp.net', participant: '2348000000002@s.whatsapp.net', id: 'M-LINK' },
+  };
+  const res = await handleLeaveCommand(sock, msg, ['https://chat.whatsapp.com/abc_DEF-123'], {
+    CONFIG: { OWNER_NUMBER: '2348000000002' },
+  });
+  assert.equal(res.ok, true);
+  assert.equal(sock.leftGroups.includes('654321@g.us'), true);
+  assert.equal(sock.modified.some(m => m.mod?.delete === true && m.jid === '654321@g.us'), true);
+  assert.equal(sock.sent.some(s => s.to === '2348000000002@s.whatsapp.net' && /Group Left & Deleted/i.test(s.content?.text)), true);
 });
 
 test('handleLeaveCommand: rejects unauthorized user with clear denial', async () => {
