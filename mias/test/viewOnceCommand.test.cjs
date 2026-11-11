@@ -195,6 +195,7 @@ test('handleViewOnceCommand: downloads and reveals view-once image in chat', asy
               message: {
                 imageMessage: {
                   url: 'https://wa.net/img',
+                  mediaKey: 'k',
                   caption: 'my secret pic',
                 },
               },
@@ -239,7 +240,7 @@ test('handleViewOnceCommand: reports download failure with clear error', async (
           quotedMessage: {
             viewOnceMessageV2: {
               message: {
-                videoMessage: { url: 'https://wa.net/vid' },
+                videoMessage: { url: 'https://wa.net/vid', mediaKey: 'k' },
               },
             },
           },
@@ -286,7 +287,7 @@ test('handleViewOnceCommand (.vv2): delivers to sender DM in group chat', async 
           quotedMessage: {
             viewOnceMessage: {
               message: {
-                videoMessage: { url: 'https://wa.net/vid' },
+                videoMessage: { url: 'https://wa.net/vid', mediaKey: 'k' },
               },
             },
           },
@@ -409,4 +410,44 @@ test('handleViewOnceCommand (.vv2): stays completely silent when the download fa
   assert.equal(reactions.length, 0);
   assert.equal(replies.length, 0);
   assert.equal(sock.sent.length, 0);
+});
+
+test('handleViewOnceCommand: missing media key reports a clear error instead of crashing', async () => {
+  const sock = createMockSocket();
+  const replies = [];
+
+  const deps = {
+    react: async () => {},
+    sendReply: async (s, m, t) => replies.push(t),
+    downloadContentFromMessage: async () => {
+      throw new TypeError("Cannot read properties of null (reading 'length')");
+    },
+    CONFIG: { PREFIX: '.' },
+  };
+
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          quotedMessage: {
+            viewOnceMessageV2: {
+              message: {
+                imageMessage: { url: 'https://wa.net/img' },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+  assert.equal(res.ok, false);
+  assert.equal(res.reason, 'download_failed');
+  assert.equal(sock.sent.length, 0);
+  assert.equal(replies.length, 1);
+  assert.doesNotMatch(replies[0], /reading 'length'/);
+  assert.match(replies[0], /Media key missing/i);
 });
