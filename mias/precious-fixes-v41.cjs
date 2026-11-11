@@ -41,7 +41,7 @@ function installV41(ctx) {
   };
 
   const vv2Handler = async (sock, msg, args) => {
-    return handleViewOnceCommand(sock, msg, args, { cmdName: 'vv2', sendToDm: true }, deps);
+    return handleViewOnceCommand(sock, msg, args, { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
   };
 
   const vvEntry = {
