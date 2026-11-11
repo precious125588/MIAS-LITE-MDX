@@ -102,6 +102,10 @@ function isOwnerJid(jid) {
 }
 function isSudoJid(jid) {
   if (isOwnerJid(jid)) return true;
+  const permission = ctx();
+  if (typeof permission.isSudo === 'function') {
+    try { if (permission.isSudo(jid)) return true; } catch (_) {}
+  }
   if (typeof globalThis.__miasIsSudo === 'function') {
     try { if (globalThis.__miasIsSudo(jid)) return true; } catch (_) {}
   }
@@ -207,8 +211,12 @@ function installOwnerGuard() {
     const orig = entry.handler;
     entry.handler = async function (sock, msg, args) {
       try {
-        if (isOwnerOrSudoMsg(msg)) return orig(sock, msg, args);
-      } catch (_) { return orig(sock, msg, args); }
+        const owner = Boolean(msg && msg.key && msg.key.fromMe) || isOwnerJid(senderOf(msg));
+        // Sudo administration is strictly owner-only, even for existing sudo users.
+        if ((name === 'sudo' || name === 'setsudo') ? owner : (owner || isSudoJid(senderOf(msg)))) {
+          return orig(sock, msg, args);
+        }
+      } catch (_) {}
       // group admins may still open the settings UI, but ONLY in public mode
       try {
         const jid = msg && msg.key ? msg.key.remoteJid : '';

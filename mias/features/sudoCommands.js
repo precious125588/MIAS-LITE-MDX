@@ -6,8 +6,13 @@ import axios from "axios";
 export const sudoPending = new Map();
 
 export function installSetsudoCommand(ctx) {
-  const { cmd, sendReply, CONFIG, toStandardJid, resolveLid, sudoUsers, saveNow } = ctx;
+  const { cmd, sendReply, CONFIG, toStandardJid, resolveLid, sudoUsers, saveNow, isOwner } = ctx;
 cmd("setsudo", { desc: "Add sudo user", category: "OWNER", ownerOnly: true }, async (sock, msg, args) => {
+    const sender = msg.key?.participantPn || msg.key?.senderPn || msg.key?.participant || msg.key?.remoteJid || "";
+    if (!(msg.key?.fromMe || (typeof isOwner === "function" && isOwner(sender)))) {
+      await sendReply(sock, msg, "🚫 Only the bot owner can grant or revoke sudo.");
+      return;
+    }
     const mCtx = msg.message?.extendedTextMessage?.contextInfo;
     const mentions = mCtx?.mentionedJid || [];
     let _st = mentions[0] || mCtx?.participant;
@@ -34,9 +39,14 @@ cmd("setsudo", { desc: "Add sudo user", category: "OWNER", ownerOnly: true }, as
 }
 
 export function installSudoCommand(appCtx) {
-  const { cmd, react, isGroup, sendReply, _cleanNum, getBotPic, getSender } = appCtx;
+  const { cmd, react, isGroup, sendReply, _cleanNum, getBotPic, getSender, isOwner } = appCtx;
   const _sudoPending = sudoPending;
 cmd(["sudo"], { desc: "Grant sudo: .sudo in a DM or reply to a user", category: "OWNER", ownerOnly: true }, async (sock, msg, args) => {
+  const senderForAuth = msg.key?.participantPn || msg.key?.senderPn || msg.key?.participant || msg.key?.remoteJid || "";
+  if (!(msg.key?.fromMe || (typeof isOwner === "function" && isOwner(senderForAuth)))) {
+    await sendReply(sock, msg, "🚫 Only the bot owner can grant or revoke sudo.");
+    return;
+  }
   const jid = msg.key.remoteJid;
   try {
     try { await react(sock, msg, "🌀"); } catch {}
