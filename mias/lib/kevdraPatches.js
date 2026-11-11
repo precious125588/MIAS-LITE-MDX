@@ -1,4 +1,5 @@
 import { releaseBufferOnOpen } from "./startupBufferRelease.mjs";
+import { wrapOutbound } from "./botBusy.mjs";
 import { throttleGroupFetch } from "./groupFetchThrottle.mjs";
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
@@ -272,6 +273,7 @@ export async function applyKevdraToSock(sock, sessionPath, saveCreds) {
   try { throttleGroupFetch(sock); } catch (e) { console.warn("[KevdraPatches] group fetch throttle skipped:", e.message); }
   resumeAutoDownloads(sock);
   _sock = sock;
+  try { wrapOutbound(sock); } catch {}
   if (sessionPath) _sessionPath = sessionPath;
 
   // 5. Wrap saveCreds with write queue (prevents auth race conditions)
