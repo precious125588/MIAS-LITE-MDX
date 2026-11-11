@@ -374,11 +374,15 @@ async function main() {
   } catch (e) {
     console.warn('[session-debug] could not inspect sessions:', e && e.message);
   }
-  const port = Number(process.env.PORT || 3000);
+  const { resolveHttpServerMode } = require('../lib/http-port-mode.cjs');
+  const httpMode = resolveHttpServerMode(process.env);
+  const port = httpMode.enabled ? httpMode.port : null;
+  console.log('[http-mode] ' + (httpMode.enabled ? 'web port ' + port : 'no fixed web port') + ' (' + httpMode.reason + ')');
   const childEnv = {
     DOTENV_CONFIG_QUIET: 'true',
     KEEP_ALIVE_SUPERVISOR_ACTIVE: 'true',
     ...process.env,
+    BOT_HTTP_SERVER_OFF: httpMode.enabled ? 'false' : 'true',
     BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB || '220',
     BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB || '320',
     // node:sqlite prints an experimental-feature warning on every start; it is expected here.
@@ -390,11 +394,13 @@ async function main() {
     ].filter(Boolean).join(' '),
   };
 
-  try {
-    const { startKeepAlive } = require('../lib/keepAlive.cjs');
-    startKeepAlive({ port, isSupervisor: true });
-  } catch (err) {
-    console.warn('[KEEP-ALIVE] Startup notice:', err && err.message);
+  if (httpMode.enabled) {
+    try {
+      const { startKeepAlive } = require('../lib/keepAlive.cjs');
+      startKeepAlive({ port, isSupervisor: true });
+    } catch (err) {
+      console.warn('[KEEP-ALIVE] Startup notice:', err && err.message);
+    }
   }
 
   // One supervised server: reclaims a leftover copy, restarts with backoff, and
@@ -405,6 +411,7 @@ async function main() {
     cwd: path.join(__dirname, '..'),
     env: childEnv,
     port,
+    execArgs: httpMode.enabled ? [] : ['-r', httpMode.preloadPath],
     pidFile: path.join(__dirname, '..', '.run', 'server.pid'),
   });
 }
