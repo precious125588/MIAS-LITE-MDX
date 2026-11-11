@@ -1,3 +1,4 @@
+import { releaseBufferOnOpen } from "./startupBufferRelease.mjs";
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║        KEVDRA PATCHES — MAIS MDX Integration Layer             ║
@@ -308,6 +309,9 @@ export async function applyKevdraToSock(sock, sessionPath, saveCreds) {
     if (sock.store?.messages instanceof Map) trackCache(sock.store.messages, "store.messages");
     if (sock.store?.contacts instanceof Map) trackCache(sock.store.contacts, "store.contacts");
   } catch {}
+
+  // 10a. Release Baileys' startup event buffer as soon as the connection opens
+  try { releaseBufferOnOpen(sock); } catch {}
 
   // 10. creds.update → queued save
   if (queuedSave) {
