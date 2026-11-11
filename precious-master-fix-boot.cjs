@@ -340,6 +340,36 @@ function installAll(ctx) {
     pbad('precious-fixes-v40 require failed: ' + (e && e.message));
   }
 
+  /* [v41] View-Once (.vv, .viewonce, .vv2) Fix Pack:
+     - Reveals view-once images, videos, audio/voice notes, video notes, docs
+     - Drops clear error messages on failure instead of raw reaction or silent ignore
+     - .vv sends into current chat; .vv2 sends silently to user DM */
+  try {
+    const v41 = multiRequire("./mias/precious-fixes-v41.cjs");
+    if (v41.mod) {
+      const fn = (typeof v41.mod === "function") ? v41.mod : v41.mod.install;
+      if (typeof fn === "function") {
+        try {
+          const r41 = fn(globalThis.__PRECIOUS__ || ctx);
+          result.v41 = true;
+          plog("precious-fixes-v41: INSTALLED (vv|viewonce|vv2) " + safeJson(r41 || {}));
+        } catch (e41) {
+          result.v41 = false;
+          pbad("precious-fixes-v41 error: " + (e41 && e41.message));
+        }
+      } else {
+        result.v41 = false;
+        pbad("precious-fixes-v41 has no install()");
+      }
+    } else {
+      result.v41 = false;
+      pbad("precious-fixes-v41 failed to load: " + (v41.err && v41.err.message));
+    }
+  } catch (e) {
+    result.v41 = false;
+    pbad("precious-fixes-v41 require failed: " + (e && e.message));
+  }
+
   const slots = Object.keys(result).length;
   const good  = Object.values(result).filter(Boolean).length;
   const dt    = Date.now() - t0;
