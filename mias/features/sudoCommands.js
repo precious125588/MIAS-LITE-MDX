@@ -9,7 +9,7 @@ export function installSetsudoCommand(ctx) {
   const { cmd, sendReply, CONFIG, toStandardJid, resolveLid, sudoUsers, saveNow, isOwner } = ctx;
 cmd("setsudo", { desc: "Add sudo user", category: "OWNER", ownerOnly: true }, async (sock, msg, args) => {
     const sender = msg.key?.participantPn || msg.key?.senderPn || msg.key?.participant || msg.key?.remoteJid || "";
-    if (!(msg.key?.fromMe || (typeof isOwner === "function" && isOwner(sender)))) {
+    if (!(msg.key?.fromMe || ((typeof isOwner === "function" && isOwner(sender)) || (typeof globalThis.__miasIsOwner === "function" && globalThis.__miasIsOwner(sender))))) {
       await sendReply(sock, msg, "🚫 Only the bot owner can grant or revoke sudo.");
       return;
     }
@@ -43,7 +43,7 @@ export function installSudoCommand(appCtx) {
   const _sudoPending = sudoPending;
 cmd(["sudo"], { desc: "Grant sudo: .sudo in a DM or reply to a user", category: "OWNER", ownerOnly: true }, async (sock, msg, args) => {
   const senderForAuth = msg.key?.participantPn || msg.key?.senderPn || msg.key?.participant || msg.key?.remoteJid || "";
-  if (!(msg.key?.fromMe || (typeof isOwner === "function" && isOwner(senderForAuth)))) {
+  if (!(msg.key?.fromMe || ((typeof isOwner === "function" && isOwner(senderForAuth)) || (typeof globalThis.__miasIsOwner === "function" && globalThis.__miasIsOwner(senderForAuth))))) {
     await sendReply(sock, msg, "🚫 Only the bot owner can grant or revoke sudo.");
     return;
   }

@@ -100,6 +100,16 @@ function isOwnerJid(jid) {
   if (cj && raw === stripDevice(cj).toLowerCase()) return true;
   return false;
 }
+if (typeof globalThis.__miasIsOwner !== 'function') {
+  globalThis.__miasIsOwner = (jid) => {
+    const raw = stripDevice(jid).toLowerCase();
+    if (!raw) return false;
+    const configuredJid = String(CONFIG().OWNER_JID || '').toLowerCase();
+    const configuredNumber = String(CONFIG().OWNER_NUMBER || '').replace(/[^0-9]/g, '');
+    return Boolean((configuredJid && raw === stripDevice(configuredJid).toLowerCase())
+      || (configuredNumber && digits(raw) && digits(raw) === configuredNumber));
+  };
+}
 function isSudoJid(jid) {
   if (isOwnerJid(jid)) return true;
   const permission = ctx();
