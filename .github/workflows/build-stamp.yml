@@ -31,7 +31,7 @@ jobs:
       - name: Commit the refreshed stamp
         run: |
           git config user.name "𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x"
-          git config user.email "build-stamp-bot@users.noreply.github.com"
+          git config user.email "ebukaonyemachi119@gmail.com"
           git add lib/precious-build-stamp.json
           if git diff --cached --quiet; then
             echo "Stamp already current"; exit 0
