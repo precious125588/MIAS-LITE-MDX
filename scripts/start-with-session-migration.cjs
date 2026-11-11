@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn, spawnSync } = require('node:child_process');
+const { spawnSync } = require('node:child_process');
 
 // STRICT PRE-BOOT DEPENDENCY GATE
 // The bot MUST NEVER start or attempt connecting to WhatsApp if dependencies are missing or half-installed.
@@ -374,55 +374,38 @@ async function main() {
   } catch (e) {
     console.warn('[session-debug] could not inspect sessions:', e && e.message);
   }
-  const server = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-    cwd: path.join(__dirname, '..'),
-    // Keep dotenv's "injected env" banner out of the logs; env values still load.
-    env: {
-      DOTENV_CONFIG_QUIET: 'true',
-      KEEP_ALIVE_SUPERVISOR_ACTIVE: 'true',
-      ...process.env,
-      BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB || '220',
-      BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB || '320',
-      // node:sqlite prints an experimental-feature warning on every start; it is expected here.
-      NODE_OPTIONS: [
-        process.env.NODE_OPTIONS,
-        '--disable-warning=ExperimentalWarning',
-        '--expose-gc',
-        '--max-old-space-size=' + (process.env.SERVER_HEAP_MB || '220')
-      ].filter(Boolean).join(' '),
-    },
-    stdio: 'inherit',
-  });
+  const port = Number(process.env.PORT || 3000);
+  const childEnv = {
+    DOTENV_CONFIG_QUIET: 'true',
+    KEEP_ALIVE_SUPERVISOR_ACTIVE: 'true',
+    ...process.env,
+    BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB || '220',
+    BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB || '320',
+    // node:sqlite prints an experimental-feature warning on every start; it is expected here.
+    NODE_OPTIONS: [
+      process.env.NODE_OPTIONS,
+      '--disable-warning=ExperimentalWarning',
+      '--expose-gc',
+      '--max-old-space-size=' + (process.env.SERVER_HEAP_MB || '220')
+    ].filter(Boolean).join(' '),
+  };
 
   try {
     const { startKeepAlive } = require('../lib/keepAlive.cjs');
-    startKeepAlive({ port: process.env.PORT || 3000, isSupervisor: true });
+    startKeepAlive({ port, isSupervisor: true });
   } catch (err) {
     console.warn('[KEEP-ALIVE] Startup notice:', err && err.message);
   }
 
-  let stopping = false;
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, () => {
-      if (!stopping && server.exitCode === null) {
-        stopping = true;
-        server.kill(signal);
-      }
-    });
-  }
-
-  server.on('error', (error) => {
-    const code = String(error?.code || error?.name || 'UNKNOWN').replace(/[^A-Z0-9_-]/gi, '').slice(0, 80);
-    console.error(`[session-startup] Could not launch server (${code}).`);
-    process.exitCode = 1;
-  });
-  server.on('exit', (code, signal) => {
-    if (signal) {
-      process.removeAllListeners(signal);
-      process.exitCode = 128 + (osConstants.signals[signal] || 1);
-      return;
-    }
-    process.exitCode = code ?? 1;
+  // One supervised server: reclaims a leftover copy, restarts with backoff, and
+  // keeps repeated log lines from flooding the console. Never returns.
+  const { runSupervised } = require('../lib/process-supervisor.cjs');
+  await runSupervised({
+    serverScript: path.join(__dirname, '..', 'server.js'),
+    cwd: path.join(__dirname, '..'),
+    env: childEnv,
+    port,
+    pidFile: path.join(__dirname, '..', '.run', 'server.pid'),
   });
 }
 

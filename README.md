@@ -93,7 +93,7 @@
 Set your values in `config.json` at the repo root, then deploy:
 
 - `OWNER_NUMBER`: owner WhatsApp number with country code, digits only (no `+`).
-- `OWNER_NAME`, `BOT_NAME`, `PREFIX`, `CREATOR_USERNAME`: how the bot names itself and its owner.
+- `PREFIX`, `CREATOR_USERNAME`: command prefix and creator handle. The bot's and owner's names come from the linked WhatsApp account, not from config.
 - `TIKWM_ENABLED`, `STORAGE_MODE`, `LOG_LEVEL`, `APP_URL`, `SELF_PING_INTERVAL_MINUTES`: optional tuning.
 
 Leave a value blank to use the default. Environment variables set on your host always override `config.json`.

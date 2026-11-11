@@ -19,3 +19,5 @@ mias/eplugins/
 # Creator video links saved at runtime (never commit the live file)
 nexstore/creator_video_links.json
 nexstore/creator_video_links.json.*
+# Runtime pid file for the supervised bot process (never commit)
+.run/
