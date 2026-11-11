@@ -424,8 +424,7 @@ module.exports = function installV36(ctx) {
       if (digits.length >= 7 && digits.length <= 15) addCandidate(`${digits}@s.whatsapp.net`);
     }
     for (const mentioned of context?.mentionedJid || []) addCandidate(mentioned);
-    if (isDirectMessage) addCandidate(senderPhone || sender);
-    else if (sender) addCandidate(senderPhone || sender);
+    // Sender is not automatically added as participant
 
     const myDigits = (sock.user?.id || sock.authState?.creds?.me?.id || '').split(':')[0].replace(/[^0-9]/g, '');
     const participants = [];
@@ -450,10 +449,7 @@ module.exports = function installV36(ctx) {
       await sendReply(sock, msg, '❌ A group name is required. Example: .creategc Study Group | 15551234567');
       return;
     }
-    if (!participants.length) {
-      await sendReply(sock, msg, '❌ Add at least one valid phone number (with country code): .creategc Group Name | 15551234567');
-      return;
-    }
+    // Allow creating group with no participants if none provided
 
     await react(sock, msg, '🌀').catch(() => {});
     try {
