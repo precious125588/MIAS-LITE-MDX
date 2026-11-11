@@ -1,4 +1,5 @@
 import { releaseBufferOnOpen } from "./startupBufferRelease.mjs";
+import { throttleGroupFetch } from "./groupFetchThrottle.mjs";
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║        KEVDRA PATCHES — MAIS MDX Integration Layer             ║
@@ -267,6 +268,8 @@ export async function initKevdraPatches(sessionPath, dbDir) {
 
 // ── Attach to a Baileys socket (call after makeWASocket) ──────────────────────
 export async function applyKevdraToSock(sock, sessionPath, saveCreds) {
+  // One group-list download per TTL instead of one per caller (see groupFetchThrottle.mjs)
+  try { throttleGroupFetch(sock); } catch (e) { console.warn("[KevdraPatches] group fetch throttle skipped:", e.message); }
   resumeAutoDownloads(sock);
   _sock = sock;
   if (sessionPath) _sessionPath = sessionPath;
