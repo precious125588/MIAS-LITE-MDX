@@ -132,7 +132,7 @@ export function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || null) {
     const req = https.request(
       {
         host: "api.github.com",
-        path: `/repos/${REPO_SLUG}/commits/${encodeURIComponent(REPO_BRANCH)}`,
+        path: `/repos/${REPO_SLUG}/commits?sha=${encodeURIComponent(REPO_BRANCH)}&per_page=10`,
         method: "GET",
         timeout: 10000,
         headers: {
@@ -149,11 +149,15 @@ export function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || null) {
             return resolve({ sha: null, error: `GitHub API HTTP ${res.statusCode}` });
           }
           try {
-            const data = JSON.parse(body) || {};
-            const sha = (data.sha || "").toLowerCase() || null;
-            const message = String(data.commit?.message || "").split("\n")[0].trim() || "Latest commit";
-            const author = data.commit?.author?.name || data.author?.login || "Developer";
-            const date = data.commit?.author?.date || new Date().toISOString();
+            const parsed = JSON.parse(body);
+            const list = Array.isArray(parsed) ? parsed : [];
+            const head = list[0];
+            const sha = (head?.sha || "").toLowerCase() || null;
+            // The build-stamp commit sits on top of every code commit; report the real change instead.
+            const real = list.find((c) => !isStampCommitMessage(c?.commit?.message)) || head;
+            const message = String(real?.commit?.message || "").split("\n")[0].trim() || "Latest commit";
+            const author = real?.commit?.author?.name || real?.author?.login || "Developer";
+            const date = real?.commit?.author?.date || new Date().toISOString();
             resolve({ sha, message, author, date });
           } catch {
             resolve({ sha: null, error: "Invalid JSON response from GitHub" });
@@ -166,6 +170,54 @@ export function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || null) {
       resolve({ sha: null, error: "Timeout connecting to GitHub" });
     });
     req.on("error", (e) => resolve({ sha: null, error: e.message || "Network error" }));
+    req.end();
+  });
+}
+
+/** True for the automatic build-stamp commit, which carries no fix of its own. */
+export function isStampCommitMessage(message) {
+  return /^chore: refresh build stamp/i.test(String(message || "").trim());
+}
+
+/**
+ * Every real commit message between two commits, newest first, build-stamp commits left out.
+ * Returns [] when GitHub cannot compare them.
+ */
+export function fetchFixes(baseSha, headSha, token = process.env.GITHUB_TOKEN || null) {
+  return new Promise((resolve) => {
+    const req = https.request(
+      {
+        host: "api.github.com",
+        path: `/repos/${REPO_SLUG}/compare/${encodeURIComponent(baseSha)}...${encodeURIComponent(headSha)}`,
+        method: "GET",
+        timeout: 10000,
+        headers: {
+          "User-Agent": "mias-lite-mdx-updater",
+          "Accept": "application/vnd.github+json",
+          ...(token ? { Authorization: "Bearer " + token } : {}),
+        },
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (chunk) => { body += chunk; });
+        res.on("end", () => {
+          if (res.statusCode !== 200) return resolve([]);
+          try {
+            const commits = JSON.parse(body)?.commits || [];
+            const fixes = commits
+              .slice()
+              .reverse()
+              .map((c) => String(c?.commit?.message || "").split("\n")[0].trim())
+              .filter((m) => m && !isStampCommitMessage(m));
+            resolve([...new Set(fixes)].slice(0, 6));
+          } catch {
+            resolve([]);
+          }
+        });
+      }
+    );
+    req.on("error", () => resolve([]));
+    req.on("timeout", () => req.destroy());
     req.end();
   });
 }
@@ -664,6 +716,9 @@ function startAutoUpdatePoller(ctx) {
           return;
         }
 
+        const fixes = await fetchFixes(local.sha, remote.sha);
+        if (fixes.length) remote.message = fixes.join(" • ");
+
         const sameTarget = _pendingCode && _pendingCode.sha.toLowerCase() === remote.sha.toLowerCase();
         if (!sameTarget) {
           _pendingCode = {
@@ -793,6 +848,10 @@ export function installUpdateCommand(ctx) {
 
       const local = readLocalCommit();
       const remote = await fetchRemoteCommit();
+      if (remote.sha && local.sha && local.sha.toLowerCase() !== remote.sha.toLowerCase()) {
+        const fixes = await fetchFixes(local.sha, remote.sha);
+        if (fixes.length) remote.message = fixes.join(" • ");
+      }
 
       if (!remote.sha) {
         await sock.sendMessage(jid, { react: { text: "⚠️", key: msg.key } }).catch(() => {});
