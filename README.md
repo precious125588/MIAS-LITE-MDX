@@ -86,3 +86,16 @@
 </p>
 
 </div>
+
+
+## Configuration
+
+Set your values in `config.json` at the repo root, then deploy:
+
+- `OWNER_NUMBER`: owner WhatsApp number with country code, digits only (no `+`).
+- `OWNER_NAME`, `BOT_NAME`, `PREFIX`, `CREATOR_USERNAME`: how the bot names itself and its owner.
+- `TIKWM_ENABLED`, `STORAGE_MODE`, `LOG_LEVEL`, `APP_URL`, `SELF_PING_INTERVAL_MINUTES`: optional tuning.
+
+Leave a value blank to use the default. Environment variables set on your host always override `config.json`.
+
+Never put secrets such as `SESSION_ID` or API keys in `config.json`, because the repo is public. Set those as environment variables on your host.
