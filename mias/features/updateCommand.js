@@ -16,6 +16,7 @@ import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { isStampOnlyChange } from "../lib/stampOnlyUpdate.mjs";
+import { isBotIdle, MAX_DEFER_MS } from "../lib/botBusy.mjs";
 
 const require = createRequire(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -580,6 +581,66 @@ function startAutoUpdatePoller(ctx) {
   if (_autoUpdateTimer) return;
   const { getSettings, CONFIG } = ctx;
 
+  // A new commit is queued and applied only when the bot is idle: no command running,
+  // no recent output, and the owner not using it. MAX_DEFER_MS caps the wait.
+  let _pendingCode = null; // { sha, message, author, queuedAt }
+  let _applyingCode = false;
+  let _idleWatcher = null;
+
+  const applyPendingCode = async () => {
+    if (_applyingCode || !_pendingCode) return;
+    const pending = _pendingCode;
+    const local = readLocalCommit();
+    if (local.sha && local.sha.toLowerCase() === pending.sha.toLowerCase()) {
+      _pendingCode = null; // already on this commit (a manual .update got there first)
+      return;
+    }
+    const waited = Date.now() - pending.queuedAt;
+    if (!isBotIdle() && waited < MAX_DEFER_MS) return;
+
+    _applyingCode = true;
+    _pendingCode = null;
+    try {
+      console.log(`[AUTO-UPDATE] Bot idle after ${Math.round(waited / 1000)}s. Applying ${pending.sha.slice(0, 7)} — "${pending.message}"...`);
+      await applyUpdateCode(pending.sha, pending.message, pending.author);
+
+      const ownerNumber = String(CONFIG?.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
+      if (ownerNumber) {
+        try {
+          fs.mkdirSync(path.dirname(AUTO_UPDATE_NOTICE), { recursive: true });
+          fs.writeFileSync(
+            AUTO_UPDATE_NOTICE,
+            JSON.stringify(
+              {
+                ownerJid: `${ownerNumber}@s.whatsapp.net`,
+                remoteSha: pending.sha,
+                commitMessage: pending.message,
+                author: pending.author,
+                updatedAt: Date.now(),
+              },
+              null,
+              2
+            ),
+            "utf8"
+          );
+        } catch {}
+      }
+
+      console.log("[AUTO-UPDATE] Restarting bot runtime to load fresh code...");
+      setTimeout(() => process.exit(0), 1500);
+    } catch (err) {
+      console.warn("[AUTO-UPDATE] Apply failed:", err?.message || err);
+    } finally {
+      _applyingCode = false;
+    }
+  };
+
+  const ensureIdleWatcher = () => {
+    if (_idleWatcher) return;
+    _idleWatcher = setInterval(() => { applyPendingCode().catch(() => {}); }, 15 * 1000);
+    if (typeof _idleWatcher.unref === "function") _idleWatcher.unref();
+  };
+
   const runCheck = async () => {
     try {
       const botSettings = typeof getSettings === "function" ? getSettings("bot") : null;
@@ -602,33 +663,19 @@ function startAutoUpdatePoller(ctx) {
           console.log(`[AUTO-UPDATE] ${remote.sha.slice(0, 7)} only refreshed the build stamp; no restart needed.`);
           return;
         }
-        console.log(`[AUTO-UPDATE] Detected new GitHub commit: ${remote.sha.slice(0, 7)} — "${remote.message}". Applying update...`);
-        await applyUpdateCode(remote.sha, remote.message, remote.author);
 
-        const ownerNumber = String(CONFIG?.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
-        if (ownerNumber) {
-          try {
-            fs.mkdirSync(path.dirname(AUTO_UPDATE_NOTICE), { recursive: true });
-            fs.writeFileSync(
-              AUTO_UPDATE_NOTICE,
-              JSON.stringify(
-                {
-                  ownerJid: `${ownerNumber}@s.whatsapp.net`,
-                  remoteSha: remote.sha,
-                  commitMessage: remote.message,
-                  author: remote.author,
-                  updatedAt: Date.now(),
-                },
-                null,
-                2
-              ),
-              "utf8"
-            );
-          } catch {}
+        const sameTarget = _pendingCode && _pendingCode.sha.toLowerCase() === remote.sha.toLowerCase();
+        if (!sameTarget) {
+          _pendingCode = {
+            sha: remote.sha,
+            message: remote.message,
+            author: remote.author,
+            queuedAt: _pendingCode ? _pendingCode.queuedAt : Date.now(),
+          };
+          console.log(`[AUTO-UPDATE] New commit ${remote.sha.slice(0, 7)} — "${remote.message}" queued. It applies once the bot is idle.`);
         }
-
-        console.log("[AUTO-UPDATE] Restarting bot runtime to load fresh code...");
-        setTimeout(() => process.exit(0), 1500);
+        ensureIdleWatcher();
+        await applyPendingCode();
       }
     } catch (err) {
       console.warn("[AUTO-UPDATE] Background poll error:", err?.message || err);
