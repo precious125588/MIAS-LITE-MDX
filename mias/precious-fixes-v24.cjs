@@ -31,6 +31,9 @@
 const fs    = require('fs');
 const path  = require('path');
 const axios = require('axios');
+// Shared 1.3 HD pipeline (same re-encode as the TikTok 1.3 command); optional, media is sent unchanged if it cannot load.
+const hdVideoPipeline = (() => { try { return require('./lib/hdVideoPipeline.cjs'); } catch { return null; } })();
+const hdBuf = async (buf) => (hdVideoPipeline ? hdVideoPipeline.reencodeBufferHd(buf) : { buf, cleanup: async () => {} });
 
 // ────────────────────────── shared utilities ─────────────────────────────
 const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36' };
@@ -58,13 +61,18 @@ function isRealMedia(buf) {
 
 async function sendVideoRobust(sock, jid, buf, caption, quoted) {
   if (!isRealMedia(buf)) throw new Error('upstream returned non-video data');
+  const hd = await hdBuf(buf);
   try {
-    return await sock.sendMessage(jid, { video: buf, mimetype: 'video/mp4', caption }, { quoted });
-  } catch (e) {
-    return await sock.sendMessage(jid, {
-      document: buf, mimetype: 'video/mp4',
-      fileName: 'video.mp4', caption: caption || '🎬 video (sent as file)',
-    }, { quoted });
+    try {
+      return await sock.sendMessage(jid, { video: hd.buf, mimetype: 'video/mp4', caption }, { quoted });
+    } catch (e) {
+      return await sock.sendMessage(jid, {
+        document: hd.buf, mimetype: 'video/mp4',
+        fileName: 'video.mp4', caption: caption || '🎬 video (sent as file)',
+      }, { quoted });
+    }
+  } finally {
+    await hd.cleanup().catch(() => {});
   }
 }
 
@@ -452,7 +460,12 @@ module.exports.install = function install(P) {
       } else if (n === 4) {
         // Video as DOCUMENT — the exact pre-push behaviour the user asked for
         const safe = String(r.title || title || 'video').replace(/[^\w\s.-]/g, '').trim().slice(0, 60) || 'video';
-        await s.sendMessage(jid, { document: r.buf, mimetype: 'video/mp4', fileName: safe + '.mp4', caption: `🎬 ${r.title || title}` }, { quoted: m });
+        const hdDoc = await hdBuf(r.buf);
+        try {
+          await s.sendMessage(jid, { document: hdDoc.buf, mimetype: 'video/mp4', fileName: safe + '.mp4', caption: `🎬 ${r.title || title}` }, { quoted: m });
+        } finally {
+          await hdDoc.cleanup().catch(() => {});
+        }
       } else {
         await sendVideoRobust(s, jid, r.buf, `🎬 ${r.title || title}`, m);
       }
@@ -480,7 +493,14 @@ module.exports.install = function install(P) {
       } else {
         const r = await ytDownload(url, 'video', quality || '360');
         if (!r) throw new Error('video APIs down');
-        if (mode === 'doc') await sock.sendMessage(jid, { document: r.buf, mimetype: 'video/mp4', fileName: (r.title || 'video').replace(/[^\w\s-]/g, '') + '.mp4' }, { quoted: msg });
+        if (mode === 'doc') {
+          const hdDoc = await hdBuf(r.buf);
+          try {
+            await sock.sendMessage(jid, { document: hdDoc.buf, mimetype: 'video/mp4', fileName: (r.title || 'video').replace(/[^\w\s-]/g, '') + '.mp4' }, { quoted: msg });
+          } finally {
+            await hdDoc.cleanup().catch(() => {});
+          }
+        }
         else await sendVideoRobust(sock, jid, r.buf, `🎬 ${r.title || ''}`.trim(), msg);
       }
       await P.react(sock, msg, '✅').catch(() => {});

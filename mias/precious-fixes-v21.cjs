@@ -38,6 +38,8 @@ const os    = require('os');
 const fs    = require('fs');
 const path  = require('path');
 const { spawn } = require('child_process');
+// Shared 1.3 HD pipeline (same re-encode as the TikTok 1.3 command). Optional: media is sent unchanged if it cannot load.
+const hdVideoPipeline = (() => { try { return require('./lib/hdVideoPipeline.cjs'); } catch { return null; } })();
 
 const DC = 'https://apis.davidcyril.name.ng';
 
@@ -1659,7 +1661,14 @@ function install(ctx) {
     const sendByFetched = async (sock, msg, fetchedPack, fallbackName, caption = '') => {
       const { fetched, meta } = fetchedPack;
       try {
-        if (meta.kind === 'video') return await _sendFilePath(sock, msg.key.remoteJid, 'video', fetched.filePath, { mimetype: 'video/mp4', fileName: fallbackName || `video${meta.ext || '.mp4'}`, caption }, msg);
+        if (meta.kind === 'video') {
+          const hd = hdVideoPipeline ? await hdVideoPipeline.reencodeFileHd(fetched.filePath) : { path: fetched.filePath, cleanup: async () => {} };
+          try {
+            return await _sendFilePath(sock, msg.key.remoteJid, 'video', hd.path, { mimetype: 'video/mp4', fileName: fallbackName || `video${meta.ext || '.mp4'}`, caption }, msg);
+          } finally {
+            await hd.cleanup().catch(() => {});
+          }
+        }
         if (meta.kind === 'audio') return await _sendFilePath(sock, msg.key.remoteJid, 'audio', fetched.filePath, { mimetype: meta.mimetype || 'audio/mpeg', ptt: false, fileName: fallbackName || `audio${meta.ext || '.mp3'}` }, msg);
         if (meta.kind === 'image') return await _sendFilePath(sock, msg.key.remoteJid, 'image', fetched.filePath, { mimetype: meta.mimetype || 'image/jpeg', caption }, msg);
         return await _sendFilePath(sock, msg.key.remoteJid, 'document', fetched.filePath, { mimetype: meta.mimetype || 'application/octet-stream', fileName: fallbackName || `file${meta.ext || '.bin'}`, caption }, msg);
@@ -1753,6 +1762,20 @@ function install(ctx) {
         } catch (e) {
           lastErr = e;
         }
+      }
+      // Fallback: the shared auto-downloader resolver chain (YouTube, Instagram, Facebook and the rest).
+      try {
+        const ad = await import('./lib/autoDownloader.js');
+        const platform = ad.detectPlatform(url);
+        const resolved = platform ? await ad.resolveMediaUrl(url, platform) : null;
+        if (resolved && resolved.url && resolved.url !== url) {
+          const fetched = await _downloadFirstWorkingMedia([resolved.url], { kind: 'any', maxBytes: 180 * 1024 * 1024, prefix: 'aioad-' });
+          await sendByFetched(sock, msg, fetched, `${_safeBaseName(resolved.title || 'aio_download')}${fetched.meta.ext || '.bin'}`, `📥 *${resolved.title || 'AIO Download'}*`);
+          return safeReact(sock, msg, '✅');
+        }
+        lastErr = lastErr || new Error('no resolver returned media');
+      } catch (e) {
+        lastErr = e;
       }
       if (typeof previousAioHandler === 'function') return previousAioHandler(sock, msg, args);
       await sendReply(sock, msg, `❌ AIO failed: ${(lastErr && lastErr.message) || 'no downloadable media found'}`);

@@ -19,7 +19,7 @@ test("precious-fixes-v21 aioHandler intercepts TikTok and routes to __miasTikTok
 
 test("autoDownloader applies reencodeHdForWhatsApp for TikTok platform", () => {
   const content = fs.readFileSync("mias/lib/autoDownloader.js", "utf8");
-  assert.ok(content.includes("if (platform === \"tiktok\")"));
+  assert.ok(content.includes("1.3 HD pipeline for every video platform"));
   assert.ok(content.includes("reencodeHdForWhatsApp"));
   assert.ok(content.includes("boost: 1.2"));
   assert.ok(content.includes("sourceQualityBoost: 1.2"));

@@ -1819,7 +1819,8 @@ async function processAutoDownload(sock, msg, body, mode, isOwner) {
     if (dlType === "video") {
       let mediaSource = tmpPath;
       let hdCleanup = null;
-      if (platform === "tiktok") {
+      // 1.3 HD pipeline for every video platform (YouTube, Instagram, Facebook, ...), the same re-encode the TikTok 1.3 command uses.
+      {
         try {
           const req = createRequire(import.meta.url);
           const TTD = req("./ttDelivery.cjs");
