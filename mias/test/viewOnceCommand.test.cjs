@@ -10,6 +10,7 @@ const {
   resolveViewOnceMedia,
   handleViewOnceCommand,
   downloadViewOnceMedia,
+  ownerChatJid,
   rememberViewOnceArrival,
   lookupStoredViewOnceMedia,
 } = require('../../lib/viewOnceCommand.cjs');
@@ -302,14 +303,16 @@ test('handleViewOnceCommand (.vv2): delivers to sender DM in group chat', async 
     },
   };
 
+  sock.user = { id: '2348099990000:5@s.whatsapp.net' };
   const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
   assert.equal(res.ok, true);
   assert.equal(reactions.length, 0, 'vv2 must not react');
 
-  // Delivered media to sender DM
-  const dmMsg = sock.sent.find(s => s.to === '2348011112222@s.whatsapp.net');
-  assert.ok(dmMsg, 'Media must be sent to sender DM');
-  assert.deepEqual(dmMsg.content.video, fakeVideoBytes);
+  // Media goes to the owner's own chat, never to the person who sent the view-once
+  const ownerMsg = sock.sent.find(s => s.to === '2348099990000@s.whatsapp.net');
+  assert.ok(ownerMsg, 'Media must be sent to the owner chat');
+  assert.deepEqual(ownerMsg.content.video, fakeVideoBytes);
+  assert.equal(sock.sent.some(s => s.to === '2348011112222@s.whatsapp.net'), false, 'must not send to the sender');
 
   // vv2 is silent: no confirmation text in the chat
   assert.equal(replies.length, 0, 'vv2 must not send chat text');
@@ -388,8 +391,9 @@ test('handleViewOnceCommand: re-uploads media when WhatsApp drops its link', asy
   assert.equal(reactions.includes('✅'), true);
 });
 
-test('handleViewOnceCommand (.vv2): stays completely silent when the download fails', async () => {
+test('handleViewOnceCommand (.vv2): nothing in the chat when the download fails; reason goes to owner chat', async () => {
   const sock = createMockSocket();
+  sock.user = { id: '2348099990000:5@s.whatsapp.net' };
   const reactions = [];
   const replies = [];
   const deps = {
@@ -414,8 +418,16 @@ test('handleViewOnceCommand (.vv2): stays completely silent when the download fa
   const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
   assert.equal(res.ok, false);
   assert.equal(reactions.length, 0);
-  assert.equal(replies.length, 0);
-  assert.equal(sock.sent.length, 0);
+  assert.equal(replies.length, 0, 'nothing may appear in the group chat');
+  assert.equal(sock.sent.length, 1);
+  assert.equal(sock.sent[0].to, '2348099990000@s.whatsapp.net');
+  assert.match(sock.sent[0].content.text, /Download Failed/);
+});
+
+test('ownerChatJid strips the device suffix and keeps the server', () => {
+  assert.equal(ownerChatJid({ user: { id: '2348099990000:5@s.whatsapp.net' } }), '2348099990000@s.whatsapp.net');
+  assert.equal(ownerChatJid({ user: { id: '2348099990000@s.whatsapp.net' } }), '2348099990000@s.whatsapp.net');
+  assert.equal(ownerChatJid({}), null);
 });
 
 test('handleViewOnceCommand: missing media key reports a clear error instead of crashing', async () => {
