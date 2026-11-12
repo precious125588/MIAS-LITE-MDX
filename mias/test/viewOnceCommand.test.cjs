@@ -286,7 +286,7 @@ test('handleViewOnceCommand (.vv2): delivers to sender DM in group chat', async 
   };
 
   const msg = {
-    key: { remoteJid: 'group123@g.us', participant: '2348011112222:1@s.whatsapp.net' },
+    key: { remoteJid: 'group123@g.us', fromMe: true, participant: '2348099990000@s.whatsapp.net' },
     message: {
       extendedTextMessage: {
         text: '.vv2',
@@ -403,7 +403,7 @@ test('handleViewOnceCommand (.vv2): nothing in the chat when the download fails;
     CONFIG: { PREFIX: '.' },
   };
   const msg = {
-    key: { remoteJid: 'group123@g.us', participant: '2348011112222@s.whatsapp.net' },
+    key: { remoteJid: 'group123@g.us', fromMe: true, participant: '2348099990000@s.whatsapp.net' },
     message: {
       extendedTextMessage: {
         text: '.vv2',
@@ -586,4 +586,63 @@ test('arrival copy survives a restart: saved to disk, found with its media key',
   } finally {
     delete process.env.VIEWONCE_STORE_FILE;
   }
+});
+
+function vv2Msg(fromMe, quotedMessage) {
+  return {
+    key: { remoteJid: 'group123@g.us', fromMe, participant: fromMe ? '2348099990000@s.whatsapp.net' : '2348011112222@s.whatsapp.net' },
+    message: { extendedTextMessage: { text: '.vv2', contextInfo: { quotedMessage } } },
+  };
+}
+
+test('.vv2 is owner-only: a non-owner gets no reaction, reply or media', async () => {
+  const sock = createMockSocket();
+  sock.user = { id: '2348099990000:5@s.whatsapp.net' };
+  const reactions = [];
+  const replies = [];
+  const deps = {
+    react: async (s, m, r) => reactions.push(r),
+    sendReply: async (s, m, t) => replies.push(t),
+    downloadContentFromMessage: async () => { throw new Error('must not download for non-owner'); },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = vv2Msg(false, { viewOnceMessage: { message: { videoMessage: { url: 'https://wa.net/vid', mediaKey: 'k' } } } });
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
+  assert.deepEqual(res, { ok: false, reason: 'not_owner' });
+  assert.equal(sock.sent.length, 0);
+  assert.equal(reactions.length, 0);
+  assert.equal(replies.length, 0);
+});
+
+test('.vv2 ignores normal (non view-once) media, even from the owner', async () => {
+  const sock = createMockSocket();
+  sock.user = { id: '2348099990000:5@s.whatsapp.net' };
+  const deps = {
+    react: async () => {},
+    sendReply: async () => {},
+    downloadContentFromMessage: async () => { throw new Error('must not download normal media'); },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = vv2Msg(true, { videoMessage: { url: 'https://wa.net/vid', mediaKey: 'k' } });
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
+  assert.deepEqual(res, { ok: false, reason: 'not_view_once' });
+  assert.equal(sock.sent.length, 0);
+});
+
+test('.vv2 reveals view-once media flagged with viewOnce on the inner node', async () => {
+  const sock = createMockSocket();
+  sock.user = { id: '2348099990000:5@s.whatsapp.net' };
+  const bytes = Buffer.from('flagged-vo-bytes');
+  const deps = {
+    react: async () => {},
+    sendReply: async () => {},
+    downloadContentFromMessage: async () => (async function* () { yield bytes; })(),
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = vv2Msg(true, { videoMessage: { url: 'https://wa.net/vid', mediaKey: 'k', viewOnce: true } });
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
+  assert.equal(res.ok, true);
+  const ownerMsg = sock.sent.find((x) => x.to === '2348099990000@s.whatsapp.net');
+  assert.ok(ownerMsg, 'owner must receive the revealed media');
+  assert.deepEqual(ownerMsg.content.video, bytes);
 });
