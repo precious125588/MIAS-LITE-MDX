@@ -451,3 +451,41 @@ test('handleViewOnceCommand: missing media key reports a clear error instead of 
   assert.doesNotMatch(replies[0], /reading 'length'/);
   assert.match(replies[0], /Media key missing/i);
 });
+
+test('handleViewOnceCommand: uses the stored arrival copy when the quoted copy has no media key', async () => {
+  const sock = createMockSocket();
+  const replies = [];
+  const fakeBytes = Buffer.from('stored-jpeg-bytes');
+  globalThis._viewOnceStore = new Map([
+    ['STORED1', { message: { imageMessage: { url: 'https://wa.net/img', mediaKey: 'k', caption: 'kept' } } }],
+  ]);
+  const deps = {
+    react: async () => {},
+    sendReply: async (s, m, t) => replies.push(t),
+    downloadContentFromMessage: async (node) => {
+      assert.equal(node.mediaKey, 'k');
+      return (async function* () { yield fakeBytes; })();
+    },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          stanzaId: 'STORED1',
+          quotedMessage: { viewOnceMessageV2: { message: { imageMessage: { url: 'https://wa.net/img' } } } },
+        },
+      },
+    },
+  };
+  try {
+    const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+    assert.equal(res.ok, true);
+    assert.deepEqual(sock.sent[0].content.image, fakeBytes);
+    assert.equal(replies.length, 0);
+  } finally {
+    delete globalThis._viewOnceStore;
+  }
+});
