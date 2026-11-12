@@ -2,10 +2,16 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const {
   extractQuotedMessage,
   resolveViewOnceMedia,
   handleViewOnceCommand,
+  downloadViewOnceMedia,
+  rememberViewOnceArrival,
+  lookupStoredViewOnceMedia,
 } = require('../../lib/viewOnceCommand.cjs');
 const installV41 = require('../precious-fixes-v41.cjs');
 
@@ -487,5 +493,85 @@ test('handleViewOnceCommand: uses the stored arrival copy when the quoted copy h
     assert.equal(replies.length, 0);
   } finally {
     delete globalThis._viewOnceStore;
+  }
+});
+
+test('handleViewOnceCommand: never asks WhatsApp to re-upload media that has no key', async () => {
+  const sock = createMockSocket();
+  let reuploads = 0;
+  sock.updateMediaMessage = async () => {
+    reuploads++;
+    throw new TypeError("Cannot read properties of null (reading 'length')");
+  };
+  const replies = [];
+  const deps = {
+    react: async () => {},
+    sendReply: async (s, m, t) => replies.push(t),
+    downloadContentFromMessage: async () => { throw new Error('should not download'); },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          stanzaId: 'NOKEY1',
+          quotedMessage: { viewOnceMessageV2: { message: { imageMessage: { url: 'https://wa.net/img' } } } },
+        },
+      },
+    },
+  };
+  process.env.VIEWONCE_STORE_FILE = path.join(os.tmpdir(), 'vo-nokey-' + Date.now() + '.json');
+  try {
+    const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+    assert.equal(res.ok, false);
+    assert.equal(reuploads, 0);
+    assert.ok(!/reading 'length'/.test(replies[0]), 'raw error leaked: ' + replies[0]);
+    assert.ok(/Media key missing/.test(replies[0]));
+  } finally {
+    delete process.env.VIEWONCE_STORE_FILE;
+  }
+});
+
+test('downloadViewOnceMedia: a decrypt failure in the stream is reported with a clear prefix', async () => {
+  const media = {
+    content: { url: 'https://wa.net/x', mediaKey: Buffer.from('k'.repeat(32)) },
+    messageType: 'imageMessage',
+    type: 'image',
+    downloadType: 'image',
+  };
+  await assert.rejects(
+    downloadViewOnceMedia({
+      quotedKey: { id: 'S1' },
+      media,
+      downloadFn: async () => (async function* () {
+        throw new TypeError("Cannot read properties of null (reading 'length')");
+      })(),
+      updateMediaFn: undefined,
+    }),
+    (err) => /^Could not decrypt view-once media: /.test(err.message)
+  );
+});
+
+test('arrival copy survives a restart: saved to disk, found with its media key', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vo-arrivals-'));
+  process.env.VIEWONCE_STORE_FILE = path.join(dir, 'arrivals.json');
+  try {
+    const key = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    const saved = rememberViewOnceArrival({
+      key: { id: 'ARR1' },
+      message: { viewOnceMessageV2: { message: { imageMessage: { url: 'https://wa.net/i', mediaKey: key, caption: 'hi', mimetype: 'image/jpeg' } } } },
+    });
+    assert.equal(saved, true);
+    assert.equal(rememberViewOnceArrival({ key: { id: 'PLAIN' }, message: { conversation: 'hello' } }), false);
+
+    const found = lookupStoredViewOnceMedia('ARR1');
+    assert.ok(found, 'arrival copy should be found from disk');
+    assert.ok(Buffer.isBuffer(found.content.mediaKey));
+    assert.deepEqual(found.content.mediaKey, key);
+    assert.equal(lookupStoredViewOnceMedia('MISSING'), null);
+  } finally {
+    delete process.env.VIEWONCE_STORE_FILE;
   }
 });
