@@ -29,6 +29,17 @@ function getDownloader() {
   return _downloadContentFromMessage;
 }
 
+let _rememberArrival = null;
+function rememberArrival(message) {
+  try {
+    if (!_rememberArrival) {
+      const req = createRequire(import.meta.url);
+      _rememberArrival = req("../../lib/viewOnceCommand.cjs").rememberViewOnceArrival;
+    }
+    _rememberArrival?.(message);
+  } catch {}
+}
+
 function keyOf(key = {}) {
   return [key.remoteJid || "", key.id || "", key.participant || ""].join("|");
 }
@@ -120,7 +131,10 @@ export function installReactionForwarder(sock, options = {}) {
   };
 
   sock.ev.on("messages.upsert", (event = {}) => {
-    for (const message of event.messages || []) remember(message);
+    for (const message of event.messages || []) {
+      remember(message);
+      rememberArrival(message);
+    }
   });
 
   sock.ev.on("messages.reaction", async (events = []) => {
