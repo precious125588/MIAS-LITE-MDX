@@ -8,6 +8,8 @@
 // =========================================================================
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const NX = require('./nexrayGate.cjs');
 
 const MAX_CREATORS_PER_REQUEST = 3;
@@ -119,25 +121,120 @@ function shuffle(list) {
   return a;
 }
 
+// ── renamed creators ─────────────────────────────────────────────────────
+// A creator who changes their TikTok username stops matching the old name, so
+// the list entry returns nothing. The bot keeps one saved video id per creator
+// (a "sample"). When a creator comes back empty, it opens that video and reads
+// the account's current username from the page, then stores the new name in
+// the renames file so later requests go straight to it. Both files live in the
+// nexstore folder and survive restarts. The list file itself is not edited.
+const UA_PAGE = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+const RENAMES_FILE = 'creator-renames.json';
+const SAMPLES_FILE = 'creator-samples.json';
+
+function storeDir() {
+  return process.env.NEXSTORE_DIR || path.join(process.cwd(), 'nexstore');
+}
+function readStore(file) {
+  try {
+    const v = JSON.parse(fs.readFileSync(path.join(storeDir(), file), 'utf8'));
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  } catch { return {}; }
+}
+function writeStore(file, obj) {
+  try {
+    fs.mkdirSync(storeDir(), { recursive: true });
+    fs.writeFileSync(path.join(storeDir(), file), JSON.stringify(obj, null, 2));
+  } catch {}
+}
+function cleanName(name) {
+  return String(name || '').replace(/^@/, '').trim();
+}
+// The username the bot should use for a list entry right now.
+function currentHandle(listName) {
+  const clean = cleanName(listName);
+  const renames = readStore(RENAMES_FILE);
+  return renames[clean.toLowerCase()] || clean;
+}
+function rememberSample(handle, videos) {
+  const id = (videos || [])
+    .map(v => String((v && (v.video_id || v.id)) || ''))
+    .find(s => /^\d+$/.test(s));
+  if (!id) return;
+  const key = handle.toLowerCase();
+  const samples = readStore(SAMPLES_FILE);
+  if (samples[key] === id) return;
+  samples[key] = id;
+  writeStore(SAMPLES_FILE, samples);
+}
+// Opens a saved video under the given handle. TikTok serves the page and names
+// the account that posted it. Returns the one username found, or null.
+async function readPageHandle(axios, handle, videoId, timeout = 8000) {
+  const url = 'https://www.tiktok.com/@' + encodeURIComponent(handle) + '/video/' + videoId;
+  const r = await axios.get(url, {
+    headers: { 'User-Agent': UA_PAGE, Cookie: 'current_language=en' },
+    timeout, responseType: 'text', transformResponse: [s => s], validateStatus: () => true,
+  });
+  const html = typeof (r && r.data) === 'string' ? r.data : '';
+  const names = new Set();
+  const re = /"uniqueId":"([A-Za-z0-9._]{1,40})"/g;
+  let m;
+  while ((m = re.exec(html)) && names.size < 5) names.add(m[1]);
+  return names.size === 1 ? [...names][0] : null;
+}
+// Finds the creator's new username from the saved sample. Returns it when it changed.
+async function findRenamed(axios, listName, logger) {
+  const clean = cleanName(listName);
+  const handle = currentHandle(clean);
+  const samples = readStore(SAMPLES_FILE);
+  const videoId = samples[handle.toLowerCase()];
+  if (!videoId) return null;
+  let found = null;
+  try { found = await readPageHandle(axios, handle, videoId); } catch { return null; }
+  if (!found) return null;
+  const renames = readStore(RENAMES_FILE);
+  const key = clean.toLowerCase();
+  if (found.toLowerCase() === key) {
+    if (renames[key]) { delete renames[key]; writeStore(RENAMES_FILE, renames); }
+    return null;
+  }
+  if (found.toLowerCase() === handle.toLowerCase()) return null;
+  renames[key] = found;
+  writeStore(RENAMES_FILE, renames);
+  try { logger && logger.log && logger.log(`[creator-rename] ${clean} is now ${found}`); } catch {}
+  return found;
+}
+async function safeFetch(axios, handle) {
+  try { return await fetchCreatorPosts(axios, handle, 5000); }
+  catch (e) { return { status: 'error', videos: [], error: String((e && e.message) || e).slice(0, 120) }; }
+}
+
 async function fetchLive({ axios, usernames, logger = console, limit = MAX_CREATORS_PER_REQUEST } = {}) {
   const picks = shuffle((usernames || []).filter(Boolean));
   const out = [];
   let tried = 0;
   let answered = 0;
-  for (const creator of picks) {
+  for (const listName of picks) {
     if (answered >= limit || out.length >= 20 || tried >= limit + 1) break;
     tried++;
-    let res;
-    try { res = await fetchCreatorPosts(axios, creator, 5000); }
-    catch (e) { res = { status: 'error', videos: [], error: String((e && e.message) || e).slice(0, 120) }; }
+    let handle = currentHandle(listName);
+    let res = await safeFetch(axios, handle);
+    if (res.status !== 'ok') {
+      const renamed = await findRenamed(axios, listName, logger);
+      if (renamed) {
+        handle = renamed;
+        res = await safeFetch(axios, handle);
+      }
+    }
     if (res.status !== 'ok') continue;
     answered++;
+    rememberSample(handle, res.videos);
     for (const v of res.videos) {
-      const c = toCandidate(creator, v);
+      const c = toCandidate(handle, v);
       if (c) out.push(c);
     }
   }
   return out;
 }
 
-module.exports = { MAX_CREATORS_PER_REQUEST, fetchCreatorPosts, toCandidate, fetchLive };
+module.exports = { MAX_CREATORS_PER_REQUEST, fetchCreatorPosts, toCandidate, fetchLive, currentHandle, findRenamed, readPageHandle };
