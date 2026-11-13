@@ -12,19 +12,13 @@ const _0x39d0fd=_0x2462;(function(_0x15ff90,_0x1a94a2){const _0x5d5d7f=_0x2462,_
   await react(_sock, _msg, '🌀').catch(() => {});
   try {
     let _buf = null;
-    try {
-      const _r = await fetch('https://image.thum.io/get/width/1280/crop/720/' + _url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12000) });
-      if (_r.ok) {
-        const _ab = Buffer.from(await _r.arrayBuffer());
-        if (_ab.length > 2000) _buf = _ab;
-      }
-    } catch (_) {}
+    const _isPicture = (b) => (b[0] === 0x89 && b[1] === 0x50) || (b[0] === 0xff && b[1] === 0xd8);
     if (!_buf) {
       try {
         const _r = await fetch('https://api.microlink.io/?url=' + encodeURIComponent(_url) + '&screenshot=true&meta=false&embed=screenshot.url', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12000) });
         if (_r.ok) {
           const _ab = Buffer.from(await _r.arrayBuffer());
-          if (_ab.length > 2000) _buf = _ab;
+          if (_ab.length > 2000 && _isPicture(_ab)) _buf = _ab;
         }
       } catch (_) {}
     }
@@ -33,16 +27,25 @@ const _0x39d0fd=_0x2462;(function(_0x15ff90,_0x1a94a2){const _0x5d5d7f=_0x2462,_
         const _r = await fetch('https://s0.wp.com/mshots/v1/' + encodeURIComponent(_url) + '?w=1280&h=720', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12000) });
         if (_r.ok) {
           const _ab = Buffer.from(await _r.arrayBuffer());
-          if (_ab.length > 2000) _buf = _ab;
+          if (_ab.length > 2000 && _isPicture(_ab)) _buf = _ab;
         }
       } catch (_) {}
+    }
+    if (!_buf) {
+    try {
+      const _r = await fetch('https://image.thum.io/get/width/1280/crop/720/' + _url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12000) });
+      if (_r.ok) {
+        const _ab = Buffer.from(await _r.arrayBuffer());
+        if (_ab.length > 2000 && _isPicture(_ab)) _buf = _ab;
+      }
+    } catch (_) {}
     }
     if (!_buf) {
       try {
         const _r = await fetch('https://api.davidcyriltech.my.id/ssweb?url=' + encodeURIComponent(_url), { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12000) });
         if (_r.ok) {
           const _ab = Buffer.from(await _r.arrayBuffer());
-          if (_ab.length > 2000) _buf = _ab;
+          if (_ab.length > 2000 && _isPicture(_ab)) _buf = _ab;
         }
       } catch (_) {}
     }
