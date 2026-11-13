@@ -164,6 +164,10 @@ const CATEGORIES = {
                    aliases: ['feeling'],
                    usernames: ['sandip_sayzz','stevenyeun.intl','doom_yywk'],
                    tags: ['feeling','feelings','emotional','mood','sad','heartbreak','vibes','quotes'] },
+  peak:          { files: ['peak.txt'],                            label: 'Peak',
+                   aliases: ['peak'],
+                   usernames: ['ridley_edit'],
+                   tags: ['peak','edit','edits','viral','fyp'] },
 };
 
 // ── tiny fs helpers ───────────────────────────────────────────────────────
@@ -314,7 +318,7 @@ function routeZip(cat) {
   return out.filter(i => categoryCreators(cat).length ? true : matchesCat(i, cat))
     .map(i => ({ ...i, src: 'zip', cid: 'zip_' + i.url }));
 }
-const NO_SHARED_CREATOR_FILES = new Set(['cruise.txt', 'discipline.txt', 'fyp.txt', 'freefire.txt', 'feeling.txt']);
+const NO_SHARED_CREATOR_FILES = new Set(['cruise.txt', 'discipline.txt', 'fyp.txt', 'freefire.txt', 'feeling.txt', 'peak.txt']);
 async function routePages(cat) {
   if (!CVS) return [];
   // Creator categories keep their own creator list exactly as before (no tag filter).
