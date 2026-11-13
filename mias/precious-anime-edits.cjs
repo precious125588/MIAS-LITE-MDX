@@ -692,7 +692,7 @@ module.exports = {
         ]);
         networkParts = await Promise.race([
           netPromise,
-          new Promise((r) => setTimeout(() => r([[], []]), 10000)),
+          new Promise((r) => setTimeout(() => r([[], []]), 25000)),
         ]);
       }
       const pool = [zipItems, ...networkParts].flat().filter((i) => !isDeadLink(i.url));
