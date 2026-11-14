@@ -205,22 +205,32 @@ function loadLinkFile(file) {
 // the next monitor check (about a minute), with no restart. Without the file,
 // the built-in list in CATEGORIES is used.
 for (const k of Object.keys(CATEGORIES)) CATEGORIES[k].key = k;
+// Trims, drops @ and # lines, and removes repeats (case-insensitive) so a handle listed twice is only used once.
+function uniqueNames(list) {
+  const seen = new Set(); const out = [];
+  for (const raw of list || []) {
+    const n = String(raw ?? '').trim().replace(/^@/, '').trim();
+    if (!n || n.startsWith('#')) continue;
+    const k = n.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(n);
+  }
+  return out;
+}
 function categoryCreators(cat) {
   if (!cat) return [];
   try {
     const p = path.join(editsDir(), 'creators', `${cat.key}.txt`);
-    return fs.readFileSync(p, 'utf8').split(/\r?\n/)
-      .map(s => s.trim().replace(/^@/, '')).filter(s => s && !s.startsWith('#'));
+    return uniqueNames(fs.readFileSync(p, 'utf8').split(/\r?\n/));
   } catch {
-    return (cat.usernames || []).map(n => String(n).replace(/^@/, '').trim()).filter(Boolean);
+    return uniqueNames(cat.usernames || []);
   }
 }
 
 function loadUsernames() {
   const p = path.join(editsDir(), '_usernames.txt');
   try {
-    return fs.readFileSync(p, 'utf8').split(/\r?\n/)
-      .map(s => s.trim().replace(/^@/, '')).filter(s => s && !s.startsWith('#'));
+    return uniqueNames(fs.readFileSync(p, 'utf8').split(/\r?\n/));
   } catch { return []; }
 }
 
