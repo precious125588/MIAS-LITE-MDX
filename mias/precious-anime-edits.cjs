@@ -175,6 +175,29 @@ function seenPath() { return path.join(editsDir(), '_seen.json'); }
 function loadSeen() { try { return JSON.parse(fs.readFileSync(seenPath(), 'utf8')); } catch { return {}; } }
 function saveSeen(s) { try { fs.writeFileSync(seenPath(), JSON.stringify(s)); } catch {} }
 
+// Last good creator-page results per category. When every live source is empty or
+// cooling down, the request is served from here instead of failing.
+function lastGoodPath() {
+  return path.join(process.env.NEXSTORE_DIR || path.join(process.cwd(), 'nexstore'), 'last-good-edits.json');
+}
+function loadLastGood(catKey) {
+  try {
+    const all = JSON.parse(fs.readFileSync(lastGoodPath(), 'utf8'));
+    const items = all && Array.isArray(all[catKey]) ? all[catKey] : [];
+    return items.filter((i) => i && i.url);
+  } catch { return []; }
+}
+function saveLastGood(catKey, items) {
+  if (!items || !items.length) return;
+  try {
+    let all = {};
+    try { all = JSON.parse(fs.readFileSync(lastGoodPath(), 'utf8')) || {}; } catch {}
+    all[catKey] = items.slice(0, 80);
+    fs.mkdirSync(path.dirname(lastGoodPath()), { recursive: true });
+    fs.writeFileSync(lastGoodPath(), JSON.stringify(all));
+  } catch {}
+}
+
 const _cache = new Map(); // file -> {mtime, items}
 function loadLinkFile(file) {
   const p = path.join(editsDir(), file);
@@ -705,7 +728,13 @@ module.exports = {
           new Promise((r) => setTimeout(() => r([[], []]), 25000)),
         ]);
       }
-      const pool = [zipItems, ...networkParts].flat().filter((i) => !isDeadLink(i.url));
+      const liveItems = networkParts.flat().filter((i) => i && !isDeadLink(i.url));
+      if (liveItems.length) saveLastGood(catKey, liveItems);
+      let pool = [zipItems, ...liveItems].filter((i) => !isDeadLink(i.url));
+      if (!pool.length) {
+        // Every live source came back empty or was cooling down: serve the last good results.
+        pool = loadLastGood(catKey).filter((i) => !isDeadLink(i.url));
+      }
       if (!pool.length) {
         await P.react(sock, msg, '❌').catch(() => {});
         return P.sendReply(sock, msg, `❌ No ${cat.label} edits available right now. Try again in a bit.`);
