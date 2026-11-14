@@ -13,6 +13,8 @@ const path = require('path');
 const NX = require('./nexrayGate.cjs');
 
 const MAX_CREATORS_PER_REQUEST = 3;
+// Time budget for one live read. Ends before the caller's own 25s cutoff.
+const FETCH_BUDGET_MS = 20000;
 const TITLE_MAX = 120;
 const HEADERS = {
   'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -219,11 +221,13 @@ async function fetchLive({ axios, usernames, logger = console, limit = MAX_CREAT
   }
   const picks = shuffle(uniq);
   const out = [];
-  let tried = 0;
   let answered = 0;
+  // Keep trying other creators until enough answer, within the time budget.
+  const deadline = Date.now() + FETCH_BUDGET_MS;
   for (const listName of picks) {
-    if (answered >= limit || out.length >= 20 || tried >= limit + 1) break;
-    tried++;
+    if (answered >= limit || out.length >= 20 || Date.now() > deadline) break;
+    // Wait out a short NexRay cooldown instead of skipping every creator behind it.
+    while (NX.coolingDown() && Date.now() < deadline) await new Promise((r) => setTimeout(r, 500));
     let handle = currentHandle(listName);
     let res = await safeFetch(axios, handle);
     if (res.status !== 'ok') {
