@@ -210,7 +210,14 @@ async function safeFetch(axios, handle) {
 }
 
 async function fetchLive({ axios, usernames, logger = console, limit = MAX_CREATORS_PER_REQUEST } = {}) {
-  const picks = shuffle((usernames || []).filter(Boolean));
+  const uniq = [];
+  const seenNames = new Set();
+  for (const u of usernames || []) {
+    const k = String(u || '').trim().replace(/^@/, '').toLowerCase();
+    if (!k || seenNames.has(k)) continue;
+    seenNames.add(k); uniq.push(u);
+  }
+  const picks = shuffle(uniq);
   const out = [];
   let tried = 0;
   let answered = 0;
