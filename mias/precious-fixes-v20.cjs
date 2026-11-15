@@ -760,6 +760,16 @@ function install(ctx) {
         if (!inGroup) { await ctx.sendReply(sock, msg, '🚫 Owner only.'); return; }
       }
 
+      // Typed shortcut: `.setting 39.1` applies that option directly. Plain `.setting` still opens the menu.
+      const typedArg = String(msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim().split(/\s+/)[1] || '';
+      if (/^\d{1,2}(\.\d{1,2})?$/.test(typedArg)) {
+        if (!ctx.SETTINGS_MAP[typedArg]) {
+          await ctx.sendReply(sock, msg, '❌ *' + typedArg + '* is not a setting. Send *' + ((ctx.CONFIG && ctx.CONFIG.PREFIX) || '.') + 'setting* to see the options.').catch(() => {});
+          return;
+        }
+        await applyChoice(sock, msg, typedArg);
+        return;
+      }
       try {
         ctx.settingsSession.set(jid, { sender });
         const t = setTimeout(() => { try { ctx.settingsSession.delete(jid); } catch (e) {} }, 180000);
