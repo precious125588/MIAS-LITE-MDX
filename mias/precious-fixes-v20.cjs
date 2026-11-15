@@ -568,7 +568,7 @@ function install(ctx) {
     return false;
   }
 
-  async function applyChoice(sock, msg, code) {
+  async function applyChoice(sock, msg, code, opts) {
     const jid = msg.key.remoteJid;
     const prefix = (ctx.CONFIG && ctx.CONFIG.PREFIX) || '.';
 
@@ -605,13 +605,24 @@ function install(ctx) {
       return true;
     }
 
+    // Already in that state (persisted settings)? Say so and change nothing.
+    const _row = T.find(r => r[0] === code);
+    let _already = false;
+    try { _already = !!(_row && _row[3](ctx.getSettings(jid) || {})); } catch (e) {}
+    if (_already) {
+      const _st = _row[2] === 'ENABLE' ? 'enabled' : _row[2] === 'DISABLE' ? 'disabled' : _row[2].toLowerCase();
+      await ctx.sendReply(sock, msg, '✅ *' + _row[1] + '* is already *' + _st + '*. No action done.').catch(() => {});
+      return true;
+    }
+
     const ownerJ = (ctx.CONFIG.OWNER_NUMBER || '').replace(/[^0-9]/g, '') + '@s.whatsapp.net';
     let out = '';
     try { out = fn(ctx.getSettings(jid)); } catch (e) { out = '❌ ' + (e && e.message); }
     try { fn(ctx.getSettings(ownerJ)); } catch (e) {}
     try { ctx.saveNow && ctx.saveNow(); } catch (e) {}
 
-    await ctx.sendReply(sock, msg, String(out || '✅ Updated.') + '\n\n_Tap *⚙️ Open settings* below to change something else, or reply *0* to close._').catch(() => {});
+    const _hint = (opts && opts.typed) ? '' : '\n\n_Tap *⚙️ Open settings* below to change something else, or reply *0* to close._';
+    await ctx.sendReply(sock, msg, String(out || '✅ Updated.') + _hint).catch(() => {});
     try { await ctx.forceReaction(sock, msg, '✅'); } catch (e) {}
     console.log('[settings] applied ' + code + ' in ' + jid);
     return true;
@@ -636,6 +647,9 @@ function install(ctx) {
     if (!jid) return false;
     // Owner-global settings must not be authorized by a quoted panel or stale session.
     if (!currentUserAllowed(sock, msg)) return false;
+    // A typed `.setting <code>` is a command: let the command handler answer it once.
+    const _rawText = String(msg.message?.conversation || msg.message?.extendedTextMessage?.text || body || '').trim();
+    if (/^\S{0,3}\s*(?:setting|settings|config)(?:\s|$)/i.test(_rawText)) return false;
 
     const raw = extractChoice(msg, body);
     if (!raw) return false;
@@ -761,13 +775,15 @@ function install(ctx) {
       }
 
       // Typed shortcut: `.setting 39.1` applies that option directly. Plain `.setting` still opens the menu.
-      const typedArg = String(msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim().split(/\s+/)[1] || '';
-      if (/^\d{1,2}(\.\d{1,2})?$/.test(typedArg)) {
+      const _cmdText = String(msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
+      const _typedMatch = _cmdText.match(/^\S{0,3}\s*(?:setting|settings|config)\s+(\d{1,2}(?:\.\d{1,2})?)(?:\s|$)/i);
+      const typedArg = _typedMatch ? _typedMatch[1] : '';
+      if (typedArg) {
         if (!ctx.SETTINGS_MAP[typedArg]) {
           await ctx.sendReply(sock, msg, '❌ *' + typedArg + '* is not a setting. Send *' + ((ctx.CONFIG && ctx.CONFIG.PREFIX) || '.') + 'setting* to see the options.').catch(() => {});
           return;
         }
-        await applyChoice(sock, msg, typedArg);
+        await applyChoice(sock, msg, typedArg, { typed: true });
         return;
       }
       try {
