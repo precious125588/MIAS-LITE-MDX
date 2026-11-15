@@ -3971,6 +3971,7 @@ async function connectToWA(_0x4ec381 = ![]) {
               }
               const _0x50f797 = _0x1b3ecb['message']?.["viewOnceMessage"] || _0x1b3ecb['message']?.['viewOnceMessageV2'] || _0x1b3ecb['message']?.['viewOnceMessageV2Extension'] || _0x1b3ecb["message"]?.["ephemeralMessage"]?.["message"]?.['viewOnceMessage'] || _0x1b3ecb["message"]?.['ephemeralMessage']?.["message"]?.["viewOnceMessageV2"] || _0x1b3ecb["message"]?.["ephemeralMessage"]?.["message"]?.["viewOnceMessageV2Extension"];
               if (_0x50f797 && _0x1b3ecb["key"]?.['id']) {
+                try { require('../lib/viewOnceCommand.cjs').rememberViewOnceArrival(_0x1b3ecb); } catch (_0xvoerr) { console.log('[viewonce-store] arrival save failed:', _0xvoerr?.message || _0xvoerr); }
                 const _0x2873bc = _0x50f797["message"] || _0x50f797;
                 globalThis["_viewOnceStore"]["set"](_0x1b3ecb['key']['id'], {
                   'key': _0x1b3ecb['key'],
