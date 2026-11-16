@@ -3916,6 +3916,7 @@ async function connectToWA(_0x4ec381 = ![]) {
             if (!_0x1b3ecb || !_0x1b3ecb["message"]) {
               return;
             }
+            __miasSaveViewOnceArrival(_0x1b3ecb);
             if (_0x1b3ecb["key"]?.['id'] && _botSentMsgIds["has"](_0x1b3ecb["key"]['id'])) {
               return;
             }
@@ -3971,7 +3972,6 @@ async function connectToWA(_0x4ec381 = ![]) {
               }
               const _0x50f797 = _0x1b3ecb['message']?.["viewOnceMessage"] || _0x1b3ecb['message']?.['viewOnceMessageV2'] || _0x1b3ecb['message']?.['viewOnceMessageV2Extension'] || _0x1b3ecb["message"]?.["ephemeralMessage"]?.["message"]?.['viewOnceMessage'] || _0x1b3ecb["message"]?.['ephemeralMessage']?.["message"]?.["viewOnceMessageV2"] || _0x1b3ecb["message"]?.["ephemeralMessage"]?.["message"]?.["viewOnceMessageV2Extension"];
               if (_0x50f797 && _0x1b3ecb["key"]?.['id']) {
-                try { require('../lib/viewOnceCommand.cjs').rememberViewOnceArrival(_0x1b3ecb); } catch (_0xvoerr) { console.log('[viewonce-store] arrival save failed:', _0xvoerr?.message || _0xvoerr); }
                 const _0x2873bc = _0x50f797["message"] || _0x50f797;
                 globalThis["_viewOnceStore"]["set"](_0x1b3ecb['key']['id'], {
                   'key': _0x1b3ecb['key'],
@@ -6737,6 +6737,30 @@ async function getStatusJidList(_0x1dae8) {
     return [getOwnerJid()];
   } catch {
     return [getOwnerJid()];
+  }
+}
+// Saves a view-once arrival from the RAW envelope. Must run before normalizeMessage(),
+// which unwraps viewOnce wrappers in place and would otherwise hide them from the save.
+function __miasSaveViewOnceArrival(msg) {
+  try {
+    const raw = msg && msg.message;
+    if (!raw || typeof raw !== 'object' || !msg.key || !msg.key.id) return false;
+    const eph = raw.ephemeralMessage?.message;
+    const isVo = Boolean(raw.viewOnceMessage || raw.viewOnceMessageV2 || raw.viewOnceMessageV2Extension
+      || eph?.viewOnceMessage || eph?.viewOnceMessageV2 || eph?.viewOnceMessageV2Extension);
+    if (!isVo) return false;
+    if (!globalThis._viewOnceStore) globalThis._viewOnceStore = new Map();
+    globalThis._viewOnceStore.set(msg.key.id, {
+      key: msg.key, message: raw, chat: msg.key.remoteJid, ts: Date.now(),
+      sender: msg.key.participant || msg.participant || msg.key.remoteJid,
+    });
+    if (globalThis._viewOnceStore.size > 1000) {
+      globalThis._viewOnceStore.delete(globalThis._viewOnceStore.keys().next().value);
+    }
+    return require('../lib/viewOnceCommand.cjs').rememberViewOnceArrival({ key: msg.key, message: raw });
+  } catch (err) {
+    console.log('[viewonce-store] arrival save failed:', err?.message || err);
+    return false;
   }
 }
 function normalizeMessage(_0x2bf848) {
