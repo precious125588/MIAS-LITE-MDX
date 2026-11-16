@@ -2122,7 +2122,7 @@ try {
 try {
   process['on']("beforeExit", _flushSettings);
 } catch {}
-const GUARD_GLOBAL_KEYS = ["autoDownload", "autoDownloadChat", "autoDlChat", "autoReactMsgs", "cmdReact", "reactMeOwner", 'ownerReact', "workMode", 'privateMode', "forcePrivate", "protectAlways", "chatBotMode", "autoReply", "chatbotScope", "chatbotRevision", "autoSendStatus", 'autoSendAza', "readMsgs", 'viewStatus', "reactStatus", "statusEmoji", "statusEmojiPool", "viewStatusExclude", "viewStatusOnly", "reactStatusExclude", "reactStatusOnly", 'viewStatusExcludeMuted', "statusViewDelay", "blockCalls", "recording", "typing", "alwaysOnline", "anonymous", 'autoVoice', "autoSticker", "statusReply", "vcardStatus", "lastSeenEnabled", "lastSeenFrozen", "lastSeenRecords", "antiBug", "antiBroadcast", "adultMode", "autoBlock", "autoBlockCountries", "language", 'buttonsMode'];
+const GUARD_GLOBAL_KEYS = ["autoDownload", "autoDownloadChat", "autoDlChat", "autoReactMsgs", "cmdReact", "reactMeOwner", 'ownerReact', "workMode", 'privateMode', "forcePrivate", "protectAlways", "chatBotMode", "autoReply", "chatbotScope", "chatbotRevision", "autoSendStatus", 'autoSendAza', "readMsgs", 'viewStatus', "reactStatus", "statusEmoji", "statusEmojiPool", "viewStatusExclude", "viewStatusOnly", "reactStatusExclude", "reactStatusOnly", 'viewStatusExcludeMuted', "statusViewDelay", "blockCalls", "callExclude", "recording", "typing", "alwaysOnline", "anonymous", 'autoVoice', "autoSticker", "statusReply", "vcardStatus", "lastSeenEnabled", "lastSeenFrozen", "lastSeenRecords", "antiBug", "antiBroadcast", "adultMode", "autoBlock", "autoBlockCountries", "language", 'buttonsMode'];
 const GUARD_DB_FILE = _0xf9fd94["join"](DB_DIR, 'guard_settings.json');
 let _cmdGrantStoreInstance = null;
 const cmdGrantStore = () => _cmdGrantStoreInstance ||= createCmdGrantStore({
@@ -3149,6 +3149,10 @@ async function connectToWA(_0x4ec381 = ![]) {
           const _0x507e19 = new Set([_cleanNum(_0x24b68e || ''), _cleanNum(String(_0x5ec14e?.["user"]?.['id'] || '')["split"](':')[0x0])]);
           const _0x4cb73d = [_0x5a6735?.['from'], _0x5a6735?.["chatId"], _0x5a6735?.['peerJid'], _0x5a6735?.["participant"]]["filter"](Boolean)["map"](_0x12d407 => toStandardJid(resolveLid(_0x12d407)))['find'](_0x345710 => _0x345710 && _0x345710['endsWith']("@s.whatsapp.net") && !_0x507e19["has"](_cleanNum(_0x345710))) || _0x16a223;
           const _0x5d3285 = _cleanNum(_0x4cb73d);
+          if (_0x5d3285 && Array.isArray(_0x19ef74["callExclude"]) && _0x19ef74["callExclude"]["some"](_0xe1 => _cleanNum(String(_0xe1 || '')) === _0x5d3285)) {
+            console["log"]('[CALL_GUARD] excluded caller +' + _0x5d3285);
+            continue;
+          }
           const _0x2dfd0b = String(pushNameCache["get"](_0x5d3285) || '')["trim"]();
           const _0xc10974 = _0x2dfd0b && isMeaningfulName(_0x2dfd0b) ? _0x2dfd0b : '+' + _0x5d3285;
           let _0x1cce2a = "📞 *Call Guard Triggered*\n\n👤 Caller: " + _0xc10974 + "\n🛡️ Mode: *" + _0x51c00f["toUpperCase"]() + '*';
