@@ -1908,6 +1908,7 @@ globalThis['__UPDATE_GROUP_META_CACHE__'] = (_0x50c780, _0x59e403) => {
   } catch {}
 };
 const _contactsStore = new Map();
+const _unresolvedNameCache = new Set();
 function saveContact(_0x5ac890, _0x513109) {
   try {
     if (!_0x5ac890 || !_0x513109) {
@@ -1918,6 +1919,7 @@ function saveContact(_0x5ac890, _0x513109) {
     if (!_0x27fa5a || !_0x3e8848) {
       return;
     }
+    _unresolvedNameCache.delete(_0x27fa5a);
     _contactsStore['set'](_0x27fa5a, _0x3e8848);
     pushNameCache["set"](_0x27fa5a, _0x3e8848);
   } catch {}
@@ -6174,9 +6176,16 @@ function getSavedContactName(_0x2d3075) {
   }
   try {
     if (!_0x2a74f2["existsSync"](CONTACTS_FILE)) {
+      savedNameCache["set"](_0x37c704, '');
       return '';
     }
-    const _0x4f8c7c = require('./lib/contactsIndex.cjs').vcfLines(CONTACTS_FILE);
+    const _cIndex = require('./lib/contactsIndex.cjs');
+    const _parsedName = typeof _cIndex.lookupContact === 'function' ? _cIndex.lookupContact(CONTACTS_FILE, _0x37c704) : '';
+    if (isMeaningfulName(_parsedName)) {
+      savedNameCache["set"](_0x37c704, _parsedName);
+      return _parsedName;
+    }
+    const _0x4f8c7c = _cIndex.vcfLines(CONTACTS_FILE);
     for (const _0x57797a of _0x4f8c7c) {
       if (!_0x57797a["includes"]("waid=" + _0x37c704)) {
         continue;
@@ -6189,6 +6198,7 @@ function getSavedContactName(_0x2d3075) {
       }
     }
   } catch {}
+  savedNameCache["set"](_0x37c704, '');
   return '';
 }
 function getUserCustomBio(_0x2d8053) {
@@ -6219,6 +6229,9 @@ async function getDisplayName(_0x436ad4, _0x56c95c, _0x3b8217) {
   if (isMeaningfulName(_0x57132a)) {
     return _0x57132a;
   }
+  if (typeof _unresolvedNameCache !== 'undefined' && _unresolvedNameCache["has"](_0x4fcfd0)) {
+    return '+' + _0x4fcfd0;
+  }
   const _0x3dfa6a = getSavedContactName(_0x4fcfd0);
   if (isMeaningfulName(_0x3dfa6a)) {
     pushNameCache["set"](_0x4fcfd0, _0x3dfa6a);
@@ -6233,7 +6246,7 @@ async function getDisplayName(_0x436ad4, _0x56c95c, _0x3b8217) {
         return _m;
       })['catch'](() => null));
       updateLidMappingsFromMeta(_0x4586c1);
-      const _0x4288bd = _0x4586c1["participants"]['find'](_0x45e4a2 => _0x45e4a2['id'] === _0x56c95c || _0x45e4a2['id'] === _0x39d6b0 || _cleanNum(_0x45e4a2['id']) === _0x4fcfd0 || _0x45e4a2['pn'] && _cleanNum(_0x45e4a2['pn']) === _0x4fcfd0);
+      const _0x4288bd = _0x4586c1?.["participants"]?.['find'](_0x45e4a2 => _0x45e4a2['id'] === _0x56c95c || _0x45e4a2['id'] === _0x39d6b0 || _cleanNum(_0x45e4a2['id']) === _0x4fcfd0 || _0x45e4a2['pn'] && _cleanNum(_0x45e4a2['pn']) === _0x4fcfd0);
       const _0xb4736 = _0x4288bd?.['notify'] || _0x4288bd?.["verifiedName"] || _0x4288bd?.["name"] || '';
       if (isMeaningfulName(_0xb4736)) {
         pushNameCache["set"](_0x4fcfd0, _0xb4736["trim"]());
@@ -6243,15 +6256,6 @@ async function getDisplayName(_0x436ad4, _0x56c95c, _0x3b8217) {
     } catch {}
   }
   try {
-    const [_0x3dd1eb] = await _0x436ad4['onWhatsApp'](_0x4fcfd0 + "@s.whatsapp.net");
-    const _0xa8dd16 = _0x3dd1eb?.["notify"] || _0x3dd1eb?.["verifiedName"] || _0x3dd1eb?.["name"] || '';
-    if (isMeaningfulName(_0xa8dd16)) {
-      pushNameCache["set"](_0x4fcfd0, _0xa8dd16["trim"]());
-      saveContact(_0x4fcfd0, _0xa8dd16["trim"]());
-      return _0xa8dd16["trim"]();
-    }
-  } catch {}
-  try {
     const _0x1b4668 = await _0x436ad4["contactStore"]?.['getContact']?.(_0x56c95c);
     const _0x28c04f = _0x1b4668?.["name"] || _0x1b4668?.["notify"] || _0x1b4668?.["verifiedName"] || '';
     if (isMeaningfulName(_0x28c04f)) {
@@ -6260,6 +6264,9 @@ async function getDisplayName(_0x436ad4, _0x56c95c, _0x3b8217) {
       return _0x28c04f["trim"]();
     }
   } catch {}
+  if (typeof _unresolvedNameCache !== 'undefined') {
+    _unresolvedNameCache["add"](_0x4fcfd0);
+  }
   return '+' + _0x4fcfd0;
 }
 function toStandardJid(_0xdd9e20) {
@@ -47160,12 +47167,6 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
     try {
       __origApply(_0x475ff7);
     } catch {}
-    setTimeout(() => {
-      __miasV3InitialSync(_0x475ff7)['catch'](() => {});
-    }, 0xfa0);
-    setInterval(() => {
-      __miasV3InitialSync(_0x475ff7)["catch"](() => {});
-    }, 0x5 * 0x3c * 0x3e8);
   };
 }
 (() => {
@@ -50173,17 +50174,7 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
       globalThis["__miasDoSync"] = _0x1457eb;
     } catch {}
     if (!globalThis['__v11SyncTimer']) {
-      globalThis["__v11SyncTimer"] = setInterval(() => {
-        try {
-          const _0x2e2bd9 = globalThis["__miasMainSock"] || globalThis["sock"] || null;
-          if (_0x2e2bd9 && _0x2e2bd9["user"]) {
-            _0x1457eb(_0x2e2bd9)["catch"](() => {});
-          }
-        } catch {}
-      }, 0xa * 0x3c * 0x3e8);
-      if (globalThis["__v11SyncTimer"]["unref"]) {
-        globalThis["__v11SyncTimer"]["unref"]();
-      }
+      globalThis["__v11SyncTimer"] = { unref: () => {} };
     }
     if (typeof __miasApplyDynamicOwnerName === "function" && !globalThis["__v11OwnerWrapped"]) {
       const _0x514a12 = __miasApplyDynamicOwnerName;
@@ -50194,9 +50185,6 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
         try {
           globalThis["__miasMainSock"] = _0x48e740;
         } catch {}
-        setTimeout(() => {
-          _0x1457eb(_0x48e740)['catch'](() => {});
-        }, 0x1f40);
         setTimeout(() => {
           try {
             _0x4b0dcc(_0x48e740);

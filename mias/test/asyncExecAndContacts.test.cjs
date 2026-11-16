@@ -55,3 +55,18 @@ test('vcfLines caches the parsed file and refreshes when it changes', () => {
   assert.deepEqual(vcfLines(file), ['FN:Bola']);
   assert.deepEqual(vcfLines(file + '.missing'), []);
 });
+
+test('lookupContact indexes multiline vCards and finds names by waid or phone', () => {
+  const { lookupContact, getContactMap } = require('../lib/contactsIndex.cjs');
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vcf-')), 'contacts.vcf');
+  fs.writeFileSync(
+    file,
+    'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Precious Tech\r\nTEL;type=CELL;type=VOICE;waid=2348011223344:+234 801 122 3344\r\nEND:VCARD\r\n' +
+    'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Mias Assistant\r\nTEL;waid=18005550199:+18005550199\r\nEND:VCARD\r\n'
+  );
+  assert.equal(lookupContact(file, '2348011223344'), 'Precious Tech');
+  assert.equal(lookupContact(file, '+234 801 122 3344'), 'Precious Tech');
+  assert.equal(lookupContact(file, '18005550199'), 'Mias Assistant');
+  assert.equal(lookupContact(file, '9999999999'), '');
+  assert.equal(lookupContact(file + '.none', '2348011223344'), '');
+});
