@@ -10205,6 +10205,14 @@ try {
 } catch (_0x23dc3f) {
   console["error"]('[CUZ\x20install\x20error]', _0x23dc3f);
 }
+const __aliasCheck = require("./lib/aliasCheck.cjs");
+cmd(["checkalias"], {
+  'desc': "Show a command's canonical name and aliases",
+  'category': "SYSTEM"
+}, async (_sock, _msg, _args) => {
+  const _report = __aliasCheck.buildAliasReport(Array.isArray(_args) ? _args[0] : _args, commands, aliases, { isDisabled: isCommandDisabled });
+  return await sendReply(_sock, _msg, _report);
+});
 cmd(["gpt4o", 'gpt-4o'], {
   'desc': "Chat with GPT-4o",
   'category': 'AI'
