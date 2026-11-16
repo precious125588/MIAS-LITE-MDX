@@ -10223,6 +10223,22 @@ cmd(["checkalias"], {
   const _report = __aliasCheck.buildAliasReport(Array.isArray(_args) ? _args[0] : _args, commands, aliases, { isDisabled: isCommandDisabled });
   return await sendReply(_sock, _msg, _report);
 });
+const __aliasStore = require("./lib/aliasStore.cjs");
+const COMMAND_ALIAS_FILE = require("path")["join"](process["cwd"](), "nexstore", "command_aliases.json");
+cmd(["addalias"], {
+  'desc': "Give a command an extra name — .addalias <command> | <alias>",
+  'category': "SYSTEM",
+  'ownerOnly': !![]
+}, async (_sock, _msg, _args) => {
+  const _text = Array.isArray(_args) ? _args.join(' ') : String(_args || '');
+  const _parsed = __aliasStore.parseAddAliasInput(_text);
+  if (_parsed.error) {
+    const _p = CONFIG["PREFIX"] === '' ? '' : (CONFIG["PREFIX"] || '.');
+    return await sendReply(_sock, _msg, "🔗 *Add alias*\n\nUsage: " + _p + "addalias <command> | <alias>\nExample: " + _p + "addalias ping | fast");
+  }
+  const _report = __aliasStore.addAliasPersisted({ commands, aliases, file: COMMAND_ALIAS_FILE, command: _parsed.command, alias: _parsed.alias });
+  return await sendReply(_sock, _msg, _report);
+});
 cmd(["gpt4o", 'gpt-4o'], {
   'desc': "Chat with GPT-4o",
   'category': 'AI'
@@ -62635,6 +62651,12 @@ function __miasApplyMaintenance(_0x9cd5, _0x3470ab, _0x426e6f) {
 globalThis["__MIAS_DISABLED__"] = isCommandDisabled;
 globalThis["__MIAS_DISABLED_COMMANDS__"] = DISABLED_COMMANDS;
 __miasApplyMaintenance(commands, aliases, MENU_CATEGORIES);
+// Re-add aliases saved with .addalias (after every command is registered).
+try {
+  __aliasStore.restoreAliases(commands, aliases, __aliasStore.loadAliasStore(COMMAND_ALIAS_FILE), (_name, _why) => console.warn("[addalias] skipped saved alias " + _name + ": " + _why));
+} catch (_e) {
+  console.warn("[addalias] restore failed:", _e && _e.message);
+}
 const __menuCategoryPolicy = installMenuCategoryPolicy(commands, aliases, MENU_CATEGORIES, [], isCommandDisabled);
 globalThis["__MIAS_MENU_DENIED__"] = _0x44d3c1 => __menuCategoryPolicy["denied"](_0x44d3c1, commands["get"](String(_0x44d3c1)["toLowerCase"]()));
 globalThis["__MIAS_MENU_POLICY_REPORT__"] = __menuCategoryPolicy['clean']();
