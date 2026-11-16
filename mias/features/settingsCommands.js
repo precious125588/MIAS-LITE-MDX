@@ -1,6 +1,7 @@
 // Settings command, moved out of mias/index.js. Handler code is unchanged.
 // Everything it needs is passed in through `ctx`.
 import { installUpdateCommand } from "./updateCommand.js";
+import { typedSettingCode, applyTypedSetting } from "./settingsTyped.js";
 
 export function installSettingsCommand(ctx) {
   const { cmd, getSender, isOwner, isSudo, isGroup, isGroupAdmin, sendReply, settingsSession, getSettings, getBotPic, CONFIG, buildSettingsMenu } = ctx;
@@ -17,6 +18,17 @@ export function installSettingsCommand(ctx) {
     const isFromOwner = msg.key.fromMe || isOwner(sender) || isSudo(sender);
     const isAdmin = isGroup(msg) ? await isGroupAdmin(sock, jid, sender) : false;
     const inGroup = isGroup(msg);
+    // Typed code (".setting 1.2", ".setting 44.1"): apply directly, no card.
+    const typedCode = typedSettingCode(msg);
+    if (typedCode && isFromOwner) {
+      const ownerDigits = String((CONFIG && CONFIG.OWNER_NUMBER) || "").replace(/\D/g, "");
+      const done = await applyTypedSetting({
+        sock, msg, code: typedCode, sendReply, settingsSession, getSettings,
+        ownerJid: ownerDigits ? ownerDigits + "@s.whatsapp.net" : "",
+        prefix: CONFIG && CONFIG.PREFIX,
+      });
+      if (done) return;
+    }
     if (!isFromOwner) {
       if (inGroup && !isAdmin) { await sendReply(sock, msg, "🚫 Admins/Owner only."); return; }
       if (!inGroup) { await sendReply(sock, msg, "🚫 Owner only."); return; }
