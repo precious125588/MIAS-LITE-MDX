@@ -129,3 +129,56 @@ test('a failed save rolls back the in-memory alias', () => {
   assert.equal(commands.has('fast'), false);
   assert.equal(aliases.has('fast'), false);
 });
+
+test('removealias removes a saved alias from the bot and from the store', () => {
+  const { commands, aliases } = registry();
+  const file = tmpFile();
+  store.addAliasPersisted({ commands, aliases, file, command: 'ping', alias: 'fast' });
+  const msg = store.removeAliasPersisted({ commands, aliases, file, alias: '.Fast' });
+  assert.match(msg, /Removed alias \*\.fast\* \(was an alias of \*\.ping\*\)/);
+  assert.equal(commands.has('fast'), false);
+  assert.equal(aliases.has('fast'), false);
+  assert.deepEqual(store.loadAliasStore(file), []);
+  // stays gone after restart
+  const after = registry();
+  store.restoreAliases(after.commands, after.aliases, store.loadAliasStore(file));
+  assert.equal(after.commands.has('fast'), false);
+});
+
+test('removealias leaves other saved aliases alone', () => {
+  const { commands, aliases } = registry();
+  const file = tmpFile();
+  store.addAliasPersisted({ commands, aliases, file, command: 'ping', alias: 'fast' });
+  store.addAliasPersisted({ commands, aliases, file, command: 'ping', alias: 'quick' });
+  store.removeAliasPersisted({ commands, aliases, file, alias: 'fast' });
+  assert.deepEqual(store.loadAliasStore(file).map(x => x.alias), ['quick']);
+  assert.equal(commands.has('quick'), true);
+});
+
+test('removealias refuses built-in aliases and unknown names without changing anything', () => {
+  const { commands, aliases } = registry();
+  const file = tmpFile();
+  store.addAliasPersisted({ commands, aliases, file, command: 'ping', alias: 'fast' });
+  assert.match(store.removeAliasPersisted({ commands, aliases, file, alias: 'latency' }), /built-in name/);
+  assert.match(store.removeAliasPersisted({ commands, aliases, file, alias: 'ping' }), /built-in name/);
+  assert.match(store.removeAliasPersisted({ commands, aliases, file, alias: 'nothere' }), /No saved alias named \*\.nothere\*/);
+  assert.equal(commands.get('latency').canonical, 'ping');
+  assert.equal(commands.has('fast'), true);
+  assert.equal(store.loadAliasStore(file).length, 1);
+});
+
+test('removealias with no name shows usage', () => {
+  const { commands, aliases } = registry();
+  assert.match(store.removeAliasPersisted({ commands, aliases, file: tmpFile(), alias: '' }), /Usage: \.removealias/);
+});
+
+test('a failed save during removealias keeps the alias', () => {
+  const { commands, aliases } = registry();
+  const good = tmpFile();
+  store.addAliasPersisted({ commands, aliases, file: good, command: 'ping', alias: 'fast' });
+  fs.mkdirSync(good + '.tmp'); // the save writes to <file>.tmp first; a directory there makes that write fail
+  const msg = store.removeAliasPersisted({ commands, aliases, file: good, alias: 'fast' });
+  assert.match(msg, /Could not save/);
+  assert.equal(store.loadAliasStore(good).length, 1, 'store still has the alias');
+  assert.equal(commands.has('fast'), true);
+});
