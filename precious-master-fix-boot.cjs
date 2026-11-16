@@ -370,18 +370,6 @@ function installAll(ctx) {
     pbad("precious-fixes-v41 require failed: " + (e && e.message));
   }
 
-  /* [v42] Typed `.setting <code>` on the live chain — applies directly, no menu card. Installed LAST. */
-  try {
-    const v42 = multiRequire('./mias/precious-fixes-v42.cjs');
-    if (v42.mod) {
-      const fn42 = (typeof v42.mod === 'function') ? v42.mod : v42.mod.install;
-      if (typeof fn42 === 'function') {
-        try { const r42 = fn42(globalThis.__PRECIOUS__ || ctx); result.v42 = true; plog('precious-fixes-v42: INSTALLED (typed .setting <code>) ' + safeJson(r42 || {})); }
-        catch (e42) { result.v42 = false; pbad('precious-fixes-v42 error: ' + (e42 && e42.message)); }
-      } else { result.v42 = false; pbad('precious-fixes-v42 has no install()'); }
-    } else { result.v42 = false; pbad('precious-fixes-v42 failed to load: ' + (v42.err && v42.err.message)); }
-  } catch (e) { result.v42 = false; pbad('precious-fixes-v42 require failed: ' + (e && e.message)); }
-
   const slots = Object.keys(result).length;
   const good  = Object.values(result).filter(Boolean).length;
   const dt    = Date.now() - t0;
