@@ -948,10 +948,11 @@ process['on']('unhandledRejection', _0x573463 => console["error"]("[CRASH:unhand
 process['on']("uncaughtException", _0x4eedd4 => console["error"]("[CRASH:uncaughtException]", _0x4eedd4));
 const LOCKED_OWNER_NUMBER = (process.env.OWNER_NUMBER || '')['replace'](/[^0-9]/g, '');
 const LOCKED_OWNER_NAME = process.env.OWNER_NAME || 'Bot\x20Owner';
-const NO_PREFIX_VALUES = new Set(['', "null", "none", 'no', "off", "false", "disabled", "noprefix", 'no-prefix']);
+const NO_PREFIX_VALUES = new Set(["null", "none", 'no', "off", "false", "disabled", "noprefix", 'no-prefix']);
 function normalizeConfiguredPrefix(_0x48079c) {
   const _0x236d94 = String(_0x48079c ?? '')["trim"]();
-  return NO_PREFIX_VALUES["has"](_0x236d94["toLowerCase"]()) ? '.' : _0x236d94;
+  if (!_0x236d94) return '.';
+  return NO_PREFIX_VALUES["has"](_0x236d94["toLowerCase"]()) ? '' : _0x236d94;
 }
 function botConfigPath() {
   const _0x5df9c3 = process.env.AUTH_DIR ? _0xf9fd94["resolve"](process.env.AUTH_DIR) : _0xf9fd94["join"](__dirname, 'prezzy_auth');
@@ -6840,6 +6841,15 @@ function parseCommandBody(_0x40b419 = '') {
         'name': _0x14fb7a
       };
     }
+  }
+  // Explicit no-prefix mode (.setprefix none): a known command word runs the command.
+  // A leading "." still works as a fallback.
+  if (CONFIG && CONFIG.PREFIX === '' && !_0x5f49af.startsWith('.')) {
+    const _bareName = (_0x5f49af.split(/\s+/)[0] || '').toLowerCase();
+    if (!_bareName || typeof commands === 'undefined' || !commands.has(_bareName)) {
+      return { 'isCommand': ![], 'prefix': null, 'raw': '', 'name': '' };
+    }
+    return { 'isCommand': !![], 'prefix': '', 'raw': _0x5f49af, 'name': _bareName };
   }
   const _0x57de35 = Array["isArray"](CONFIG?.["PREFIXES"]) ? CONFIG["PREFIXES"]["filter"](_0x23bec0 => typeof _0x23bec0 === "string" && _0x23bec0["length"] > 0x0) : [];
   const _0xb79e9b = _0x57de35["length"] ? _0x57de35 : [CONFIG?.["PREFIX"] || '.'];
@@ -23304,7 +23314,7 @@ cmd(['setprefix', "prefix"], {
   'ownerOnly': !![]
 }, async (_0x103982, _0x2248ba, _0x4bd3f4) => {
   if (!_0x4bd3f4[0x0]) {
-    await sendReply(_0x103982, _0x2248ba, "Usage: " + (CONFIG["PREFIX"] || '.') + "setprefix <new prefix>\nTip: *setprefix null* disables a custom prefix; regular commands still require the default '.' prefix. Only aza and send work without a prefix.\nCurrent prefix: *" + (CONFIG['PREFIX'] || "(none)") + '*');
+    await sendReply(_0x103982, _0x2248ba, "Usage: " + (CONFIG["PREFIX"] || '.') + "setprefix <new prefix>\nTip: *setprefix none* = commands work with no prefix. *setprefix .* = back to the dot.\nCurrent prefix: *" + (CONFIG['PREFIX'] || "(none)") + '*');
     return;
   }
   const _0x2579ca = String(_0x4bd3f4["join"]('\x20')["trim"]());
@@ -23332,12 +23342,12 @@ cmd(['setprefix', "prefix"], {
         }
       }
     } catch {}
-    _0x3d93ae['prefix'] = CONFIG["PREFIX"] || null;
+    _0x3d93ae['prefix'] = CONFIG["PREFIX"] ? CONFIG["PREFIX"] : 'none';
     _0x2a74f2["writeFileSync"](_0x3b13b8, JSON["stringify"](_0x3d93ae, null, 0x2) + '\x0a', 'utf8');
   } catch (_0x495860) {
     console["error"]("[setprefix] failed to persist bot prefix:", _0x495860?.["message"] || _0x495860);
   }
-  await sendReply(_0x103982, _0x2248ba, "✅ Prefix changed to: *" + _0x51d36c + "*\n\n" + (CONFIG['PREFIX'] ? 'Use:\x20' + CONFIG["PREFIX"] + "menu" : "Regular commands still require the default . prefix (e.g. .menu). Only aza and send work without a prefix."));
+  await sendReply(_0x103982, _0x2248ba, "✅ Prefix changed to: *" + _0x51d36c + "*\n\n" + (CONFIG['PREFIX'] ? 'Use:\x20' + CONFIG["PREFIX"] + "menu" : "Commands now work without a prefix, e.g. menu. Send setprefix . to go back."));
 });
 cmd("broadcast", {
   'desc': "Broadcast message to all groups + DMs — .broadcast <msg>",
