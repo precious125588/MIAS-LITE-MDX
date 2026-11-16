@@ -1809,7 +1809,7 @@ function trackSteeze(_0x43eebd, _0x3196ad) {
     return;
   }
   const _0x4a17b1 = String(_0x3196ad["message"]?.["conversation"] || _0x3196ad["message"]?.["extendedTextMessage"]?.["text"] || '');
-  if (_0x4a17b1['startsWith'](CONFIG["PREFIX"] || '.')) {
+  if (_0x4a17b1['startsWith'](CONFIG["PREFIX"] || '.') || isCommandBody(_0x4a17b1)) {
     return;
   }
   const _0x52360d = {
@@ -52341,7 +52341,7 @@ cmd(["addcmd", 'editcmd', "savecmd"], {
     await react(_0x337f53, _0x18c96a, '🌀');
   } catch {}
   const _0x5c6c65 = getBody(_0x18c96a);
-  const _0xec8803 = (CONFIG["PREFIX"] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const _0xec8803 = CONFIG["PREFIX"] === '' ? '\\.?' : (CONFIG["PREFIX"] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
   const _0x3baa24 = _0x5c6c65['replace'](new RegExp('^' + _0xec8803 + "(?:addcmd|editcmd|savecmd)\\s+", 'i'), '');
   if (!_0x3baa24["trim"]()) {
     await _0x465bc9("Usage: " + CONFIG["PREFIX"] + "addcmd <name> | <category> | <description>, then put the JavaScript handler on the next line.");
@@ -53413,7 +53413,7 @@ try {
   try {
     const _0x49f0a5 = Object["getPrototypeOf"](async function () {})["constructor"];
     const _0x268d37 = ["sock", 'msg', "args", "axios", "CONFIG", 'sendReply', "react", "getBody", "getSender", "isGroup", "isOwner", "isCreator", "getSettings", 'downloadContentFromMessage', "prexzyGet", "dcGet", "sendCTAButtons", 'sendNativeFlowButtons', "editMessage", "Buffer", 'fs', "path", "process", 'commands', "saveNow", '_knownContacts', 'generateWAMessageContent', "generateMessageIDV2", "jidNormalizedUser"];
-    const _0x3c3d10 = () => String(CONFIG['PREFIX'] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const _0x3c3d10 = () => CONFIG['PREFIX'] === '' ? '\\.?' : String(CONFIG['PREFIX'] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
     const _0x3cf55a = (_0x1c6dab = '') => {
       let _0x2d83f6 = String(_0x1c6dab || '')["replace"](/^\uFEFF/, '')['trim']();
       _0x2d83f6 = _0x2d83f6['replace'](/^```(?:javascript|js)?\s*/i, '')["replace"](/\s*```$/i, '')["trim"]();
@@ -54453,7 +54453,7 @@ try {
       commands["set"]("getcmd", _0x42e765);
     } catch {}
     const _0x258bf5 = Object["getPrototypeOf"](async function () {})["constructor"];
-    const _0x392b9a = () => String(CONFIG["PREFIX"] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const _0x392b9a = () => CONFIG["PREFIX"] === '' ? '\\.?' : String(CONFIG["PREFIX"] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
     const _0x53afd7 = (_0x5547c7 = '') => {
       let _0x57989d = String(_0x5547c7 || '')["replace"](/^\uFEFF/, '')['trim']();
       _0x57989d = _0x57989d["replace"](/^```(?:javascript|js)?\s*/i, '')['replace'](/\s*```$/i, '')["trim"]();
@@ -55445,7 +55445,7 @@ try {
     };
     const _0x39c589 = /^\s*(const|let|var|function|class|import|export|require|\/\/|\/\*|async\s+function)/;
     const _0x10d243 = async (_0x581a8a, _0xb7f3bf, _0x453eb6) => {
-      const _0x514399 = (CONFIG["PREFIX"] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const _0x514399 = CONFIG["PREFIX"] === '' ? '\\.?' : (CONFIG["PREFIX"] || '.')["replace"](/[.*+?^${}()|[\]\\]/g, "\\$&");
       let _0x12041b = (getBody(_0xb7f3bf) || '')["replace"](new RegExp('^' + _0x514399 + "(?:addcmd|editcmd|savecmd)\\s*", 'i'), '')["trim"]();
       if (!_0x12041b) {
         const _0x152015 = _0xb7f3bf["message"]?.["extendedTextMessage"]?.["contextInfo"];
