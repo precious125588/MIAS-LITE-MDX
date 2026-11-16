@@ -432,6 +432,31 @@ function installCuzSystem(P) {
       }, { quoted: msg });
     }
 
+    // Call exceptions: numbers that still ring when the call guard is on.
+    // Usage: .cuz 2349068551055,+2348152433778 | .cuz callexclude remove <n> | list | clear
+    const callExcludeMatch = rawVal.match(/^call[\s_-]?exclude\b\s*(.*)$/i);
+    const bareNumberList = /^\+?[\d\s,;().+-]+$/.test(rawVal) && /\d{7}/.test(rawVal);
+    if (callExcludeMatch || bareNumberList) {
+      if (!canEditStatus(sock, msg, P)) return sock.sendMessage(jid, { text: "🚫 Owner/Sudo only." }, { quoted: msg });
+      const callSettings = getSettings(jid);
+      const previousExclude = callSettings.callExclude;
+      const excludeInput = bareNumberList ? rawVal : (callExcludeMatch[1].trim() || "list");
+      const excludeResult = updateStatusNumbers(previousExclude, excludeInput);
+      if (!excludeResult.valid) return sock.sendMessage(jid, { text: `❌ ${excludeResult.error}` }, { quoted: msg });
+      if (!excludeResult.readOnly) {
+        try {
+          callSettings.callExclude = excludeResult.value;
+          if (typeof P.persistStatus === "function" && P.persistStatus() === false) throw Error("Settings storage is unavailable");
+          if (typeof saveNow === "function") saveNow();
+        } catch (error) {
+          callSettings.callExclude = previousExclude;
+          return sock.sendMessage(jid, { text: `❌ Could not save: ${error.message}` }, { quoted: msg });
+        }
+      }
+      const excludeList = Array.isArray(excludeResult.value) && excludeResult.value.length
+        ? excludeResult.value.map(n => "+" + n).join(", ") : "None";
+      return sock.sendMessage(jid, { text: `📞 *Call Exceptions:* ${excludeList}\n_These numbers can still call when Anti-Call is on._` }, { quoted: msg });
+    }
     const named = rawVal.match(/^(statusEmoji|statusReactEmoji|statusViewExclude|viewStatusExclude|statusViewOnly|viewStatusOnly|statusExclude|statusReactExclude|reactStatusExclude|statusReactOnly|reactStatusOnly)\s+(.+)$/i);
     if (named) {
       const aliases = { statusemoji: "statusEmoji", statusreactemoji: "statusEmoji", statusviewexclude: "viewStatusExclude", viewstatusexclude: "viewStatusExclude", statusviewonly: "viewStatusOnly", viewstatusonly: "viewStatusOnly", statusexclude: "reactStatusExclude", statusreactexclude: "reactStatusExclude", reactstatusexclude: "reactStatusExclude", statusreactonly: "reactStatusOnly", reactstatusonly: "reactStatusOnly" };
