@@ -103,7 +103,27 @@ function addAliasPersisted({ commands, aliases, file, command, alias }) {
   return `✅ *.${alias}* is now an alias of *.${check.canonical}*. It stays after restart.`;
 }
 
+// Removes an alias added with .addalias. Built-in aliases are not in the saved list, so they cannot be removed here.
+// Saves first and detaches only after the save works, so a failed save changes nothing.
+function removeAliasPersisted({ commands, aliases, file, alias }) {
+  const name = cleanToken(alias);
+  if (!name) return '🔗 *Remove alias*\n\nUsage: .removealias <alias>\nExample: .removealias fast';
+  const list = loadAliasStore(file);
+  const saved = list.find(x => x.alias === name);
+  if (!saved) {
+    if (commands.has(name) || aliases.has(name)) return `❌ *.${name}* is a built-in name, not a saved alias. It can't be removed.`;
+    return `❌ No saved alias named *.${name}*.`;
+  }
+  try {
+    saveAliasStore(file, list.filter(x => x.alias !== name));
+  } catch (e) {
+    return `❌ Could not save the change. *.${name}* is still there. Try again.`;
+  }
+  detachAlias(commands, aliases, name);
+  return `✅ Removed alias *.${name}* (was an alias of *.${saved.command}*).`;
+}
+
 module.exports = {
   ALIAS_RE, parseAddAliasInput, checkAddAlias, attachAlias, detachAlias,
-  loadAliasStore, saveAliasStore, restoreAliases, addAliasPersisted,
+  loadAliasStore, saveAliasStore, restoreAliases, addAliasPersisted, removeAliasPersisted,
 };
