@@ -10239,6 +10239,15 @@ cmd(["addalias"], {
   const _report = __aliasStore.addAliasPersisted({ commands, aliases, file: COMMAND_ALIAS_FILE, command: _parsed.command, alias: _parsed.alias });
   return await sendReply(_sock, _msg, _report);
 });
+cmd(["removealias"], {
+  'desc': "Remove an alias added with .addalias — .removealias <alias>",
+  'category': "SYSTEM",
+  'ownerOnly': !![]
+}, async (_sock, _msg, _args) => {
+  const _name = Array.isArray(_args) ? (_args[0] || '') : String(_args || '');
+  const _report = __aliasStore.removeAliasPersisted({ commands, aliases, file: COMMAND_ALIAS_FILE, alias: _name });
+  return await sendReply(_sock, _msg, _report);
+});
 cmd(["gpt4o", 'gpt-4o'], {
   'desc': "Chat with GPT-4o",
   'category': 'AI'
