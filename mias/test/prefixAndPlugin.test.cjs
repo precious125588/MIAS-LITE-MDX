@@ -11,7 +11,7 @@ test('cleanQuery trims and lowercases inputs', () => {
   assert.equal(cleanQuery(null), '');
 });
 
-test('formatPluginCard renders card with couple plugin and Gist URL', () => {
+test('formatPluginCard matches the compact requested layout exactly', () => {
   const plugin = {
     name: 'couple pp',
     desc: 'Generate couple profile pictures.',
@@ -20,43 +20,38 @@ test('formatPluginCard renders card with couple plugin and Gist URL', () => {
     score: 5,
     upvotes: 6,
     downvotes: 1,
-    creator: {
-      username: 'ayazaliofc',
-      name: 'Ayaz Ali'
-    }
+    creator: { username: 'ayazaliofc', name: 'Ayaz Ali' }
   };
 
-  const cardWithDot = formatPluginCard(plugin, { prefix: '.' });
-  assert.ok(cardWithDot.includes('couple pp'), 'Card should contain plugin name');
-  assert.ok(cardWithDot.includes('Generate couple profile pictures.'), 'Card should contain description');
-  assert.ok(cardWithDot.includes('https://gist.github.com/ayazaliofc/9a1fbda1888e1b7bb8e1d81f0fc99c82'), 'Card should contain Gist URL');
-  assert.ok(cardWithDot.includes('.plugin https://gist.github.com'), 'Card should show install instruction with prefix');
+  const expected = [
+    '\u200e╔══════════════════════╗',
+    '\u200e   🔌 *LEVANTER PLUGIN*',
+    '\u200e╚══════════════════════╝',
+    '',
+    '\u200e📦 *Name:* couple pp',
+    '\u200e📝 *Desc:* Generate couple profile pictures.',
+    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━',
+    '',
+    '\u200e🔗 *Gist URL:*',
+    '\u200ehttps://gist.github.com/ayazaliofc/9a1fbda1888e1b7bb8e1d81f0fc99c82',
+    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━'
+  ].join('\n');
 
-  // Test with empty prefix (none/null mode)
-  const cardRaw = formatPluginCard(plugin, { prefix: '' });
-  assert.ok(cardRaw.includes('plugin https://gist.github.com'), 'Card should show raw install command without dot in none mode');
+  assert.equal(formatPluginCard(plugin, { prefix: '.' }), expected);
+  assert.equal(formatPluginCard(plugin, { allItems: [plugin], prefix: '' }), expected);
+  assert.doesNotMatch(expected, /Creator|Type|Score|Install|Other Matches/);
 });
 
-test('formatPluginCard renders multiple matches cleanly', () => {
+test('formatPluginCard keeps multi-match results short', () => {
   const items = [
-    {
-      name: 'ig downloader',
-      desc: 'Download reels',
-      url: 'https://gist.github.com/user/12345',
-      creator: { username: 'testuser' }
-    },
-    {
-      name: 'ig story',
-      desc: 'Download stories',
-      url: 'https://gist.github.com/user/67890',
-      creator: { username: 'testuser' }
-    }
+    { name: 'ig downloader', desc: 'Download reels', url: 'https://gist.github.com/user/12345' },
+    { name: 'ig story', desc: 'Download stories', url: 'https://gist.github.com/user/67890' }
   ];
 
   const card = formatPluginCard(items[0], { allItems: items, prefix: '.' });
-  assert.ok(card.includes('ig downloader'));
-  assert.ok(card.includes('Other Matches (1):'));
-  assert.ok(card.includes('.getplugin ig story'));
+  assert.ok(card.includes('*Name:* ig downloader'));
+  assert.ok(!card.includes('ig story'));
+  assert.ok(!card.includes('Other Matches'));
 });
 
 test('searchLevanterPlugins fetches real plugins from levanter-plugin.levanter.site', async () => {
