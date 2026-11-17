@@ -112,24 +112,4 @@ bot(
   }
 )
 
-bot(
-  {
-    pattern: 'getplugin ?(.*)',
-    desc: 'Search Levanter plugins and get Gist URLs — .getplugin <name>',
-    type: 'plugin',
-  },
-  async (message, match) => {
-    match = String(match || message.reply_message?.text || '').trim()
-    if (!match) return await message.send('🔌 *Levanter Plugin Search*\n\nUsage: .getplugin <name>\nExample: .getplugin couple\n\nSearches levanter.site/plugin for Gist URLs.')
-    try {
-      const { searchLevanterPlugins, formatPluginCard } = require('../../levanterPluginSearch.cjs')
-      const res = await searchLevanterPlugins(match)
-      if (!res.success) return await message.send(`❌ ${res.error || 'Failed to search plugins.'}`)
-      if (!res.items || res.items.length === 0) return await message.send(`❌ No Levanter plugins found matching "*${match}*".`)
-      const card = formatPluginCard(res.items[0], { allItems: res.items, query: match, prefix: message.prefix || '.' })
-      return await message.send(card)
-    } catch (e) {
-      return await message.send(`❌ Error: ${e.message}`)
-    }
-  }
-)
+// getplugin is provided natively in mias/index.js; omitted here to avoid getplugin1 collision.

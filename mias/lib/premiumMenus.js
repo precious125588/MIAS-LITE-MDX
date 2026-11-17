@@ -37,7 +37,7 @@ export function menuExclusionReport(commands, aliases = new Map()) {
   const resolve = name => {
     const key = MENU_DISPLAY_LABELS[name] || name;
     const entry = commands.get(key);
-    const canonical = String(entry?.canonical || aliases.get(key) || key).toLowerCase();
+      const canonical = String(entry?.canonical || aliases.get(key) || MENU_ALIAS_MAP.get(key) || key).toLowerCase();
     return commands.has(canonical) ? canonical : null;
   };
   const report = {};
@@ -115,9 +115,31 @@ export const SETTINGS_MISC_DUPLICATES = new Set([
   'autotyping', 'autorecording', 'alwaysonline', 'blockcalls',
   'antibroadcast', 'anticall', 'antiviewonce', 'antivonce',
 ]);
+export const MENU_ALIAS_MAP = new Map([
+  ['gst', 'groupstatus'],
+  ['gstatus', 'groupstatus'],
+  ['gcstatus', 'groupstatus'],
+  ['setgcpp', 'setgcpic'],
+  ['setazapic', 'setaza'],
+  ['bancmds', 'bancmd'],
+  ['bannedcmds', 'bancmd'],
+  ['gcbannedlist', 'bancmd'],
+  ['unbancmd', 'bancmd'],
+  ['enhance', '4k'],
+  ['upscale', '4k'],
+  ['uhd', '4k'],
+  ['4kvideo', '4k'],
+  ['remini4k', '4k'],
+  ['remini', '4k'],
+  ['hdvideo', 'hd'],
+  ['hd-video', 'hd'],
+  ['tthd', 'hd']
+]);
+
 export function isMenuEntryVisible(name, entry, context = {}) {
   const cmdKey = String(name || '').toLowerCase();
-  if (cmdKey === 'antivonce' || cmdKey === 'antiviewonce' || cmdKey === 'antivo') return false;
+  if (cmdKey === 'antivonce' || cmdKey === 'antiviewonce' || cmdKey === 'antivo' || cmdKey === 'getplugin1') return false;
+  if (globalThis?.__MIAS_DISABLED_COMMANDS__?.has(cmdKey)) return false;
   if (normalizeMenuCategory(entry?.category) === 'MISC' && SETTINGS_MISC_DUPLICATES.has(cmdKey)) return false;
   if (!entry || typeof entry.handler !== 'function' || entry.disabled || entry.enabled === false || entry.hidden || entry.internal || /^Internal\b/i.test(entry.desc || '')) return false;
   if (context.owner === undefined) return true; // registry-wide audits, not a user response
@@ -140,7 +162,7 @@ export function canonicalMenuEntries(commands, aliases = new Map(), categories =
     for (const name of cat.cmds || []) {
       const key = String(name).toLowerCase();
       const entry = commands.get(key);
-      const canonical = String(entry?.canonical || aliases.get(key) || key).toLowerCase();
+      const canonical = String(entry?.canonical || aliases.get(key) || MENU_ALIAS_MAP.get(key) || key).toLowerCase();
       if (!shared.has(canonical)) shared.set(canonical, category);
     }
   }
@@ -148,7 +170,7 @@ export function canonicalMenuEntries(commands, aliases = new Map(), categories =
   const hidden = menuHiddenCanonicals(commands, aliases);
   for (const [name, entry] of commands) {
     if (!isMenuEntryVisible(name, entry, context)) continue;
-    const canonical = String(entry.canonical || aliases.get(name) || name).toLowerCase();
+    const canonical = String(entry.canonical || aliases.get(name) || MENU_ALIAS_MAP.get(name) || name).toLowerCase();
     if (hidden.has(canonical) && !['tg-sticker', 'time'].includes(canonical)) continue;
     // A deleted canonical must not be advertised by a dangling alias.
     const primary = commands.get(canonical);

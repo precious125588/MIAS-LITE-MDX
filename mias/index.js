@@ -11417,7 +11417,7 @@ function buildMenu(_0x5ebc28, _0x52e682, _0x1dd454, _0x55227c = {}) {
     _0x52d46d = String(detectHostEnvironment()["platform"] || "UNKNOWN")['toUpperCase']();
   } catch {}
   const _0x325702 = "────────────────────";
-  let _0x268ed5 = formatBotIdentityHeader(_0x55227c) + '\x0a\x0a';
+  let _0x268ed5 = formatBotIdentityHeader({ ..._0x55227c, 'menuType': 'allmenu' }) + '\x0a\x0a';
   _0x268ed5 += quoteSection(_0x495a05);
   _0x268ed5 += "*BOT INFORMATION*\n";
   _0x268ed5 += "HOST: " + _0x52d46d + "\nPREFIX: " + CONFIG["PREFIX"] + "\nMODE: " + _0x215913 + "\nVERSION: " + CONFIG["VERSION"] + '\x0a';
@@ -11541,7 +11541,7 @@ async function sendPremiumMenu(_0x31465f, _0x16672a, _0x2ba09e, _0x47c238 = ![])
   let _0x56c7be;
   if (_0x503136) {
     const _0x3064ab = getCategoryPrimaryCommands(_0x503136, _0x3d86c4);
-    _0x56c7be = formatBotIdentityHeader(_0x3d86c4) + '\x0a\x0a' + quoteSection(_randomMenuQuoteForUser(_0x32fc43 || _0x509633)) + formatMenuCategory({
+    _0x56c7be = formatBotIdentityHeader({ ..._0x3d86c4, 'menuType': 'menu' }) + '\x0a\x0a' + quoteSection(_randomMenuQuoteForUser(_0x32fc43 || _0x509633)) + formatMenuCategory({
       ..._0x503136,
       'cmds': _0x3064ab
     }) + "\n\nPOWERED BY 𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x";
@@ -11568,7 +11568,7 @@ function buildMenuOverview(_0x5ef4f8, _0x21bc21, _0x4e6864 = {}) {
     _0x1c224b = String(detectHostEnvironment()["platform"] || "UNKNOWN")["toUpperCase"]();
   } catch {}
   const _0x176418 = '\u2500'["repeat"](0x14);
-  let _0x32bfc6 = formatBotIdentityHeader(_0x4e6864) + '\x0a\x0a';
+  let _0x32bfc6 = formatBotIdentityHeader({ ..._0x4e6864, 'menuType': 'menu' }) + '\x0a\x0a';
   _0x32bfc6 += quoteSection(_0x19dd22);
   _0x32bfc6 += "*BOT INFORMATION*\n";
   _0x32bfc6 += "HOST: " + _0x1c224b + "\nPREFIX: " + CONFIG["PREFIX"] + "\nMODE: " + _0x318d16 + "\nVERSION: " + CONFIG['VERSION'] + '\x0a';
@@ -16410,6 +16410,8 @@ cmd("__legacy_img_disabled__", {
   }
   await react(_0x1510ab, _0x1c80ef, '❌');
 });
+globalThis.__MIAS_RECENT_IMAGES__ = globalThis.__MIAS_RECENT_IMAGES__ || new Set();
+
 cmd(["image", "img"], {
   'desc': "Send up to five Pinterest images — .image <query>",
   'category': "SEARCH"
@@ -16447,7 +16449,7 @@ cmd(["image", "img"], {
     const _0x56bad2 = Array["isArray"](_0x465074) ? _0x465074 : _0x465074 && typeof _0x465074 === 'object' ? _0x465074["result"] || _0x465074["results"] || _0x465074["data"] || _0x465074["items"] || [] : [];
     for (const _0x30591c of _0x56bad2) {
       _0x3e93e0(_0x30591c);
-      if (_0x26a1db["length"] >= 0x5) {
+      if (_0x26a1db["length"] >= 30) {
         break;
       }
     }
@@ -16460,29 +16462,56 @@ cmd(["image", "img"], {
   } catch (_0x493fee) {
     console["error"]('[image/pinterest-search]', _0x493fee?.["message"] || _0x493fee);
   }
-  if (_0x26a1db["length"] < 0x5) {
-    const _0x149616 = await Promise["allSettled"]([prexzyGet("/search/pinterest", {
-      'q': _0x1c50f4
-    }, 0x2710), _0x4a8c7e['get']("https://api.nexray.eu.cc/search/pinterest?q=" + encodeURIComponent(_0x1c50f4), {
-      'timeout': 0x2710
-    })]);
+  try {
+    const _0x149616 = await Promise["allSettled"]([
+      prexzyGet("/search/pinterest", { 'q': _0x1c50f4 }, 0x2710),
+      _0x4a8c7e['get']("https://api.nexray.eu.cc/search/pinterest?q=" + encodeURIComponent(_0x1c50f4), { 'timeout': 0x2710 })
+    ]);
     const _0x5f44b3 = _0x149616[0x0];
     if (_0x5f44b3["status"] === "fulfilled") {
       const _0x3db242 = _0x5f44b3["value"];
       _0x3e3572(_0x3db242["data"]?.["data"] || _0x3db242["data"]?.["result"] || _0x3db242["data"]?.['results'] || _0x3db242["data"]);
     }
     const _0x2b9fab = _0x149616[0x1];
-    if (_0x26a1db["length"] < 0x5 && _0x2b9fab["status"] === "fulfilled") {
+    if (_0x2b9fab["status"] === "fulfilled") {
       const _0x2a16b6 = _0x2b9fab["value"]?.["data"];
       _0x3e3572(_0x2a16b6?.["result"] || _0x2a16b6?.["results"] || _0x2a16b6?.["data"] || _0x2a16b6);
     }
-  }
+  } catch {}
+
   if (!_0x26a1db["length"]) {
     await react(_0x259e45, _0x53eb9b, '❌');
     await sendReply(_0x259e45, _0x53eb9b, "❌ No images were found for *" + _0x1c50f4 + "*. Try another search term.");
     return;
   }
-  const _0x29b339 = await Promise["allSettled"](_0x26a1db["slice"](0x0, 0x5)['map'](async _0x14c0dc => {
+
+  // Deduplicate against recently delivered images so users never see duplicates
+  let _freshPool = _0x26a1db.filter(_item => !globalThis.__MIAS_RECENT_IMAGES__.has(_item.image));
+  if (_freshPool.length < 5) {
+    const _freshUrls = new Set(_freshPool.map(_f => _f.image));
+    for (const _fallbackItem of _0x26a1db) {
+      if (!_freshUrls.has(_fallbackItem.image)) {
+        _freshPool.push(_fallbackItem);
+        _freshUrls.add(_fallbackItem.image);
+      }
+    }
+  }
+
+  // Randomize / shuffle the candidates so consecutive searches deliver different fresh pictures
+  for (let _si = _freshPool.length - 1; _si > 0; _si--) {
+    const _sj = Math.floor(Math.random() * (_si + 1));
+    [_freshPool[_si], _freshPool[_sj]] = [_freshPool[_sj], _freshPool[_si]];
+  }
+  const _finalSelection = _freshPool.slice(0, 5);
+  for (const _chosen of _finalSelection) {
+    if (globalThis.__MIAS_RECENT_IMAGES__.size >= 2000) {
+      const _oldestKey = globalThis.__MIAS_RECENT_IMAGES__.keys().next().value;
+      globalThis.__MIAS_RECENT_IMAGES__.delete(_oldestKey);
+    }
+    globalThis.__MIAS_RECENT_IMAGES__.add(_chosen.image);
+  }
+
+  const _0x29b339 = await Promise["allSettled"](_finalSelection['map'](async _0x14c0dc => {
     const _0x1a5e62 = await _0x2fbb1e(_0x14c0dc["image"], {
       'axiosImpl': _0x4a8c7e,
       'timeoutMs': 0x3a98,
@@ -19583,6 +19612,62 @@ cmd("vcf", {
     await sendReply(_0x1fa5da, _0x50a63b, '❌\x20VCF\x20error:\x20' + _0x1e0cc2["message"]);
   }
 });
+function _detectUserDevice(stanzaId = '', targetJid = '', key = {}) {
+  const id = String(stanzaId || key?.id || '').trim();
+  const jid = String(targetJid || key?.participant || key?.remoteJid || '').trim();
+
+  const deviceMatch = jid.match(/:(\d+)@/);
+  const deviceIndex = deviceMatch ? parseInt(deviceMatch[1], 10) : 0;
+  const isLinkedDevice = deviceIndex > 0;
+
+  let platform = 'unknown';
+  let deviceName = 'WhatsApp Mobile';
+  let emoji = '📱';
+
+  if (/^3EB0/i.test(id) || /^3EB[0-9A-F]/i.test(id) || id.length === 16) {
+    platform = 'web';
+    deviceName = 'WhatsApp Web';
+    emoji = '💻';
+  } else if (/^BAE5/i.test(id)) {
+    platform = 'web';
+    deviceName = 'WhatsApp Web (Bot)';
+    emoji = '🤖';
+  } else if (/^3A[0-9A-F]{10,}/i.test(id) || (id.startsWith('3A') && id.length >= 18)) {
+    platform = 'ios';
+    deviceName = 'iPhone (iOS)';
+    emoji = '🍎';
+  } else if (/^[0-9A-F]{32}$/i.test(id) || id.length === 22 || id.length === 12) {
+    platform = 'android';
+    deviceName = 'Android Phone';
+    emoji = '📱';
+  } else if (getBaileysDevice) {
+    try {
+      const bDev = String(getBaileysDevice(id) || '').toLowerCase();
+      if (bDev === 'ios') {
+        platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
+      } else if (bDev === 'android') {
+        platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
+      } else if (bDev === 'web') {
+        platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
+      } else if (bDev === 'desktop') {
+        platform = 'desktop'; deviceName = 'WhatsApp Desktop'; emoji = '🖥️';
+      }
+    } catch {}
+  }
+
+  if (platform === 'unknown' && isLinkedDevice) {
+    platform = 'web';
+    deviceName = 'WhatsApp Web / Linked Device';
+    emoji = '💻';
+  }
+
+  if (isLinkedDevice && platform !== 'unknown') {
+    deviceName += ` _(Linked #${deviceIndex})_`;
+  }
+
+  return { platform, deviceName, emoji };
+}
+
 cmd(["device", "getdevice", "checkdevice"], {
   'desc': "Check device/platform of a user — reply, @mention, or .device <number>",
   'category': "INFO"
@@ -19590,41 +19675,39 @@ cmd(["device", "getdevice", "checkdevice"], {
   const _0x206e18 = getContextInfo(_0x3cafcd);
   let _0x5d159f = toStandardJid(resolveLid(_0x206e18?.["mentionedJid"]?.[0x0] || _0x206e18?.["participant"] || ''));
   let _0xb2a0e0 = _0x206e18?.["stanzaId"] || '';
+
   if (!_0x5d159f && _0x3993a0[0x0]) {
     const _0x469125 = _0x3993a0[0x0]["replace"](/[^0-9]/g, '');
     if (_0x469125['length'] >= 0x7) {
       _0x5d159f = _0x469125 + "@s.whatsapp.net";
     }
   }
-  !_0x5d159f && (_0x5d159f = toStandardJid(resolveLid(getSender(_0x3cafcd) || '')), _0xb2a0e0 = _0x3cafcd["key"]['id'] || '');
-  const _0x1c5eae = String(_0xb2a0e0 || _0x3cafcd['key']['id'] || '');
-  let _0x336827 = '';
-  if (getBaileysDevice) {
-    try {
-      _0x336827 = String(getBaileysDevice(_0x1c5eae) || '')["toLowerCase"]();
-    } catch {}
+
+  // If no user target specified and not a reply, check caller's own device!
+  if (!_0x5d159f) {
+    _0x5d159f = toStandardJid(resolveLid(getSender(_0x3cafcd) || ''));
+    _0xb2a0e0 = _0x3cafcd["key"]?.['id'] || '';
   }
-  if (!_0x336827 || _0x336827 === 'unknown') {
-    if (typeof __miasDetectPlatform === 'function') {
-      const _0x2b9beb = __miasDetectPlatform({
-        'key': {
-          'id': _0x1c5eae
-        }
-      });
-      if (_0x2b9beb && _0x2b9beb !== "Unknown") {
-        _0x336827 = _0x2b9beb['toLowerCase']();
-      }
-    }
-  }
-  const _0x4762be = ["android", "ios", 'web', 'desktop']["includes"](_0x336827) ? _0x336827 : "unknown";
+
+  const _detected = _detectUserDevice(_0xb2a0e0, _0x5d159f, _0x3cafcd["key"]);
   const _0x75e153 = _cleanNum(_0x5d159f);
   let _0x2e3eda = _0x75e153;
   try {
     _0x2e3eda = await getDisplayName(_0x19c93f, _0x5d159f, isGroup(_0x3cafcd) ? _0x3cafcd["key"]['remoteJid'] : null);
   } catch {}
-  const _0x2fd28f = String(_0x2e3eda || _0x75e153 || "user")["trim"]();
+  const _0x2fd28f = String(_0x2e3eda || _0x75e153 || "User")["trim"]();
+
+  const responseText = [
+    "📱 *DEVICE DETECTION*",
+    "────────────────────",
+    `👤 *User:* ${_0x2fd28f} (@${_0x75e153})`,
+    `${_detected.emoji} *Device:* ${_detected.deviceName}`,
+    `🏷️ *Platform:* ${_detected.platform.toUpperCase()}`,
+    "────────────────────"
+  ].join('\n');
+
   await _0x19c93f['sendMessage'](_0x3cafcd['key']['remoteJid'], {
-    'text': _0x2fd28f + " is " + _0x4762be + '\x20user',
+    'text': responseText,
     'mentions': _0x5d159f ? [_0x5d159f] : []
   }, {
     'quoted': _0x3cafcd
@@ -20564,81 +20647,99 @@ cmd(['shorten', "shortenurl2", 'pshorten', "urlshort2", "dagd", 'dagdshort', "vg
   await sendReply(_0x32a278, _0x52fcd1, '❌\x20Failed\x20to\x20shorten\x20URL.\x20Check\x20if\x20it\x27s\x20valid.');
 });
 cmd(['ip', 'geoip', "ipinfo", "iplookup"], {
-  'desc': "IP lookup",
+  'desc': "IP lookup — .ip <optional-ip-or-domain>",
   'category': "TOOLS"
 }, async (_0x559ae2, _0x321bd2, _0x2e41ba) => {
   await react(_0x559ae2, _0x321bd2, '🌐');
-  const _0x584cd0 = _0x2e41ba[0x0]?.['replace'](/[^0-9a-f.:]/gi, '') || '';
-  const _0x104a96 = [async () => {
-    const {
-      data: _0x12ceb0
-    } = await _0x4a8c7e["get"]("https://ip-api.com/json/" + _0x584cd0 + '?fields=status,country,regionName,city,isp,org,query', {
-      'timeout': 0x1f40
-    });
-    if (_0x12ceb0?.["status"] !== "success") {
-      return null;
+  const _0x584cd0 = _0x2e41ba[0x0]?.['replace'](/[^0-9a-z.:_-]/gi, '') || '';
+
+  let _ipInfo = null;
+
+  // 1. Primary: ipwho.is (fast HTTPS, comprehensive metadata + flag)
+  try {
+    const _ipWhoUrl = _0x584cd0 ? ("https://ipwho.is/" + encodeURIComponent(_0x584cd0)) : "https://ipwho.is/";
+    const _resp = await _0x4a8c7e["get"](_ipWhoUrl, { 'timeout': 0x1f40 });
+    if (_resp.data && _resp.data["success"] !== false && _resp.data["ip"]) {
+      _ipInfo = {
+        'ip': _resp.data["ip"],
+        'country': _resp.data["country"],
+        'flag': _resp.data["flag"]?.["emoji"] || '',
+        'city': _resp.data["city"],
+        'region': _resp.data["region"],
+        'isp': _resp.data["connection"]?.["isp"] || _resp.data["isp"],
+        'org': _resp.data["connection"]?.["org"] || _resp.data["org"],
+        'timezone': _resp.data["timezone"]?.["id"] || _resp.data["timezone"]
+      };
     }
-    return {
-      'ip': _0x12ceb0["query"],
-      'country': _0x12ceb0['country'],
-      'city': _0x12ceb0["city"],
-      'region': _0x12ceb0["regionName"],
-      'isp': _0x12ceb0["isp"] || _0x12ceb0["org"]
-    };
-  }, async () => {
-    const {
-      data: _0x5714ba
-    } = await _0x4a8c7e["get"]('https://ipapi.co/' + _0x584cd0 + "/json/", {
-      'timeout': 0x1f40
-    });
-    if (_0x5714ba?.["error"]) {
-      return null;
-    }
-    return {
-      'ip': _0x5714ba['ip'],
-      'country': _0x5714ba['country_name'],
-      'city': _0x5714ba["city"],
-      'region': _0x5714ba["region"],
-      'isp': _0x5714ba["org"]
-    };
-  }, async () => {
-    const {
-      data: _0x5682ce
-    } = await _0x4a8c7e["get"]("https://ipinfo.io/" + _0x584cd0 + "/json", {
-      'timeout': 0x1f40
-    });
-    return {
-      'ip': _0x5682ce['ip'],
-      'country': _0x5682ce["country"],
-      'city': _0x5682ce["city"],
-      'region': _0x5682ce["region"],
-      'isp': _0x5682ce["org"]
-    };
-  }];
-  let _0x49c9b6 = null;
-  for (const _0x40a393 of _0x104a96) {
+  } catch {}
+
+  // 2. Fallback: ip-api.com HTTP
+  if (!_ipInfo) {
     try {
-      _0x49c9b6 = await _0x40a393();
-      if (_0x49c9b6?.['ip']) {
-        break;
+      const _ipApiUrl = "http://ip-api.com/json/" + (_0x584cd0 ? encodeURIComponent(_0x584cd0) : '') + "?fields=status,country,regionName,city,isp,org,query,timezone";
+      const _resp2 = await _0x4a8c7e["get"](_ipApiUrl, { 'timeout': 0x1f40 });
+      if (_resp2.data?.["status"] === "success") {
+        _ipInfo = {
+          'ip': _resp2.data["query"],
+          'country': _resp2.data["country"],
+          'flag': '',
+          'city': _resp2.data["city"],
+          'region': _resp2.data["regionName"],
+          'isp': _resp2.data["isp"],
+          'org': _resp2.data["org"],
+          'timezone': _resp2.data["timezone"]
+        };
       }
     } catch {}
   }
-  if (_0x49c9b6?.['ip']) {
-    await sendReply(_0x559ae2, _0x321bd2, "🌐 *IP Lookup*\n\n📍 IP: *" + _0x49c9b6['ip'] + '*\x0a🌍\x20Country:\x20' + (_0x49c9b6["country"] || "N/A") + "\n🏙️ City: " + (_0x49c9b6['city'] || "N/A") + "\n📌 Region: " + (_0x49c9b6["region"] || 'N/A') + "\n📡 ISP: " + (_0x49c9b6["isp"] || "N/A"));
-    const _0x488a55 = [_0x49c9b6['city'], _0x49c9b6['country']]["filter"](Boolean)["join"](',\x20');
-    await sendCTAButtons(_0x559ae2, _0x321bd2['key']['remoteJid'], _0x321bd2, "🌐 *IP:* `" + _0x49c9b6['ip'] + "` — " + (_0x49c9b6["city"] || '') + (_0x49c9b6["country"] ? ',\x20' + _0x49c9b6["country"] : ''), [{
+
+  // 3. Fallback: ipapi.co
+  if (!_ipInfo) {
+    try {
+      const _ipapiCoUrl = "https://ipapi.co/" + (_0x584cd0 ? encodeURIComponent(_0x584cd0) + "/" : '') + "json/";
+      const _resp3 = await _0x4a8c7e["get"](_ipapiCoUrl, { 'timeout': 0x1f40 });
+      if (_resp3.data && !_resp3.data["error"] && _resp3.data["ip"]) {
+        _ipInfo = {
+          'ip': _resp3.data["ip"],
+          'country': _resp3.data["country_name"],
+          'flag': '',
+          'city': _resp3.data["city"],
+          'region': _resp3.data["region"],
+          'isp': _resp3.data["org"],
+          'org': _resp3.data["org"],
+          'timezone': _resp3.data["timezone"]
+        };
+      }
+    } catch {}
+  }
+
+  if (_ipInfo?.['ip']) {
+    const _cardLines = [
+      "🌐 *IP LOOKUP*",
+      "────────────────────",
+      `📍 *IP:* \`${_ipInfo.ip}\``,
+      `🌍 *Country:* ${_ipInfo.country || 'N/A'}${_ipInfo.flag ? ' ' + _ipInfo.flag : ''}`,
+      `🏙️ *City:* ${_ipInfo.city || 'N/A'}`,
+      `📌 *Region:* ${_ipInfo.region || 'N/A'}`,
+      `📡 *ISP:* ${_ipInfo.isp || 'N/A'}`,
+      `🏢 *Org:* ${_ipInfo.org || 'N/A'}`,
+      `⏰ *Timezone:* ${_ipInfo.timezone || 'N/A'}`,
+      "────────────────────"
+    ].join('\n');
+    await sendReply(_0x559ae2, _0x321bd2, _cardLines);
+    const _0x488a55 = [_ipInfo['city'], _ipInfo['country']]["filter"](Boolean)["join"](', ');
+    await sendCTAButtons(_0x559ae2, _0x321bd2['key']['remoteJid'], _0x321bd2, "🌐 *IP:* `" + _ipInfo['ip'] + "` — " + (_ipInfo["city"] || '') + (_ipInfo["country"] ? ', ' + _ipInfo["country"] : ''), [{
       'type': "url",
       'text': "🗺️ View on Google Maps",
       'url': 'https://www.google.com/maps/search/' + encodeURIComponent(_0x488a55)
     }, {
       'type': "copy",
-      'text': '📋\x20Copy\x20IP\x20Address',
-      'value': _0x49c9b6['ip'],
+      'text': '📋 Copy IP Address',
+      'value': _ipInfo['ip'],
       'id': 'ip_copy'
     }], CONFIG["BOT_NAME"] + " • IP Lookup")["catch"](() => {});
   } else {
-    await sendReply(_0x559ae2, _0x321bd2, '❌\x20IP\x20lookup\x20failed\x20for:\x20*' + (_0x584cd0 || "your IP") + '*');
+    await sendReply(_0x559ae2, _0x321bd2, '❌ IP lookup failed for: *' + (_0x584cd0 || "your IP") + '*');
   }
 });
 cmd("time", {
@@ -51592,7 +51693,7 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
       const _0x5e847a = await import("@whiskeysockets/baileys");
       _0x1653e9 = _0x5e847a["generateWAMessageContent"] || _0x5e847a["default"]?.["generateWAMessageContent"] || _0x5e847a["prepareWAMessageMedia"] || _0x5e847a["default"]?.["prepareWAMessageMedia"];
     } catch {}
-    for (const _0x4c674f of ["gst", "gstatus", "gcstatus", 'groupstatus']) {
+    for (const _0x4c674f of ['groupstatus', 'gst', 'gstatus', 'gcstatus']) {
       cmd([_0x4c674f], {
         'desc': "📸 Post to group status",
         'category': 'GROUP'
@@ -51746,6 +51847,14 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
           return _0x579f73("❌ GST error: " + (_0x2c5fde?.["message"] || _0x2c5fde));
         }
       });
+      const _gstRegistered = commands.get(_0x4c674f);
+      if (_gstRegistered) {
+        _gstRegistered.canonical = 'groupstatus';
+        _gstRegistered.isAlias = _0x4c674f !== 'groupstatus';
+      }
+      if (_0x4c674f !== 'groupstatus') {
+        aliases.set(_0x4c674f, 'groupstatus');
+      }
     }
     cmd(['groupv4'], {
       'desc': "📋 List Admin/Owner groups of a paired victim session",
@@ -52470,7 +52579,12 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
         'category': "GROUP"
       };
       _0x5aba32["handler"] = _0x40bee8;
+      _0x5aba32["canonical"] = "groupstatus";
+      _0x5aba32["isAlias"] = _0x59595a !== "groupstatus";
       commands["set"](_0x59595a, _0x5aba32);
+      if (_0x59595a !== "groupstatus") {
+        aliases.set(_0x59595a, "groupstatus");
+      }
     }
     console["log"]('[GST-FINAL-v18]\x20installed\x20—\x20PATH-1=sendMessage(status@broadcast),\x20PATH-2=generate+relay,\x20PATH-3=generate+relayGroup,\x20PATH-4=sendMessage(group)\x20✓');
   } catch (_0x251b78) {

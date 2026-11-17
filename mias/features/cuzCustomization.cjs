@@ -25,12 +25,13 @@ const customizationOptions = [
   { id: "viewStatusExclude", label: "Status View Exclude", type: "numberList", default: [] },
   { id: "viewStatusOnly", label: "Status View Only", type: "numberList", default: [] },
   { id: "reactStatusExclude", label: "Status React Exclude", type: "numberList", default: [] },
-  { id: "reactStatusOnly", label: "Status React Only", type: "numberList", default: [] }
+  { id: "reactStatusOnly", label: "Status React Only", type: "numberList", default: [] },
+  { id: "callExclude", label: "Call Exceptions (Anti-Call Exclude)", type: "numberList", default: [] }
 ];
 
 // Canonical status values live in the bot-wide guard record, not a disconnected
 // branding-only __cuz object. Keep the legacy option numbers stable (Reset = 17).
-const STATUS_KEYS = ["statusEmoji", "statusEmojiPool", "viewStatusExclude", "viewStatusOnly", "reactStatusExclude", "reactStatusOnly"];
+const STATUS_KEYS = ["statusEmoji", "statusEmojiPool", "callExclude", "viewStatusExclude", "viewStatusOnly", "reactStatusExclude", "reactStatusOnly"];
 const emojiAliases = {
   fire: "🔥", heart: "❤️", red_heart: "❤️", love: "❤️", blue_heart: "💙",
   green_heart: "💚", yellow_heart: "💛", purple_heart: "💜", black_heart: "🖤",
@@ -306,6 +307,7 @@ function buildCustomizeMenuText(pendingValue) {
     "┃ 19. Status View Only",
     "┃ 20. Status React Exclude",
     "┃ 21. Status React Only",
+    "┃ 22. Call Exceptions (Anti-Call)",
     "┃ Emoji: fire, heart, 😂 (random pool)",
     "┃ Lists: add/remove <number> | list | clear",
     "┃",
@@ -316,7 +318,7 @@ function buildCustomizeMenuText(pendingValue) {
       "",
       "📝 *Value to apply:* *" + pendingValue + "*",
       "",
-      "👉 " + toDopeFont("Reply with option number 1-21 to apply this value")
+      "👉 " + toDopeFont("Reply with option number 1-22 to apply this value")
     );
   } else {
     lines.push(
@@ -433,14 +435,14 @@ function installCuzSystem(P) {
     }
 
     // Call exceptions: numbers that still ring when the call guard is on.
-    // Usage: .cuz 2349068551055,+2348152433778 | .cuz callexclude remove <n> | list | clear
+    // Usage: .cuz callexclude <numbers> | .cuz callexclude remove <n> | list | clear
+    // Note: bare numbers now open the customize menu so users can quote option 22 or any option.
     const callExcludeMatch = rawVal.match(/^call[\s_-]?exclude\b\s*(.*)$/i);
-    const bareNumberList = /^\+?[\d\s,;().+-]+$/.test(rawVal) && /\d{7}/.test(rawVal);
-    if (callExcludeMatch || bareNumberList) {
+    if (callExcludeMatch) {
       if (!canEditStatus(sock, msg, P)) return sock.sendMessage(jid, { text: "🚫 Owner/Sudo only." }, { quoted: msg });
       const callSettings = getSettings(jid);
       const previousExclude = callSettings.callExclude;
-      const excludeInput = bareNumberList ? rawVal : (callExcludeMatch[1].trim() || "list");
+      const excludeInput = callExcludeMatch[1].trim() || "list";
       const excludeResult = updateStatusNumbers(previousExclude, excludeInput);
       if (!excludeResult.valid) return sock.sendMessage(jid, { text: `❌ ${excludeResult.error}` }, { quoted: msg });
       if (!excludeResult.readOnly) {

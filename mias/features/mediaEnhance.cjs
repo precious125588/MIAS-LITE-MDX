@@ -620,7 +620,12 @@ function installMediaEnhance(ctx = {}) {
       handler: handler4k,
       desc: desc4k,
       category: 'MEDIA',
+      canonical: '4k',
+      isAlias: name !== '4k',
     });
+    if (name !== '4k' && typeof ctx.aliases?.set === 'function') {
+      ctx.aliases.set(name, '4k');
+    }
   }
 
   for (const name of ['hd', 'hdvideo', 'hd-video', 'tthd']) {
@@ -629,7 +634,12 @@ function installMediaEnhance(ctx = {}) {
       handler: handlerHd,
       desc: descHd,
       category: 'MEDIA',
+      canonical: 'hd',
+      isAlias: name !== 'hd',
     });
+    if (name !== 'hd' && typeof ctx.aliases?.set === 'function') {
+      ctx.aliases.set(name, 'hd');
+    }
   }
 
   // Remove remux

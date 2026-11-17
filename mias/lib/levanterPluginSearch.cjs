@@ -105,21 +105,15 @@ function formatPluginCard(plugin) {
     return '❌ No plugin information available.';
   }
 
-  const lines = [
-    '\u200e╔══════════════════════╗',
-    '\u200e   🔌 *LEVANTER PLUGIN*',
-    '\u200e╚══════════════════════╝',
-    '',
-    `\u200e📦 *Name:* ${plugin.name || 'Unnamed Plugin'}`,
-    `\u200e📝 *Desc:* ${plugin.desc || 'No description provided.'}`,
-    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━',
-    '',
-    '\u200e🔗 *Gist URL:*',
-    `\u200e${plugin.url}`,
-    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━'
-  ];
+  const name = plugin.name || 'Unnamed Plugin';
+  const desc = plugin.desc || 'No description provided.';
+  const url = plugin.url;
 
-  return lines.join('\n');
+  return [
+    `🔌 *PLUGIN:* *${name}*`,
+    `📝 *Desc:* ${desc}`,
+    `🔗 *Gist:* ${url}`
+  ].join('\n');
 }
 
 module.exports = {

@@ -24,17 +24,9 @@ test('formatPluginCard matches the compact requested layout exactly', () => {
   };
 
   const expected = [
-    '\u200e╔══════════════════════╗',
-    '\u200e   🔌 *LEVANTER PLUGIN*',
-    '\u200e╚══════════════════════╝',
-    '',
-    '\u200e📦 *Name:* couple pp',
-    '\u200e📝 *Desc:* Generate couple profile pictures.',
-    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━',
-    '',
-    '\u200e🔗 *Gist URL:*',
-    '\u200ehttps://gist.github.com/ayazaliofc/9a1fbda1888e1b7bb8e1d81f0fc99c82',
-    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━'
+    '🔌 *PLUGIN:* *couple pp*',
+    '📝 *Desc:* Generate couple profile pictures.',
+    '🔗 *Gist:* https://gist.github.com/ayazaliofc/9a1fbda1888e1b7bb8e1d81f0fc99c82'
   ].join('\n');
 
   assert.equal(formatPluginCard(plugin, { prefix: '.' }), expected);
@@ -49,7 +41,7 @@ test('formatPluginCard keeps multi-match results short', () => {
   ];
 
   const card = formatPluginCard(items[0], { allItems: items, prefix: '.' });
-  assert.ok(card.includes('*Name:* ig downloader'));
+  assert.ok(card.includes('*PLUGIN:* *ig downloader*'));
   assert.ok(!card.includes('ig story'));
   assert.ok(!card.includes('Other Matches'));
 });
