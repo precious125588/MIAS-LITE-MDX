@@ -714,23 +714,21 @@ module.exports = {
       const user = (msg.key.participant || msg.key.remoteJid || '').split(':')[0];
       const cat = CATEGORIES[catKey];
       await P.react(sock, msg, '☄️').catch(() => {});
-      // Prefer local verified links. Don't wait on external APIs when the
-      // local pool already has enough usable edits for this request.
+      // Fetch candidate routes concurrently on every request so repo links,
+      // creator pages, and keyword search can all participate in the shuffle.
+      // Bound live-source waiting so commands keep responding when an API stalls.
       const zipItems = (routeZip(cat) || []).filter((i) => !isDeadLink(i.url));
-      let networkParts = [];
-      if (zipItems.length < 2) {
-        const netPromise = Promise.all([
-          routePages(cat).catch(() => []),
-          routeSearch(cat).catch(() => []),
-        ]);
-        networkParts = await Promise.race([
-          netPromise,
-          new Promise((r) => setTimeout(() => r([[], []]), 25000)),
-        ]);
-      }
+      const netPromise = Promise.all([
+        routePages(cat).catch(() => []),
+        routeSearch(cat).catch(() => []),
+      ]);
+      const networkParts = await Promise.race([
+        netPromise,
+        new Promise((r) => setTimeout(() => r([[], []]), 10000)),
+      ]);
       const liveItems = networkParts.flat().filter((i) => i && !isDeadLink(i.url));
       if (liveItems.length) saveLastGood(catKey, liveItems);
-      let pool = [zipItems, ...liveItems].filter((i) => !isDeadLink(i.url));
+      let pool = [...zipItems, ...liveItems].filter((i) => i && !isDeadLink(i.url));
       if (!pool.length) {
         // Every live source came back empty or was cooling down: serve the last good results.
         pool = loadLastGood(catKey).filter((i) => !isDeadLink(i.url));

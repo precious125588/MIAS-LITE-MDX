@@ -8,7 +8,7 @@ import tikwmGate from "../lib/tikwmGate.cjs";
 // delivery format. Normalization keeps provider quality/watermark fields distinct.
 const PROVIDER = (url) => `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
 // Sequential first pass, in this order. TikWM is blocked by Cloudflare on most hosts, so it is opt-in (TIKWM_ENABLED=1).
-const PRIMARY_ORDER = ["prexzy", "nexray-aio", "nexray-tiktok", "davidcyril-rapid"];
+const PRIMARY_ORDER = ["nexray-aio", "prexzy", "nexray-tiktok", "davidcyril-rapid"];
 const TIKTOK_PROVIDER_NAMES = Object.freeze([
   "tikwm",
   "prexzy",
