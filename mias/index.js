@@ -10158,7 +10158,11 @@ function isCommandAlias(_0x4bd68c) {
   const _0x245185 = String(_0x4bd68c || '')["toLowerCase"]()['trim']();
   return commands['get'](_0x245185)?.['isAlias'] === !![] || aliases["has"](_0x245185);
 }
-const DISABLED_COMMANDS = new Set(["freesound", "fsounddl", "nonstick", 'radio', "settheme", 'pdftotext', "test", 'applemusic-dl', "igstory-dl", "nxytmp4", "pixiv-dl", "pinterest-search-dl", "playlist", 'playstore-dl', "reddit-dl", "reels-dl", "savefrom-dl", "sfile", 'rednote', "playsearch", 'saavn-dl', "savetube", "snack", "stickerwa-dl", "tt-dl", "tt-dl2", "tt-dl3", "twit-dl2", "vimeo-dl", "web2zip", 'yt-audio', "ytmp3", 'ytv1', "zoho-dl", "ytv2", "wetv-dl", "timedadd", "cek-rekening", "cuaca", 'gempa', "hari-libur", 'kurs', 'menu3', "prakiraan", "richmode", 'qris', "kodepos", "isonline", "saweria-cek", "sholat", "tagihan-pln", "saweria-donate", "support", "musiccard", "music-card", "animelib", "animelibrefresh", "bcheck", "btnmenu", "buttonsmode", "chatbotscope", 'debug', "debugclear", "creatoroff", "ghostmode", "enhance2", "regionalindicator", "mathboldfraktur", 'invertedtext', "doods", 'dl', "igstory", "mlskin-dl", 'flowmenu', "listmenu", "listsetcmd", "listui", 'safemode', "setcreator", "setcmdaliasv2", "setvip", 'slowmode', 'smartmenu', "textmenu", "togglemenu", "viplist", "ytmonetize", 'sfwddest', "blackpinklogo", "flagtext", "galaxywallpaper", "logomaker", "sandsummer", 'ttp2', 'yttranscript', "zhtoid", 'channelreact', "channelupdate", "channelstats", "blocked", "googledrive-dl", 'gdrive-dl', "gdrive2", "douyin-dl", 'capcut-dl', "github-dl", "gofile2", 'gofile-dl', "likee-dl", "leaktube", "mediafire-dl", "mega-dl", "pinterest-dl", 'soundcloud-dl', "spotify-dl", "threads-dl", 'twit-dl', "video-dl", "postgc", "debugtail", "welcomedm", "flag3dtext", "channelinfo", "ig-dl", "ig-dl2", "igdl2", 'dropcase', "eval", "shell", "sysinfo", "run", "exec", "getcmd", "listeval", "removeval", "unvip", "removevip", "revokevip", "writefile", "prefix", "setprefix", 'setfooter', "footer", "setemoji", "welcome", "setwelcome", 'goodbye', "setgoodbye", "anticall", "antidial", "blockcalls", "antilink", 'linkguard', 'urlguard', "safelink", "statusmention", "smention", "antidelete", "antidel", "nodelete", "antidstatus", 'antiedit', 'antied', 'noedit', "autoreact", 'autolike', "cmdreact", 'autoblock', "blockall", 'autoview', "viewstatus", "chatbot", "autochat", 'autoreply', "autorecording", "autotyping", 'online', 'alwaysonline', "antibug", "antibomb", "antifreeze", 'antihang', "antimention", 'antitag', "antigroupmention", "antitagall", 'antiping', 'antivo', "antiviewonce", "antiviewoncetoggle", "stealthvo", "autobio"]);
+const DISABLED_COMMANDS = new Set(["freesound", "fsounddl", "nonstick", 'radio', "settheme", 'pdftotext', "test", 'applemusic-dl', "igstory-dl", "nxytmp4", "pixiv-dl", "pinterest-search-dl", "playlist", 'playstore-dl', "reddit-dl", "reels-dl", "savefrom-dl", "sfile", 'rednote', "playsearch", 'saavn-dl', "savetube", "snack", "stickerwa-dl", "tt-dl", "tt-dl2", "tt-dl3", "twit-dl2", "vimeo-dl", "web2zip", 'yt-audio', "ytmp3", 'ytv1', "zoho-dl", "ytv2", "wetv-dl", "timedadd", "cek-rekening", "cuaca", 'gempa', "hari-libur", 'kurs', 'menu3', "prakiraan", "richmode", 'qris', "kodepos", "isonline", "saweria-cek", "sholat", "tagihan-pln", "saweria-donate", "support", "musiccard", "music-card", "animelib", "animelibrefresh", "bcheck", "btnmenu", "buttonsmode", "chatbotscope", 'debug', "debugclear", "creatoroff", "ghostmode", "enhance2", "regionalindicator", "mathboldfraktur", 'invertedtext', "doods", 'dl', "igstory", "mlskin-dl", 'flowmenu', "listmenu", "listsetcmd", "listui", 'safemode', "setcreator", "setcmdaliasv2", "check", "checkuser", "chk", "activecheck", "isactive", "wacheck", "checkactive", "whatsappcheck", "setvip", 'slowmode', 'smartmenu', "textmenu", "togglemenu", "viplist", "ytmonetize", 'sfwddest', "blackpinklogo", "flagtext", "galaxywallpaper", "logomaker", "sandsummer", 'ttp2', 'yttranscript', "zhtoid", 'channelreact', "channelupdate", "channelstats", "blocked", "googledrive-dl", 'gdrive-dl', "gdrive2", "douyin-dl", 'capcut-dl', "github-dl", "gofile2", 'gofile-dl', "likee-dl", "leaktube", "mediafire-dl", "mega-dl", "pinterest-dl", 'soundcloud-dl', "spotify-dl", "threads-dl", 'twit-dl', "video-dl", "postgc", "debugtail", "welcomedm", "flag3dtext", "channelinfo", "ig-dl", "ig-dl2", "igdl2", 'dropcase', "eval", "shell", "sysinfo", "run", "exec", "getcmd", "listeval", "removeval", "unvip", "removevip", "revokevip", "writefile", "prefix", "setprefix", 'setfooter', "footer", "setemoji", "welcome", "setwelcome", 'goodbye', "setgoodbye", "anticall", "antidial", "blockcalls", "antilink", 'linkguard', 'urlguard', "safelink", "statusmention", "smention", "antidelete", "antidel", "nodelete", "antidstatus", 'antiedit', 'antied', 'noedit', "autoreact", 'autolike', "cmdreact", 'autoblock', "blockall", 'autoview', "viewstatus", "chatbot", "autochat", 'autoreply', "autorecording", "autotyping", 'online', 'alwaysonline', "antibug", "antibomb", "antifreeze", 'antihang', "antimention", 'antitag', "antigroupmention", "antitagall", 'antiping', 'antivo', "antiviewonce", "antiviewoncetoggle", "stealthvo", "autobio"]);
+// Permanently disabled command names and all known aliases; registered before menus are built.
+for (const _disabledCleanupName of ["setcmdaliasv2", "check", "checkuser", "chk", "activecheck", "isactive", "wacheck", "checkactive", "whatsappcheck"]) {
+  DISABLED_COMMANDS.add(_disabledCleanupName);
+}
 const DUPLICATE_DOWNLOAD_ALIASES = {
   'fbdl': "facebook",
   'fb-dl': 'facebook',
@@ -62596,7 +62600,18 @@ function __miasApplyMaintenance(_0x9cd5, _0x3470ab, _0x426e6f) {
     'gclockmedia': "lockmedia",
     'gst': "groupstatus",
     'gcstory': "groupstatus",
-    'gcstatus': 'groupstatus'
+    'gcstatus': 'groupstatus',
+    'gstatus': 'groupstatus',
+    'setgroupdescription': 'setgroupdesc',
+    'setgcdesc': 'setgroupdesc',
+    'setgcname': 'setgroupname',
+    'pinmessage': 'pin',
+    'pair1': 'pair',
+    'pair2': 'pair',
+    'pair4': 'pair',
+    'paircode': 'pair',
+    'pairlink': 'pair',
+    'pairpop': 'pair'
   })) {
     if (DISABLED_COMMANDS["has"](_0x1cf7b6)) {
       continue;
