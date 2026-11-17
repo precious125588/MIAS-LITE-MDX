@@ -691,9 +691,12 @@ async function fetchMoreCandidates(catKey, cat, user, zipItems, attempted) {
     
     return [];
   });
-  const parts = await Promise.all([
-    named('pages', routePages(cat)),
-    named('search', routeSearch(cat)),
+  const parts = await Promise.race([
+    Promise.all([
+      named('pages', routePages(cat)),
+      named('search', routeSearch(cat)),
+    ]),
+    new Promise((resolve) => setTimeout(() => resolve([[], []]), 5000)),
   ]);
   
   const all = [...(zipItems || []), ...parts.flat()].filter((i) => i && !isDeadLink(i.url));
@@ -724,7 +727,7 @@ module.exports = {
       ]);
       const networkParts = await Promise.race([
         netPromise,
-        new Promise((r) => setTimeout(() => r([[], []]), 10000)),
+        new Promise((r) => setTimeout(() => r([[], []]), 5000)),
       ]);
       const liveItems = networkParts.flat().filter((i) => i && !isDeadLink(i.url));
       if (liveItems.length) saveLastGood(catKey, liveItems);
