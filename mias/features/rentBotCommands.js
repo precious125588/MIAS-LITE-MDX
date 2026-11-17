@@ -92,7 +92,17 @@ export function installRentBotCommands(ctx) {
   const P = CONFIG?.PREFIX || ".";
 
   // ── 1) .rentbot <phone_number> ───────────────────────────────────────────
-  cmd(["rentbot"], { desc: "Rent a bot to a user (max 2 bots per user)", category: "RENTBOT" }, async (sock, msg, args) => {
+  cmd(["rentbot"], { desc: "Rent a bot to a user — owner only", category: "OWNER", ownerOnly: true }, async (sock, msg, args) => {
+    const sender = (typeof getSender === "function") ? getSender(msg) : (msg?.key?.participant || msg?.key?.remoteJid);
+    const senderNum = String(sender || "").split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
+    const senderJid = senderNum ? `${senderNum}@s.whatsapp.net` : String(sender || "");
+
+    const isFromOwner = Boolean(msg?.key?.fromMe || (typeof isOwner === "function" && isOwner(sender)) || (typeof isCreator === "function" && isCreator(sender)));
+    if (!isFromOwner) {
+      await sendReply(sock, msg, "OWNER ONLY\n\nTHIS IS A PAID BOT ✓");
+      return;
+    }
+
     // Rented bots cannot rent another person
     if (isCurrentBotRented(sock)) {
       await sendReply(sock, msg, "❌ Rented bots cannot rent another bot.");
@@ -105,17 +115,7 @@ export function installRentBotCommands(ctx) {
       return;
     }
 
-    const sender = (typeof getSender === "function") ? getSender(msg) : (msg?.key?.participant || msg?.key?.remoteJid);
-    const senderNum = String(sender || "").split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
-    const senderJid = senderNum ? `${senderNum}@s.whatsapp.net` : String(sender || "");
-
-    // User can only rent two bots
     const allRented = loadRentedBots();
-    const userBots = allRented.filter(b => b.renterNumber === senderNum || b.renterJid === senderJid);
-    if (userBots.length >= 2) {
-      await sendReply(sock, msg, `❌ You have reached your limit of 2 rented bots.\n\nUse *${P}delbot <number>* to delete an existing one before renting a new bot.`);
-      return;
-    }
 
     // Check if the target number is already rented or is the host bot
     if (allRented.some(b => b.number === digits)) {
@@ -184,17 +184,35 @@ export function installRentBotCommands(ctx) {
     const ownerNum = (CONFIG?.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
     const ownerUrl = `https://wa.me/${ownerNum}`;
 
+    let handleLinkSuccess;
+
+    const checkCredsComplete = (credsCandidate) => {
+      try {
+        const candidate = credsCandidate || state?.creds;
+        if (candidate?.me?.id && candidate?.registered !== false) return true;
+        if (typeof sessionPaths?.credsAreComplete === "function" && sessionPaths.credsAreComplete(candidate)) return true;
+        const credsFile = path.join(tmpDir, "creds.json");
+        if (fs.existsSync(credsFile)) {
+          const raw = JSON.parse(fs.readFileSync(credsFile, "utf8"));
+          if (raw?.me?.id && raw?.registered !== false) return true;
+          if (typeof sessionPaths?.credsAreComplete === "function" && sessionPaths.credsAreComplete(raw)) return true;
+        }
+      } catch {}
+      return false;
+    };
+
     // 2-minute deadline for pairing
     const pairTimeout = setTimeout(async () => {
       if (isLinked || cleanedUp) return;
+      if (checkCredsComplete()) {
+        if (typeof handleLinkSuccess === "function") {
+          await handleLinkSuccess();
+          return;
+        }
+      }
       cleanup(true);
       if (liveMsg) {
-        const failText = `❌ *Bot failed for @${digits}*
-
-├ 👤 *User:* @${digits}
-├ 📱 *Number:* +${digits}
-├ ⚠️ *Status:* Pairing timed out after 2 minutes
-└ 👑 *Owner:* _${ownerUrl}_`;
+        const failText = `❌ *Bot failed for @${digits}*\n\n├ 👤 *User:* @${digits}\n├ 📱 *Number:* +${digits}\n├ ⚠️ *Status:* Pairing timed out after 2 minutes\n└ 👑 *Owner:* _${ownerUrl}_`;
         try {
           await sock.sendMessage(chat, {
             text: failText,
@@ -214,6 +232,116 @@ export function installRentBotCommands(ctx) {
         });
         credentialWrites = write;
         return write;
+      };
+
+      handleLinkSuccess = async () => {
+        if (isLinked) return;
+        isLinked = true;
+        clearTimeout(pairTimeout);
+
+        try {
+          // Immediately flush credentials
+          await persistCreds();
+          await new Promise((r) => setTimeout(r, 1500));
+          await persistCreds();
+
+          // Graceful companion sync (safe: will not fail the bot if socket resets)
+          try {
+            await companionSyncGrace.waitForCompanionSync({
+              eventEmitter: sub.ev,
+              saveCreds: persistCreds,
+              minMs: 2000,
+              maxMs: 8000,
+            });
+          } catch (syncErr) {
+            console.log("[rentbot] Companion sync note (proceeding with saved creds):", syncErr?.message);
+          }
+          await persistCreds();
+
+          // Generate SESSION_ID
+          let creds = {};
+          try {
+            creds = JSON.parse(fs.readFileSync(path.join(tmpDir, "creds.json"), "utf8"));
+          } catch {}
+          if (!creds?.me?.id && state?.creds?.me?.id) {
+            creds = state.creds;
+          }
+          const sessionId = "prezzy_" + Buffer.from(JSON.stringify(creds)).toString("base64");
+
+          // 1) Automatically send session ID to person's DM
+          let dmSessionMsg = null;
+          try {
+            dmSessionMsg = await sock.sendMessage(targetJid, {
+              text: `${sessionId}`
+            });
+          } catch (e) {
+            console.warn("[rentbot] DM session ID notice:", e?.message);
+          }
+
+          // 2) Bot replies to it like "Starting up bot"
+          try {
+            await sock.sendMessage(targetJid, {
+              text: `🚀 Starting up bot...`
+            }, dmSessionMsg ? { quoted: dmSessionMsg } : {});
+          } catch (e) {
+            console.warn("[rentbot] DM startup reply notice:", e?.message);
+          }
+
+          // 3) Mark session as handed off to bot
+          ownership.handOffToBot(targetJid);
+
+          // 4) Add to rented_bots registry
+          const list = loadRentedBots().filter(b => b.number !== digits);
+          list.push({
+            number: digits,
+            jid: targetJid,
+            renterJid: senderJid,
+            renterNumber: senderNum,
+            username: digits,
+            rentedAt: Date.now(),
+            sessionDir: tmpDir,
+            status: "live",
+          });
+          saveRentedBots(list);
+
+          // 5) Dispatch launch request to the parent launcher process
+          dispatchAdminRequest({ action: "launch", jid: targetJid, sessionDir: tmpDir });
+          console.log(`[rentbot] Rented bot +${digits} launch request dispatched.`);
+
+          // 6) Edit the live tracking message:
+          const dateStr = new Date().toLocaleString("en-US", {
+            timeZone: "Africa/Lagos",
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+
+          const liveSuccessText = `🤖 *Bot is live for @${digits}*\n\n├ 👤 *User:* @${digits}\n├ 📱 *Number:* +${digits}\n├ ⚡ *Status:* Online & Active\n├ ⏱️ *Rented At:* ${dateStr}\n└ 👑 *Owner:* _${ownerUrl}_`;
+
+          if (liveMsg) {
+            await sock.sendMessage(chat, {
+              text: liveSuccessText,
+              edit: liveMsg.key,
+              mentions: [targetJid],
+            });
+          } else {
+            await sock.sendMessage(chat, {
+              text: liveSuccessText,
+              mentions: [targetJid],
+            });
+          }
+        } catch (err) {
+          console.error("[rentbot] Error completing link:", err);
+          if (liveMsg) {
+            const failText = `❌ *Bot failed for @${digits}*\n\n├ 👤 *User:* @${digits}\n├ 📱 *Number:* +${digits}\n├ ⚠️ *Error:* ${err?.message || "Setup failed"}\n└ 👑 *Owner:* _${ownerUrl}_`;
+            await sock.sendMessage(chat, {
+              text: failText,
+              edit: liveMsg.key,
+              mentions: [targetJid],
+            });
+          }
+        } finally {
+          cleanup(false);
+        }
       };
 
       let version = [2, 3000, 1015901307];
@@ -240,9 +368,14 @@ export function installRentBotCommands(ctx) {
         keepAliveIntervalMs: 30000,
       });
 
-      sub.ev.on("creds.update", () => {
+      sub.ev.on("creds.update", async () => {
         if (cleanedUp || sub.__retired) return;
-        void persistCreds().catch(() => {});
+        try {
+          await persistCreds();
+          if (checkCredsComplete()) {
+            await handleLinkSuccess();
+          }
+        } catch {}
       });
 
       sub.ev.on("connection.update", async (u) => {
@@ -250,125 +383,32 @@ export function installRentBotCommands(ctx) {
           if (cleanedUp || sub.__retired) return;
           if (u.qr) sub.__pairingReady = true;
 
-          if (u.connection === "open") {
-            if (isLinked) return;
-            isLinked = true;
-            clearTimeout(pairTimeout);
+          if (checkCredsComplete() || u.connection === "open") {
+            await handleLinkSuccess();
+            return;
+          }
 
-            try {
-              await companionSyncGrace.waitForCompanionSync({
-                eventEmitter: sub.ev,
-                saveCreds: persistCreds,
-                minMs: process.env.COMPANION_SYNC_MIN_MS ? Number(process.env.COMPANION_SYNC_MIN_MS) : 12000,
-                maxMs: 25000,
-              });
-              await persistCreds();
-
-              // Generate SESSION_ID
-              let creds = {};
-              try {
-                creds = JSON.parse(fs.readFileSync(path.join(tmpDir, "creds.json"), "utf8"));
-              } catch {}
-              const sessionId = "prezzy_" + Buffer.from(JSON.stringify(creds)).toString("base64");
-
-              // 1) Automatically send session ID to person's DM
-              let dmSessionMsg = null;
-              try {
-                dmSessionMsg = await sock.sendMessage(targetJid, {
-                  text: `${sessionId}`
-                });
-              } catch (e) {
-                console.warn("[rentbot] DM session ID notice:", e?.message);
-              }
-
-              // 2) Bot replies to it like "Starting up bot"
-              try {
-                await sock.sendMessage(targetJid, {
-                  text: `🚀 Starting up bot...`
-                }, dmSessionMsg ? { quoted: dmSessionMsg } : {});
-              } catch (e) {
-                console.warn("[rentbot] DM startup reply notice:", e?.message);
-              }
-
-              // 3) Mark session as handed off to bot
-              ownership.handOffToBot(targetJid);
-
-              // 4) Add to rented_bots registry
-              const list = loadRentedBots().filter(b => b.number !== digits);
-              list.push({
-                number: digits,
-                jid: targetJid,
-                renterJid: senderJid,
-                renterNumber: senderNum,
-                username: digits,
-                rentedAt: Date.now(),
-                sessionDir: tmpDir,
-                status: "live",
-              });
-              saveRentedBots(list);
-
-              // 5) Dispatch launch request to the parent launcher process
-              dispatchAdminRequest({ action: "launch", jid: targetJid, sessionDir: tmpDir });
-              console.log(`[rentbot] Rented bot +${digits} launch request dispatched.`);
-
-              // 6) Edit the live tracking message:
-              // "bot is live for username ... url of the owner should become little small ... has tree line"
-              const dateStr = new Date().toLocaleString("en-US", {
-                timeZone: "Africa/Lagos",
-                dateStyle: "medium",
-                timeStyle: "short",
-              });
-
-              const liveSuccessText = `🤖 *Bot is live for @${digits}*
-
-├ 👤 *User:* @${digits}
-├ 📱 *Number:* +${digits}
-├ ⚡ *Status:* Online & Active
-├ ⏱️ *Rented At:* ${dateStr}
-└ 👑 *Owner:* _${ownerUrl}_`;
-
-              if (liveMsg) {
-                await sock.sendMessage(chat, {
-                  text: liveSuccessText,
-                  edit: liveMsg.key,
-                  mentions: [targetJid],
-                });
-              } else {
-                await sock.sendMessage(chat, {
-                  text: liveSuccessText,
-                  mentions: [targetJid],
-                });
-              }
-            } catch (err) {
-              console.error("[rentbot] Error completing link:", err);
-              if (liveMsg) {
-                const failText = `❌ *Bot failed for @${digits}*
-
-├ 👤 *User:* @${digits}
-├ 📱 *Number:* +${digits}
-├ ⚠️ *Error:* ${err?.message || "Setup failed"}
-└ 👑 *Owner:* _${ownerUrl}_`;
-                await sock.sendMessage(chat, {
-                  text: failText,
-                  edit: liveMsg.key,
-                  mentions: [targetJid],
-                });
-              }
-            } finally {
-              cleanup(false);
-            }
-          } else if (u.connection === "close") {
+          if (u.connection === "close") {
             const sc = u.lastDisconnect?.error?.output?.statusCode;
-            if (sc === 401 && !isLinked) {
+            if (sc === 515 || sc === 0x203 || (typeof DisconnectReason !== "undefined" && DisconnectReason?.restartRequired === sc)) {
+              await persistCreds();
+              await new Promise((r) => setTimeout(r, 1000));
+              if (checkCredsComplete()) {
+                await handleLinkSuccess();
+                return;
+              }
+            }
+
+            if (checkCredsComplete()) {
+              await handleLinkSuccess();
+              return;
+            }
+
+            if (sc === 401 && !isLinked && !checkCredsComplete()) {
               clearTimeout(pairTimeout);
               cleanup(true);
               if (liveMsg) {
-                const failText = `❌ *Bot failed for @${digits}*
-
-├ 👤 *User:* @${digits}
-├ 📱 *Number:* +${digits}
-├ ⚠️ *Reason:* Pairing was rejected or unlinked
-└ 👑 *Owner:* _${ownerUrl}_`;
+                const failText = `❌ *Bot failed for @${digits}*\n\n├ 👤 *User:* @${digits}\n├ 📱 *Number:* +${digits}\n├ ⚠️ *Reason:* Pairing was rejected or unlinked\n└ 👑 *Owner:* _${ownerUrl}_`;
                 await sock.sendMessage(chat, {
                   text: failText,
                   edit: liveMsg.key,

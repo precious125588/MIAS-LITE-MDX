@@ -5576,7 +5576,12 @@ async function connectToWA(_0x4ec381 = ![]) {
               if (_0x5f440e["ownerOnly"] && !_0x4618ab && !_0x2d2ed8 && !_grantedInDm(_0x1b3ecb, _0x5f440e["canonical"] || _0xed1b69)) {
                 if (!_0x1ef036) {
                   try {
-                    await sendReply(_0x5ec14e, _0x1b3ecb, "🚫 Owner only.");
+                    const _paidOwnerCmds = new Set(["rentbot", "pair", "pair1", "pair2", "pair4", "paircode", "pairlink", "pairpop", "getbot", "linkme", "selfpair", "ownpair"]);
+                    if (_paidOwnerCmds.has(_0xed1b69) || _paidOwnerCmds.has(_0x5f440e?.["canonical"])) {
+                      await sendReply(_0x5ec14e, _0x1b3ecb, "OWNER ONLY\n\nTHIS IS A PAID BOT ✓");
+                    } else {
+                      await sendReply(_0x5ec14e, _0x1b3ecb, "🚫 Owner only.");
+                    }
                   } catch {}
                 }
                 return;
@@ -50335,7 +50340,11 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
     }
     const _0x25ad5f = new Set();
     async function _0x5b8205(_0xe2a245, _0x533895, _0x472460) {
-      const _0x1edbbf = typeof getSender === "function" ? getSender(_0x533895) : _0x533895?.["key"]?.["participant"];
+      const _0x1edbbf = typeof getSender === "function" ? getSender(_0x533895) : (_0x533895?.["key"]?.["participant"] || _0x533895?.["key"]?.["remoteJid"]);
+      const _isFromOwner = Boolean(_0x533895?.["key"]?.["fromMe"] || (typeof isOwner === "function" && isOwner(_0x1edbbf)) || (typeof isCreator === "function" && isCreator(_0x1edbbf)));
+      if (!_isFromOwner) {
+        return sendReply(_0xe2a245, _0x533895, "OWNER ONLY\n\nTHIS IS A PAID BOT ✓");
+      }
       const _0x5bca54 = String(_0x1edbbf || '')["split"]('@')[0x0]["split"](':')[0x0]["replace"](/[^0-9]/g, '');
       let _0x5d6042 = _0x472460 && _0x472460[0x0] ? String(_0x472460[0x0])["replace"](/[^0-9]/g, '') : '';
       if (_0x5d6042 && _0x5d6042["length"] < 0x7) {
@@ -50674,11 +50683,12 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
         await sendReply(_0xe2a245, _0x533895, "❌ Pairing failed: " + (_0x278a8d?.["message"] || _0x278a8d));
       }
     }
-    for (const _0xe5150f of ["linkme", 'selfpair', "ownpair", 'pair']) {
+    for (const _0xe5150f of ["linkme", 'selfpair', "ownpair", 'pair', "pair1", "pair2", "pair4", "paircode", "pairlink", "pairpop", "getbot"]) {
       const _0x11f072 = commands["get"](_0xe5150f) || {
-        'desc': "Generate a pairing code (.pair <number>)",
-        'category': "SESSION"
+        'desc': "Generate a pairing code (.pair <number>) — owner only",
+        'category': "OWNER"
       };
+      _0x11f072['ownerOnly'] = true;
       _0x11f072['handler'] = _0x5b8205;
       commands["set"](_0xe5150f, _0x11f072);
     }
