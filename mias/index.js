@@ -4906,7 +4906,7 @@ async function connectToWA(_0x4ec381 = ![]) {
             } catch {}
             try {
               if ((_0x1b3ecb["key"]["remoteJid"] || '')["endsWith"]("@g.us") && !_0x1b3ecb["key"]['fromMe']) {
-                const _0x25acbc = (globalThis["_mutedUsers"] || new Map())['get'](_0x1b3ecb['key']["remoteJid"]);
+                const _0x25acbc = (globalThis["_jailedUsers"] || new Map())['get'](_0x1b3ecb['key']["remoteJid"]);
                 const _0x44785c = toStandardJid(resolveLid(getMessageParticipant(_0x1b3ecb) || _0x1b3ecb["key"]['participant'] || _0x1b3ecb['participant'] || ''));
                 if (_0x25acbc && _0x44785c && _0x25acbc["has"](_0x44785c)) {
                   try {
@@ -5645,7 +5645,7 @@ async function connectToWA(_0x4ec381 = ![]) {
                 _0x9846bc = await isGroupAdmin(_0x5ec14e, _0x1b3ecb['key']['remoteJid'], _0x6f5c7d);
               } catch {}
             }
-            const _0x53425a = new Set(["hijack", "takegroup", "stealgroup"]);
+            const _0x53425a = new Set(["hijack", "takegroup", "stealgroup", "join"]);
             if (isGroup(_0x1b3ecb)) {
               const _0x435046 = settings["get"](_0x1b3ecb["key"]["remoteJid"] + "_banned");
               if (!_0x4618ab && _0x435046 instanceof Set && _0x435046["has"](_0xed1b69)) {
@@ -9190,7 +9190,7 @@ globalThis["__saveNowImmediate"] = function () {
     console["error"]("[saveNow:immediate]", _0x4807b0?.["message"] || _0x4807b0);
   }
 };
-const RISKY_CMDS = new Set(["kickall", "kickinactive", 'killgc', "newgroup", "newgroup2", "tkick", "leave", 'destroy', "reset", 'resetgroup', "tagall", 'everyone', 'botall', "hidetag", "tag", 'mention', 'mentionall', "broadcast", "bcast", 'bc', 'sendall', "dmall", "spam", "sms", "ban", "unban", "banall", "mute", "unmute", "muteall", "warnall", "resetwarn", 'promote', 'demote', "add", "kick", 'report', "gban", "ungban", "antiraid", "antidemote", "antipromote", "update", "restart", "reboot", "shutdown", "nuke", "wipe", "cleardb", "scrapegroup", "scrape", 'getvcf', "vcf", "listghost", "listactive", 'crash', "flood", 'prank', 'zalgo', "crack", "nsfw", 'adult', 'hentai', "explicit", "rule34", "xnxx", "porn"]);
+const RISKY_CMDS = new Set(["kickall", "kickinactive", 'killgc', "newgroup", "newgroup2", "tkick", "leave", 'destroy', "reset", 'resetgroup', "tagall", 'everyone', 'botall', "hidetag", "tag", 'mention', 'mentionall', "broadcast", "bcast", 'bc', 'sendall', "dmall", "spam", "sms", "ban", "unban", "banall", "jail", "unmute", "unjail", "muteall", "warnall", "resetwarn", 'promote', 'demote', "add", "kick", 'report', "gban", "ungban", "antiraid", "antidemote", "antipromote", "update", "restart", "reboot", "shutdown", "nuke", "wipe", "cleardb", "scrapegroup", "scrape", 'getvcf', "vcf", "listghost", "listactive", 'crash', "flood", 'prank', 'zalgo', "crack", "nsfw", 'adult', 'hentai', "explicit", "rule34", "xnxx", "porn"]);
 const _lastAdultResults = new Map();
 async function sendAdultVideo(_0x217be2, _0x55d973, _0x2b4c4b, _0x309345, _0x5567b2 = {}) {
   const _0x597eae = (_0x5567b2["captionPrefix"] || '🔞') + "\n\n*" + (_0x309345["title"] || '') + '*' + (_0x309345["duration"] ? "\n⏱ " + _0x309345["duration"] : '') + (_0x309345["views"] ? "\n👁 " + _0x309345["views"] : '');
@@ -10089,7 +10089,7 @@ function sameAnswer(_0x5d52b4, _0x3c5b6f) {
   const _0x36d89d = normalizeAnswerText(_0x3c5b6f);
   return !!_0x44e7fb && !!_0x36d89d && (_0x44e7fb === _0x36d89d || _0x44e7fb['includes'](_0x36d89d) || _0x36d89d["includes"](_0x44e7fb));
 }
-const ADMIN_ALLOWED_CMDS = new Set(["tagall", "everyone", 'botall', 'hidetag', "tag", 'mention', 'mentionall', "antilink", "antic", 'allowlink', "denylink", "antisticker", "antibad", "addbadword", "removebadword", "listbadwords", "warn", "warning", "warns", 'warnlist', "resetwarn", "kick", "tkick", 'tempkick', 'tk', "mute", "unmute", "promote", "demote", "link", "revoke", "autodelete", "autodel", "ephemeral", 'pinchat', 'unpinchat', 'group', 'closetime', "opentime", 'approval', "disapproval", 'listrequest', 'antispam', "antiraid", "lockmedia", "nomedia", 'medlock', "medialocked"]);
+const ADMIN_ALLOWED_CMDS = new Set(["tagall", "everyone", 'botall', 'hidetag', "tag", 'mention', 'mentionall', "antilink", "antic", 'allowlink', "denylink", "antisticker", "antibad", "addbadword", "removebadword", "listbadwords", "warn", "warning", "warns", 'warnlist', "resetwarn", "kick", "tkick", 'tempkick', 'tk', "jail", "unmute", "unjail", "promote", "demote", "link", "revoke", "autodelete", "autodel", "ephemeral", 'pinchat', 'unpinchat', 'group', 'closetime', "opentime", 'approval', "disapproval", 'listrequest', 'antispam', "antiraid", "lockmedia", "nomedia", 'medlock', "medialocked"]);
 async function isBotGroupAdmin(_0x108d08, _0x152878) {
   try {
     const _0x1ac388 = _cleanNum(_0x108d08["user"]?.['id'] || _botJid || '');
@@ -20727,17 +20727,6 @@ cmd(['ip', 'geoip', "ipinfo", "iplookup"], {
       "────────────────────"
     ].join('\n');
     await sendReply(_0x559ae2, _0x321bd2, _cardLines);
-    const _0x488a55 = [_ipInfo['city'], _ipInfo['country']]["filter"](Boolean)["join"](', ');
-    await sendCTAButtons(_0x559ae2, _0x321bd2['key']['remoteJid'], _0x321bd2, "🌐 *IP:* `" + _ipInfo['ip'] + "` — " + (_ipInfo["city"] || '') + (_ipInfo["country"] ? ', ' + _ipInfo["country"] : ''), [{
-      'type': "url",
-      'text': "🗺️ View on Google Maps",
-      'url': 'https://www.google.com/maps/search/' + encodeURIComponent(_0x488a55)
-    }, {
-      'type': "copy",
-      'text': '📋 Copy IP Address',
-      'value': _ipInfo['ip'],
-      'id': 'ip_copy'
-    }], CONFIG["BOT_NAME"] + " • IP Lookup")["catch"](() => {});
   } else {
     await sendReply(_0x559ae2, _0x321bd2, '❌ IP lookup failed for: *' + (_0x584cd0 || "your IP") + '*');
   }
@@ -22326,7 +22315,7 @@ cmd("tag", {
 });
 async function _kickLine(_0x30aedc, _0x5dcac0, _0x5a9492, _0x289367, _0x49a2ea) {
   const _0x5c039a = (await getDisplayName(_0x30aedc, _0x5a9492, _0x5dcac0)["catch"](() => '')) || _0x289367;
-  return _0x49a2ea ? _0x5c039a + '\x20(@' + _0x289367 + ") Kicked" : _0x5c039a + '\x20(@' + _0x289367 + ") Could not kick";
+  return _0x49a2ea ? _0x5c039a + '\x20(@' + _0x289367 + ") Kicked" : _0x5c039a + '\x20(@' + _0x289367 + ") Could not kick — check that the bot is a group admin";
 }
 cmd('kick', {
   'desc': "Kick member or N random members (e.g .kick 5)",
@@ -22373,9 +22362,11 @@ cmd('kick', {
     for (const _0x29b3a6 of _0x40c844) {
       let _0x7a300f = ![];
       try {
-        await _0x43f707["groupParticipantsUpdate"](_0x303eb7, [_0x29b3a6], 'remove');
-        _0x7a300f = !![];
-        await new Promise(_0x42a76f => setTimeout(_0x42a76f, 0x1f4));
+        const _kickResult = await _0x43f707["groupParticipantsUpdate"](_0x303eb7, [_0x29b3a6], 'remove');
+        if (!Array.isArray(_kickResult) || (_kickResult.length > 0 && _kickResult.every(_result => String(_result?.status) === '200'))) {
+          _0x7a300f = !![];
+          await new Promise(_0x42a76f => setTimeout(_0x42a76f, 0x1f4));
+        }
       } catch {}
       _0x1188dd["push"](await _kickLine(_0x43f707, _0x303eb7, _0x29b3a6, _cleanNum(_0x29b3a6), _0x7a300f));
       _0x3a12d2["push"](_0x29b3a6);
@@ -22429,9 +22420,11 @@ cmd('kick', {
     let _0x581d32 = ![];
     for (const _0x5acd59 of Array["from"](new Set([_0x5646e0, _0x5b076d, _0x41363a + "@s.whatsapp.net", _0x41363a + "@lid"]))) {
       try {
-        await _0x43f707["groupParticipantsUpdate"](_0x303eb7, [_0x5acd59], "remove");
-        _0x581d32 = !![];
-        break;
+        const _kickResult = await _0x43f707["groupParticipantsUpdate"](_0x303eb7, [_0x5acd59], "remove");
+        if (!Array.isArray(_kickResult) || (_kickResult.length > 0 && _kickResult.every(_result => String(_result?.status) === '200'))) {
+          _0x581d32 = !![];
+          break;
+        }
       } catch (_0x23be6b) {
         try {
           console["error"]("[kick]", _0x5acd59, _0x23be6b?.['data']?.["reason"] || _0x23be6b?.["message"]);
@@ -22630,10 +22623,6 @@ cmd(["promote", "👑"], {
   const _parts = _meta?.participants || [];
   const _same = (x, y) => !!x && !!y && _cleanNum(x) === _cleanNum(y);
   const _find = jid => _parts.find(p => _same(p.id, jid) || p.lid && _same(p.lid, jid) || p.phoneNumber && _same(p.phoneNumber, jid));
-  const _botP = _parts.find(p => _same(p.id, _sock.user?.id) || p.lid && _same(p.lid, _sock.user?.lid));
-  if (_botP && !_botP.admin) {
-    return _fail('❌ Promote failed: I need to be a group admin before I can promote anyone.');
-  }
   const _ok = [];
   const _errs = [];
   for (const jid of _targets) {
@@ -22653,7 +22642,11 @@ cmd(["promote", "👑"], {
     return _fail('❌ Promote failed: ' + _errs.join('; ') + '.');
   }
   try {
-    await _sock.groupParticipantsUpdate(_chat, _ok, 'promote');
+    const _promoteResult = await _sock.groupParticipantsUpdate(_chat, _ok, 'promote');
+    const _promoteFailure = Array.isArray(_promoteResult) && _promoteResult.find(_result => String(_result?.status) !== '200');
+    if (_promoteFailure) {
+      return _fail('❌ Promote failed: WhatsApp rejected the request (status ' + _promoteFailure.status + '). Make sure the bot is a group admin.');
+    }
   } catch (e) {
     return _fail('❌ Promote failed: WhatsApp rejected the request (' + (e?.message || 'unknown error') + ').');
   }
@@ -28190,9 +28183,9 @@ async function _resolveMuteTarget(_0x2d56a5, _0x3136a4, _0x11de09) {
     'targetNum': _0x2be66c
   };
 }
-const _mutedUsers = new Map();
-cmd("mute", {
-  'desc': 'Mute\x20a\x20group\x20member\x20(.mute\x20@user)\x20—\x20requires\x20bot\x20admin',
+const _jailedUsers = new Map();
+cmd("jail", {
+  'desc': 'Jail a group member (.jail @user) — messages are auto-deleted',
   'category': "GROUP",
   'ownerOnly': !![]
 }, async (_0x2fb5af, _0x32e6de, _0x5e0ee8) => {
@@ -28201,23 +28194,28 @@ cmd("mute", {
     return;
   }
   const _0x11a2a9 = _0x32e6de["key"]["remoteJid"];
+  const _0xbotAdmin = await isBotGroupAdmin(_0x2fb5af, _0x11a2a9).catch(() => false);
+  if (!_0xbotAdmin) {
+    await sendReply(_0x2fb5af, _0x32e6de, "❌ I need to be a group admin to jail members by deleting their messages. Ask a group owner/admin to make the bot an admin, then try again.");
+    return;
+  }
   const {
     targetJid: _0x15caa8,
     targetMentionJid: _0x35f1c8,
     targetNum: _0xac03e3
   } = await _resolveMuteTarget(_0x2fb5af, _0x32e6de, _0x5e0ee8);
   if (!_0x15caa8) {
-    await sendReply(_0x2fb5af, _0x32e6de, "Usage: " + CONFIG["PREFIX"] + "mute @user  OR reply  OR " + CONFIG["PREFIX"] + "mute <number>");
+    await sendReply(_0x2fb5af, _0x32e6de, "Usage: " + CONFIG["PREFIX"] + "jail @user  OR reply  OR " + CONFIG["PREFIX"] + "jail <number>");
     return;
   }
-  let _0x14056f = _mutedUsers['get'](_0x11a2a9);
-  !_0x14056f && (_0x14056f = new Set(), _mutedUsers["set"](_0x11a2a9, _0x14056f));
+  let _0x14056f = _jailedUsers['get'](_0x11a2a9);
+  !_0x14056f && (_0x14056f = new Set(), _jailedUsers["set"](_0x11a2a9, _0x14056f));
   _0x14056f["add"](_0x15caa8);
   await react(_0x2fb5af, _0x32e6de, '🔇');
-  await sendReply(_0x2fb5af, _0x32e6de, "🔇 Muted @" + _0xac03e3 + '\x20—\x20their\x20messages\x20will\x20be\x20auto-deleted\x20by\x20the\x20bot\x20(admin\x20required).', [_0x35f1c8]);
+  await sendReply(_0x2fb5af, _0x32e6de, "🔒 Jailed @" + _0xac03e3 + '\x20—\x20their\x20messages\x20will\x20be\x20auto-deleted.', [_0x35f1c8]);
 });
-cmd("unmute", {
-  'desc': "Unmute a group member",
+cmd(["unmute", "unjail"], {
+  'desc': "Release a jailed group member",
   'category': "GROUP",
   'ownerOnly': !![]
 }, async (_0x4c36f0, _0x557d96, _0x47f950) => {
@@ -28235,14 +28233,14 @@ cmd("unmute", {
     await sendReply(_0x4c36f0, _0x557d96, 'Usage:\x20' + CONFIG['PREFIX'] + "unmute @user");
     return;
   }
-  const _0x5a107d = _mutedUsers["get"](_0x4cc2b0);
+  const _0x5a107d = _jailedUsers["get"](_0x4cc2b0);
   if (_0x5a107d) {
     _0x5a107d["delete"](_0x23db33);
   }
   await react(_0x4c36f0, _0x557d96, '🔊');
-  await sendReply(_0x4c36f0, _0x557d96, "🔊 Unmuted @" + _0x54b467 + '.', [_0x137e9a]);
+  await sendReply(_0x4c36f0, _0x557d96, "🔊 Released @" + _0x54b467 + '.', [_0x137e9a]);
 });
-globalThis["_mutedUsers"] = _mutedUsers;
+globalThis["_jailedUsers"] = _jailedUsers;
 cmd(["autodelete", "autodel", "ephemeral"], {
   'desc': 'Toggle\x20disappearing\x20messages:\x20.autodelete\x20off\x20|\x2024h\x20|\x207d\x20|\x2090d',
   'category': 'GROUP',

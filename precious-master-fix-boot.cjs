@@ -307,38 +307,9 @@ function installAll(ctx) {
     pbad('precious-fixes-v39 require failed: ' + (e && e.message));
   }
 
-  /* [v40] Leave & Delete Group Pack:
-     - Real .leave / .leavegc / .deletegc / .out / .left command
-     - Gated to Owner / Sudo / Group Admin
-     - If admin: revokes invite, removes members, disbands group
-     - Bot leaves group (groupLeave)
-     - Deletes group chat immediately (chatModify delete)
-     - Clears group caches and persistence */
-  try {
-    const v40 = multiRequire('./mias/precious-fixes-v40.cjs');
-    if (v40.mod) {
-      const fn = (typeof v40.mod === 'function') ? v40.mod : v40.mod.install;
-      if (typeof fn === 'function') {
-        try {
-          const r40 = fn(globalThis.__PRECIOUS__ || ctx);
-          result.v40 = true;
-          plog('precious-fixes-v40: INSTALLED (leave|deletegc|groupleave) ' + safeJson(r40 || {}));
-        } catch (e40) {
-          result.v40 = false;
-          pbad('precious-fixes-v40 error: ' + (e40 && e40.message));
-        }
-      } else {
-        result.v40 = false;
-        pbad('precious-fixes-v40 has no install()');
-      }
-    } else {
-      result.v40 = false;
-      pbad('precious-fixes-v40 failed to load: ' + (v40.err && v40.err.message));
-    }
-  } catch (e) {
-    result.v40 = false;
-    pbad('precious-fixes-v40 require failed: ' + (e && e.message));
-  }
+  /* v40 leave/delete fix pack intentionally not installed: .leave is the direct
+     owner/group-admin command in mias/index.js and only removes the bot. */
+  result.v40 = false;
 
   /* [v41] View-Once (.vv, .viewonce, .vv2) Fix Pack:
      - Reveals view-once images, videos, audio/voice notes, video notes, docs
