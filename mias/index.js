@@ -148,6 +148,7 @@ import _0x11c9a4 from 'express';
 import _0x4c5f42 from 'ws';
 import _0x4a8c7e from 'axios';
 import fetchRetryPolicy from './lib/fetchRetryPolicy.cjs';
+import tmpfilesResolver from './lib/tmpfilesResolver.cjs';
 import _0x256ff7 from 'http';
 import _0x549fbc from 'https';
 import _0x2a74f2 from 'fs';
@@ -21600,6 +21601,29 @@ cmd("fetch", {
   if (!_0x21f3fd || !_0x21f3fd['data']) {
     await react(_0x5317f0, _0x23a583, '❌');
     return sendReply(_0x5317f0, _0x23a583, '❌\x20Fetch\x20failed:\x20empty\x20response');
+  }
+  const _0xtmpdl = tmpfilesResolver.resolveTmpfilesDownload({ contentType: _0x21f3fd["headers"]["content-type"], url: _0x3b2584, body: _0x21f3fd["data"] });
+  if (_0xtmpdl) {
+    console["log"]("[fetch] tmpfiles page -> direct download " + _0xtmpdl);
+    _0x3b2584 = _0xtmpdl;
+    try {
+      _0x21f3fd = await _0x4a8c7e["get"](_0xtmpdl, {
+        'timeout': 0xafc8,
+        'maxRedirects': 0x8,
+        'responseType': "arraybuffer",
+        'maxContentLength': 0x46 * 0x400 * 0x400,
+        'httpAgent': _0x5bf90c,
+        'httpsAgent': _0x58e70e,
+        'headers': {
+          'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          'Accept': "*/*",
+          'Connection': "close"
+        }
+      });
+    } catch (_0xtmperr) {
+      await react(_0x5317f0, _0x23a583, '❌');
+      return sendReply(_0x5317f0, _0x23a583, "❌ Fetch failed: " + fetchRetryPolicy.describeFetchFailure(_0xtmperr, _0xtmpdl));
+    }
   }
   const _0x21ff1e = String(_0x21f3fd["headers"]["content-type"] || '')["toLowerCase"]();
   const _0x11339f = Buffer["from"](_0x21f3fd["data"]);
