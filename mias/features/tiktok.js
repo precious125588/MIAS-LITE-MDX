@@ -69,6 +69,7 @@ const MODES = {
 };
 
 const pick = (...values) => values.find((value) => typeof value === "string" && value);
+const pickMedia = (...values) => values.find((value) => typeof value === "string" && isDirectMediaUrl(value));
 
 export function normalizeTikTokResponse(payload = {}) {
   const data = (payload?.data && typeof payload.data === "object")
@@ -90,10 +91,10 @@ export function normalizeTikTokResponse(payload = {}) {
     // link 403s — the picker should always carry the video image.
     covers: [data.cover, data.thumbnail, data.origin_cover, data.ai_dynamic_cover, data.dynamic_cover, data.music_info?.cover, ...images]
       .filter((value) => typeof value === "string" && value),
-    videoHd: pick(data.hdplay, data.hd, data.play_hd, data.download_url),
-    videoSd: pick(data.play, data.sd, data.wmplay),
-    videoWatermark: pick(data.wmplay, data.play),
-    audio: pick(data.music, data.music_info?.play, data.audio),
+    videoHd: pickMedia(data.hdplay, data.hd, data.play_hd, data.download_url),
+    videoSd: pickMedia(data.play, data.sd, data.wmplay),
+    videoWatermark: pickMedia(data.wmplay, data.play),
+    audio: pickMedia(data.music, data.music_info?.play, data.audio),
     images,
   };
 }
@@ -300,6 +301,28 @@ export function isValidTikTokUrl(url) {
       || /^https?:\/\/www\.tiktok\.com\/@[\w.]+\/(video|photo)\/\d+/i.test(u);
 }
 
+function isDirectMediaUrl(value) {
+  if (typeof value !== "string" || !/^https?:\/\/\S+$/i.test(value.trim())) return false;
+  const url = value.trim();
+  if (/tiktok\.com\/@[^/]+\/(?:video|photo)\/\d+/i.test(url)) return false;
+  if (/tiktok\.com\/(?:t\/|v\/|@[\w.-]+$)/i.test(url)) return false;
+  if (/^(?:https?:\/\/(?:www\.|m\.|vm\.|vt\.)?tiktok\.com\/)/i.test(url) && !/tiktokcdn\.com|tiktokv\.com/i.test(url)) {
+    if (!/\.(mp4|mp3|m4a|webm|mov)(\?|$)/i.test(url) && !/\/play\//i.test(url)) return false;
+  }
+  return true;
+}
+
+function firstMediaHttpUrl(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && isDirectMediaUrl(value)) return value.trim();
+    if (Array.isArray(value)) {
+      const found = firstMediaHttpUrl(...value);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function firstHttpUrl(...values) {
   for (const value of values) {
     if (typeof value === "string" && /^https?:\/\/\S+$/i.test(value.trim())) return value.trim();
@@ -319,7 +342,7 @@ function extractTikTokMedia(payload) {
     const current = queue.shift();
     visited += 1;
     if (typeof current === "string") {
-      const direct = firstHttpUrl(current);
+      const direct = firstMediaHttpUrl(current);
       if (direct) return { title: "TikTok video", author: "Unknown author", videoHd: direct };
       continue;
     }
@@ -331,9 +354,9 @@ function extractTikTokMedia(payload) {
     seen.add(current);
 
     const info = normalizeTikTokResponse(current);
-    const hd = firstHttpUrl(current.hdplay, current.hd_play, current.video_hd, current.videoHd, current.play_hd, current.hd);
-    const sd = firstHttpUrl(current.play, current.sd, current.sdplay, current.sd_play, current.video_sd, current.videoSd, current.wmplay);
-    const generic = firstHttpUrl(
+    const hd = firstMediaHttpUrl(current.hdplay, current.hd_play, current.video_hd, current.videoHd, current.play_hd, current.hd);
+    const sd = firstMediaHttpUrl(current.play, current.sd, current.sdplay, current.sd_play, current.video_sd, current.videoSd, current.wmplay);
+    const generic = firstMediaHttpUrl(
       current.video, current.url, current.video_url, current.videoUrl,
       current.download_url, current.downloadUrl, current.download, current.link,
       current.nowm, current.no_watermark, current.data,
@@ -343,7 +366,7 @@ function extractTikTokMedia(payload) {
     const aioMedias = Array.isArray(current.medias)
       ? current.medias.filter((m) => m && m.type === "video" && typeof m.url === "string")
       : [];
-    const aioQuality = (quality) => firstHttpUrl(...aioMedias.filter((m) => m.quality === quality).map((m) => m.url));
+    const aioQuality = (quality) => firstMediaHttpUrl(...aioMedias.filter((m) => m.quality === quality).map((m) => m.url));
     const videoHd = info.videoHd || hd || aioQuality("hd_no_watermark") || null;
     const videoSd = info.videoSd || sd || aioQuality("no_watermark") || generic || null;
     const videoWatermark = info.videoWatermark || firstHttpUrl(current.wmplay, current.watermark, current.watermarked) || aioQuality("watermark") || null;

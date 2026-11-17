@@ -215,7 +215,8 @@ function loadLinkFile(file) {
       const cols = line.split('\t');
       const caption  = cols.length >= 6 ? (cols[3] || '') : '';
       const hashtags = cols.length >= 6 ? (cols[4] || '') : '';
-      items.push({ url: url.trim(), caption, hashtags });
+      const play = cols.length >= 7 ? (cols[6] || '') : '';
+      items.push({ url: url.trim(), caption, hashtags, play });
     }
   } catch {}
   _cache.set(p, { mtime: mt, items });
@@ -489,41 +490,74 @@ function startCreatorLinks() {
 const CREATOR_MAX_BYTES = 64 * 1024 * 1024;   // WhatsApp video limit
 async function downloadCreatorToFile(url, file) {
   const run = async () => {
-    const r = await axios.get(url, {
-      headers: { ...UA, Referer: 'https://www.tiktok.com/' }, responseType: 'stream',
-      timeout: 20000, maxContentLength: CREATOR_MAX_BYTES, validateStatus: () => true,
-    });
-    if (r.status >= 400 || !r.data) {
-      try { r.data && r.data.destroy && r.data.destroy(); } catch {}
-      
-      return 0;
-    }
-    let bytes = 0;
-    const out = fs.createWriteStream(file);
-    await new Promise((resolve, reject) => {
-      r.data.on('data', (chunk) => {
-        bytes += chunk.length;
-        if (bytes > CREATOR_MAX_BYTES) r.data.destroy(new Error('edit is larger than the WhatsApp limit'));
+    try {
+      const resp = await fetch(url, {
+        headers: { 'User-Agent': UA['User-Agent'] || 'Mozilla/5.0', Referer: 'https://www.tiktok.com/' },
+        signal: AbortSignal.timeout(25000),
       });
-      r.data.on('error', reject);
-      out.on('error', reject);
-      out.on('finish', resolve);
-      r.data.pipe(out);
-    });
-    const size = fs.statSync(file).size;
-    if (size < 2048) {  return 0; }
-    const head = Buffer.alloc(12);
-    const fd = fs.openSync(file, 'r');
-    try { fs.readSync(fd, head, 0, 12, 0); } finally { fs.closeSync(fd); }
-    if (head.subarray(4, 8).toString('ascii') !== 'ftyp') {  return 0; }
-    return size;
+      if (resp.ok && resp.body) {
+        const out = fs.createWriteStream(file);
+        let bytes = 0;
+        const reader = resp.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytes += value.length;
+          if (bytes > CREATOR_MAX_BYTES) {
+            await reader.cancel();
+            out.destroy();
+            throw new Error('edit is larger than the WhatsApp limit');
+          }
+          out.write(value);
+        }
+        await new Promise((res, rej) => out.end((err) => err ? rej(err) : res()));
+        const size = fs.statSync(file).size;
+        if (size >= 2048) {
+          const head = Buffer.alloc(12);
+          const fd = fs.openSync(file, 'r');
+          try { fs.readSync(fd, head, 0, 12, 0); } finally { fs.closeSync(fd); }
+          if (head.subarray(4, 8).toString('ascii') === 'ftyp') return size;
+        }
+      }
+    } catch (e) {}
+
+    if (axios) {
+      const r = await axios.get(url, {
+        headers: { ...UA, Referer: 'https://www.tiktok.com/' }, responseType: 'stream',
+        timeout: 20000, maxContentLength: CREATOR_MAX_BYTES, validateStatus: () => true,
+      });
+      if (r.status >= 400 || !r.data) {
+        try { r.data && r.data.destroy && r.data.destroy(); } catch {}
+        return 0;
+      }
+      let bytes = 0;
+      const out = fs.createWriteStream(file);
+      await new Promise((resolve, reject) => {
+        r.data.on('data', (chunk) => {
+          bytes += chunk.length;
+          if (bytes > CREATOR_MAX_BYTES) r.data.destroy(new Error('edit is larger than the WhatsApp limit'));
+        });
+        r.data.on('error', reject);
+        out.on('error', reject);
+        out.on('finish', resolve);
+        r.data.pipe(out);
+      });
+      const size = fs.statSync(file).size;
+      if (size < 2048) return 0;
+      const head = Buffer.alloc(12);
+      const fd = fs.openSync(file, 'r');
+      try { fs.readSync(fd, head, 0, 12, 0); } finally { fs.closeSync(fd); }
+      if (head.subarray(4, 8).toString('ascii') !== 'ftyp') return 0;
+      return size;
+    }
+    return 0;
   };
   try {
     if (_heavyGuard && typeof _heavyGuard.runHeavy === 'function') {
       return await _heavyGuard.runHeavy(run, { tag: 'creator-page-dl', timeoutMs: 120000 });
     }
     return await run();
-  } catch (e) {  try { fs.rmSync(file, { force: true }); } catch {} return 0; }
+  } catch (e) { try { fs.rmSync(file, { force: true }); } catch {} return 0; }
 }
 const NO_REENCODE_CATEGORIES = new Set([
   "fyp", "foryou", "foryoupage",
@@ -706,8 +740,172 @@ async function fetchMoreCandidates(catKey, cat, user, zipItems, attempted) {
   return unseen.length ? unseen : candidates;
 }
 
+// ── Reaction helpers ─────────────────────────────────────────────────────
+async function doReact(sock, msg, emoji, P = null) {
+  try {
+    if (P && typeof P.react === 'function') return await P.react(sock, msg, emoji);
+    const jid = msg?.key?.remoteJid;
+    if (jid && msg?.key && sock) return await sock.sendMessage(jid, { react: { text: emoji, key: msg.key } });
+  } catch {}
+}
+
+function clearReactDelayed(sock, msg, delayMs = 2500, P = null) {
+  setTimeout(() => {
+    doReact(sock, msg, '', P).catch(() => {});
+  }, delayMs);
+}
+
+// ── Bot intro audio and greeting ─────────────────────────────────────────
+const BOT_AUDIO_PATH = path.join(__dirname, 'assets', 'bot_audio.mp3');
+let _botAudioCache = null;
+
+async function getBotAudioBuffer() {
+  if (_botAudioCache && _botAudioCache.length > 1000) return _botAudioCache;
+  try {
+    if (fs.existsSync(BOT_AUDIO_PATH)) {
+      const buf = await fs.promises.readFile(BOT_AUDIO_PATH);
+      if (buf.length > 1000) {
+        _botAudioCache = buf;
+        return buf;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function isOwnerMessage(sock, msg) {
+  if (!msg || !msg.key) return false;
+  if (msg.key.fromMe) return true;
+  const sender = msg.key.participant || msg.key.participantPn || msg.key.remoteJid || '';
+  if (typeof globalThis.__miasIsOwner === 'function') {
+    try {
+      if (globalThis.__miasIsOwner(sender)) return true;
+    } catch {}
+  }
+  const senderClean = String(sender).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+  if (!senderClean) return false;
+
+  const ownerPaths = [
+    path.join(__dirname, '..', 'allfunc', 'owner.json'),
+    path.join(process.cwd(), 'allfunc', 'owner.json'),
+  ];
+  for (const op of ownerPaths) {
+    try {
+      if (fs.existsSync(op)) {
+        const owners = JSON.parse(fs.readFileSync(op, 'utf8'));
+        if (Array.isArray(owners) && owners.some((o) => {
+          const num = String(o).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+          return num && (num === senderClean || num.endsWith(senderClean) || senderClean.endsWith(num));
+        })) return true;
+      }
+    } catch {}
+  }
+
+  const envOwner = String(process.env.OWNER_NUMBER || process.env.OWNER || '').replace(/[^0-9]/g, '');
+  if (envOwner && (envOwner === senderClean || envOwner.endsWith(senderClean) || senderClean.endsWith(envOwner))) {
+    return true;
+  }
+  if (globalThis.__BOT_OWNER_NUMBER) {
+    const bOwner = String(globalThis.__BOT_OWNER_NUMBER).replace(/[^0-9]/g, '');
+    if (bOwner && (bOwner === senderClean || bOwner.endsWith(senderClean) || senderClean.endsWith(bOwner))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const _handledMsgIds = new Map();
+function hasHandledMsg(msg) {
+  const id = msg?.key?.id;
+  if (!id) return false;
+  const now = Date.now();
+  if (_handledMsgIds.has(id) && (now - _handledMsgIds.get(id) < 15000)) return true;
+  _handledMsgIds.set(id, now);
+  if (_handledMsgIds.size > 200) {
+    for (const [k, v] of _handledMsgIds.entries()) {
+      if (now - v > 30000) _handledMsgIds.delete(k);
+    }
+  }
+  return false;
+}
+
+async function handleBotAudio(sock, msg, P = null) {
+  const jid = msg?.key?.remoteJid;
+  if (!sock || !jid) return;
+  if (hasHandledMsg(msg)) return;
+
+  await doReact(sock, msg, '🌀', P);
+  try {
+    const audio = await getBotAudioBuffer();
+    if (!audio || audio.length < 1000) {
+      throw new Error('Configured bot audio file is missing or unreadable');
+    }
+    await sock.sendMessage(jid, {
+      audio,
+      mimetype: 'audio/mpeg',
+      fileName: 'bot.mp3',
+      ptt: false
+    }, { quoted: msg });
+    await doReact(sock, msg, '✅', P);
+    clearReactDelayed(sock, msg, 2500, P);
+  } catch (err) {
+    await doReact(sock, msg, '❌', P);
+    clearReactDelayed(sock, msg, 3000, P);
+    const detail = String(err?.message || 'audio unavailable').replace(/[\r\n]+/g, ' ').slice(0, 140);
+    const errText = `❌ Failed to play bot audio: ${detail}. Please try again.`;
+    if (P && typeof P.sendReply === 'function') {
+      await P.sendReply(sock, msg, errText).catch(() => {});
+    } else {
+      await sock.sendMessage(jid, { text: errText }, { quoted: msg }).catch(() => {});
+    }
+  }
+}
+
+const _attachedSockets = new WeakSet();
+function attachSocket(sock) {
+  if (!sock || !sock.ev || typeof sock.ev.on !== 'function' || _attachedSockets.has(sock)) return;
+  _attachedSockets.add(sock);
+
+  sock.ev.on('messages.upsert', async (evt) => {
+    try {
+      const messages = evt?.messages || [];
+      for (const msg of messages) {
+        if (!msg || !msg.message || msg.key?.fromMe) continue;
+        const jid = msg.key?.remoteJid || '';
+        if (!jid || jid.endsWith('@broadcast') || jid === 'status@broadcast') continue;
+
+        const text = String(
+          msg.message?.conversation ||
+          msg.message?.extendedTextMessage?.text ||
+          msg.message?.imageMessage?.caption ||
+          msg.message?.videoMessage?.caption ||
+          ''
+        ).trim();
+        if (!text) continue;
+
+        const isHi = /^[.!\/#$]?\s*hi(?:[\s!.,~]|$)/i.test(text);
+        const isBot = /^[.!\/#$]?\s*bot(?:[\s!.,~]|$)/i.test(text);
+        if (!isHi && !isBot) continue;
+
+        // "Buh thr hi should silent for owner only income one"
+        if (isHi && !isBot && isOwnerMessage(sock, msg)) {
+          continue;
+        }
+
+        await handleBotAudio(sock, msg, null);
+      }
+    } catch {}
+  });
+}
+
 // ── install ───────────────────────────────────────────────────────────────
 module.exports = {
+  attachSocket,
+  handleBotAudio,
+  isOwnerMessage,
+  getBotAudioBuffer,
+  doReact,
+  clearReactDelayed,
   install(P, helpers) {
     if (!axios && helpers.axios) axios = helpers.axios;
     startCreatorLinks();
@@ -716,7 +914,7 @@ module.exports = {
       const jid = msg.key.remoteJid;
       const user = (msg.key.participant || msg.key.remoteJid || '').split(':')[0];
       const cat = CATEGORIES[catKey];
-      await P.react(sock, msg, '☄️').catch(() => {});
+      await doReact(sock, msg, '🌀', P);
       // Fetch candidate routes concurrently on every request so repo links,
       // creator pages, and keyword search can all participate in the shuffle.
       // Bound live-source waiting so commands keep responding when an API stalls.
@@ -737,8 +935,9 @@ module.exports = {
         pool = loadLastGood(catKey).filter((i) => !isDeadLink(i.url));
       }
       if (!pool.length) {
-        await P.react(sock, msg, '❌').catch(() => {});
-        return P.sendReply(sock, msg, `❌ No ${cat.label} edits available right now. Try again in a bit.`);
+        await doReact(sock, msg, '❌', P);
+        clearReactDelayed(sock, msg, 3000, P);
+        return P.sendReply(sock, msg, `❌ No ${cat.label} edits available right now. Please try again in a bit.`);
       }
       const fresh = pickUnseen(user, catKey, pool, pool.length);
       const countBySrc = {};
@@ -794,13 +993,15 @@ module.exports = {
         const cmd = (rawText.startsWith('.') || rawText.startsWith('/') || rawText.startsWith('!')) ? rawText.split(/\s+/)[0] : ('.' + catKey);
         const vidWord = sent.length === 1 ? '+1 video' : `+${sent.length} videos`;
         console.log(`${username} with the ${cmd} ${vidWord}`);
-        await P.react(sock, msg, '✅').catch(() => {});
+        await doReact(sock, msg, '✅', P);
+        clearReactDelayed(sock, msg, 2500, P);
         if (sent.length < 2 && !fourKError) await P.sendReply(sock, msg, '⚠️ Only one edit could be delivered this time (some sources were down).');
         if (fourKError) await P.sendReply(sock, msg, fourKError);
       } else {
-        await P.react(sock, msg, '❌').catch(() => {});
+        await doReact(sock, msg, '❌', P);
+        clearReactDelayed(sock, msg, 3000, P);
         if (fourKError) await P.sendReply(sock, msg, fourKError);
-        else await P.sendReply(sock, msg, `❌ TikTok download APIs are busy right now — try again in a moment.`);
+        else await P.sendReply(sock, msg, `❌ Failed to download ${cat.label} edits: video sources are temporarily busy or unreachable. Please try again in a moment.`);
       }
     }
 
@@ -816,6 +1017,11 @@ module.exports = {
         registered.push(cat.aliases[0]);
       } catch (e) {  }
     }
+    try {
+      P.cmd(['bot'], { desc: 'Play bot intro audio', category: 'GENERAL' },
+        async (sock, msg) => handleBotAudio(sock, msg, P));
+      registered.push('bot');
+    } catch (e) {}
     return { categories: registered.length, commands: registered };
   },
   CATEGORIES,
