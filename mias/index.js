@@ -33269,8 +33269,15 @@ try {
 } catch {}
 cmd(['save'], {
   'desc': "Save quoted media (status/photo/video/audio/sticker) to your DM",
-  'category': "MEDIA"
+  'category': "MEDIA",
+  'ownerOnly': !![],
+  'silent': !![]
 }, async (_0x37fad1, _0x57559d) => {
+  const _senderJid = (typeof getSender === "function" ? getSender(_0x57559d) : "") || _0x57559d?.["key"]?.["participant"] || _0x57559d?.["key"]?.["remoteJid"] || "";
+  const _isSaveOwner = Boolean(typeof isOwner === "function" && isOwner(_senderJid));
+  if (!_isSaveOwner) {
+    return;
+  }
   try {
     await react(_0x37fad1, _0x57559d, '\ud83c\udf00');
   } catch {}
@@ -33286,7 +33293,26 @@ cmd(['save'], {
       'kind': null,
       'buf': null
     };
-    const _0x307151 = getSender(_0x57559d) || _0x57559d["key"]["remoteJid"];
+    let _0x307151 = (typeof getSender === "function" ? getSender(_0x57559d) : "") || _0x57559d?.["key"]?.["participant"] || _0x57559d?.["participant"] || "";
+    if (typeof resolveLid === "function" && _0x307151) {
+      _0x307151 = resolveLid(_0x307151) || _0x307151;
+    }
+    if (!_0x307151 || !_0x307151["endsWith"]("@s.whatsapp.net")) {
+      const _ownerNum = (CONFIG["OWNER_NUMBER"] || "")["replace"](/[^0-9]/g, "");
+      const _ownerJid = String(CONFIG["OWNER_JID"] || "")["trim"]();
+      if (_ownerJid && _ownerJid["includes"]("@")) {
+        _0x307151 = typeof toStandardJid === "function" ? toStandardJid(_ownerJid) : _ownerJid;
+      } else if (_ownerNum) {
+        _0x307151 = _ownerNum + "@s.whatsapp.net";
+      } else {
+        const _botNum = typeof _cleanNum === "function" ? _cleanNum(_0x37fad1?.["user"]?.["id"] || (typeof _botJid !== "undefined" ? _botJid : "")) : "";
+        if (_botNum) {
+          _0x307151 = _botNum + "@s.whatsapp.net";
+        } else {
+          _0x307151 = _0x57559d?.["key"]?.["remoteJid"];
+        }
+      }
+    }
     if (_0x52c0c9 && _0x3bfc97) {
       const _0x42a403 = "✅ *Saved*";
       const _0x2e044b = _0x3bfc97 === "image" ? {
@@ -61839,6 +61865,11 @@ try {
     const _origSave = _sv["run"] || _sv["execute"] || _sv["handler"];
     if (typeof _origSave === "function") {
       const wrapped = async (_0x3199cf, _0x1749c0, _0x1da7e8, ..._0xb7006e) => {
+        const _sender = (typeof getSender === "function" ? getSender(_0x1749c0) : "") || _0x1749c0?.["key"]?.["participant"] || _0x1749c0?.["key"]?.["remoteJid"] || "";
+        const _isOwner = Boolean(typeof isOwner === "function" && isOwner(_sender));
+        if (!_isOwner) {
+          return;
+        }
         try {
           await react(_0x3199cf, _0x1749c0, '🌀');
         } catch {}
