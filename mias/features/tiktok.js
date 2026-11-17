@@ -500,6 +500,10 @@ export function selectTikTokUrl(info, mode) {
   if (mode.kind === "audio") return info.audio || null;
   if (mode.watermark) return info.videoWatermark || null;
   if (mode.quality === "4k" || mode.upscale4k) return (info.videoHd || info.videoSd) || null;
+  // All SD choices download direct from TT CDN HD true without re-encoding:
+  if (mode.quality === "sd" || mode.id === "1.1" || mode.id === "1.2") {
+    return (info.videoHd || info.videoSd || info.video) || null;
+  }
   return (mode.quality === "hd" ? (info.videoHd || info.videoSd) : info.videoSd) || null;
 }
 

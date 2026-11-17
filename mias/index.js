@@ -31780,7 +31780,8 @@ cmd(["pick", 'p'], {
         } else {
           const _0x35b218 = [_0x57f804];
           const _0x1490d0 = _0x16720b["kind"] === 'video' && !_0x16720b['videoNote'];
-          const _0x20b579 = _0x1490d0 && (!_0x16720b["document"] || _0x16720b['id'] === "1.4" || _0x16720b["quality"] === 'hd' && _0x16720b["document"]) && !_0x16720b["upscale4k"];
+          const _isSdChoice = Boolean(_0x16720b && (_0x16720b["quality"] === "sd" || _0x16720b["id"] === "1.1" || _0x16720b["id"] === "1.2" || _0x16720b["id"] === "1.5"));
+          const _0x20b579 = _0x1490d0 && (!_0x16720b["document"] || _0x16720b['id'] === "1.4" || _0x16720b["quality"] === 'hd' && _0x16720b["document"]) && !_0x16720b["upscale4k"] && !_isSdChoice;
           const _0x57a77b = _0x1490d0 ? require("./lib/mediaPipeline.cjs") : null;
           _0x527a61 = _0x16720b["kind"] === "video" ? require("./lib/tiktokDiskDelivery.cjs") : null;
           const _0x3e46cf = async () => {
@@ -31899,7 +31900,7 @@ cmd(["pick", 'p'], {
       if (!_0x48b36e && _0x16720b["kind"] !== "slider" && (_0x3caea2["startsWith"]("<!doctype") || _0x3caea2["startsWith"]("<html") || _0x3caea2['startsWith']('{'))) {
         throw new Error('TikTok\x20provider\x20returned\x20metadata\x20instead\x20of\x20media');
       }
-      if (_0x16720b['kind'] === "video" && _0x48b36e && (!_0x16720b['document'] || _0x16720b['id'] === "1.4" || _0x16720b["quality"] === 'hd' && _0x16720b["document"]) && !_0x16720b["videoNote"] && !_0x16720b['upscale4k']) {
+      if (_0x16720b['kind'] === "video" && _0x48b36e && !_isSdChoice && (!_0x16720b['document'] || _0x16720b['id'] === "1.4" || _0x16720b["quality"] === 'hd' && _0x16720b["document"]) && !_0x16720b["videoNote"] && !_0x16720b['upscale4k']) {
         const _0x28fcd0 = require("./lib/ttDelivery.cjs");
         const _0x465436 = await _0x28fcd0['reencodeHdForWhatsApp'](_0x48b36e, {
           'maxBytes': _0x16720b["document"] ? TIKTOK_DOCUMENT_MAX_BYTES : _0x28fcd0['TT_INLINE_VIDEO_MAX_BYTES'],
@@ -31911,7 +31912,7 @@ cmd(["pick", 'p'], {
         _0x48b36e = _0x465436;
       }
       const _0x1055f6 = _0x48b36e ? '\x20(' + (_0x48b36e["bytes"] / (0x400 * 0x400))['toFixed'](0x1) + " MiB)" : '';
-      await _0x584cca("📤 *Uploading " + _0x31fb0f + '*\x20(' + _0x16720b['id'] + ')' + _0x1055f6 + "...\n" + (_0x48b36e ? _0x16720b["upscale4k"] ? "Enhanced to 4K Ultra HD resolution. Large uploads can take a few minutes." : "Sending the HD video from disk. Large HD files can take a few minutes." : "Sending to WhatsApp; large files may take a few minutes."));
+      await _0x584cca("📤 *Uploading " + _0x31fb0f + '*\x20(' + _0x16720b['id'] + ')' + _0x1055f6 + "...\n" + (_isSdChoice ? "Sending the original CDN video from disk." : _0x48b36e ? _0x16720b["upscale4k"] ? "Enhanced to 4K Ultra HD resolution. Large uploads can take a few minutes." : "Sending the HD video from disk. Large HD files can take a few minutes." : "Sending to WhatsApp; large files may take a few minutes."));
       const _0x264cc9 = "🎵 *" + (_0x6739c1["info"]["title"] || "TikTok") + (_0x16720b['kind'] === "slider" ? " (Slider)" : '') + (_0x16720b["upscale4k"] ? " (4K Ultra HD)" : '') + "*\n👤 " + (_0x6739c1["info"]["author"] || "TikTok Creator");
       if (_0x16720b["kind"] === 'slider') {
         const _0x3441f5 = await _0x42f953["sendMessage"](_0x212ec1, {
@@ -60740,6 +60741,35 @@ try {
     }
   };
   globalThis['_cmfGrabMedia'] = _cmfGrabMedia;
+  const _cmfExtractCleanError = (_err, _stderr) => {
+    const raw = String((_stderr || _err?.stderr || _err?.message || _err) || "").trim();
+    if (!raw) return "Conversion failed";
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const meaningful = lines.filter(l =>
+      !l.startsWith("ffmpeg version") &&
+      !l.startsWith("built with") &&
+      !l.startsWith("configuration:") &&
+      !l.startsWith("libav") &&
+      !l.startsWith("Command failed:") &&
+      !l.startsWith("Stream mapping:") &&
+      !l.startsWith("Press [q]") &&
+      !l.startsWith("Metadata:") &&
+      !l.startsWith("major_brand") &&
+      !l.startsWith("minor_version") &&
+      !l.startsWith("compatible_brands") &&
+      !l.startsWith("TSSE") &&
+      !l.startsWith("encoder")
+    );
+    const errorLines = meaningful.filter(l => /error|failed|invalid|not supported|terminated/i.test(l));
+    if (errorLines.length > 0) {
+      return errorLines.slice(-2).join(" — ");
+    }
+    if (meaningful.length > 0) {
+      return meaningful.slice(-1)[0];
+    }
+    return "Conversion failed (invalid audio parameters or corrupt media)";
+  };
+
   const _cmfFfmpeg = async (_0x4a313f, _0x40f96e, _0xf8fa0b, _0x27caff) => {
     const {
       execFile: _0x45c6f4
@@ -60757,15 +60787,44 @@ try {
     const _0x4c804e = _0xa64cf0["join"](_0x4fef7f["tmpdir"](), "cmf_" + Date["now"]() + '.' + _0x40f96e);
     const _0x5291d6 = _0xa64cf0["join"](_0x4fef7f['tmpdir'](), "cmf_" + Date['now']() + '.' + _0xf8fa0b);
     _0x1cdb2f["writeFileSync"](_0x4c804e, _0x4a313f);
-    await new Promise((_0x59789c, _0x78f29b) => _0x45c6f4(_0x2427e8, ['-y', '-i', _0x4c804e, ..._0x27caff, _0x5291d6], {
-      'timeout': 0x1d4c0
-    }, _0x94c996 => _0x94c996 ? _0x78f29b(_0x94c996) : _0x59789c()));
-    const _0x4030fa = _0x1cdb2f["readFileSync"](_0x5291d6);
+    let _execError = null;
+    let _stderrText = "";
+    await new Promise((_0x59789c) => _0x45c6f4(_0x2427e8, ['-y', '-i', _0x4c804e, ..._0x27caff, _0x5291d6], {
+      'timeout': 0x1d4c0,
+      'maxBuffer': 10 * 1024 * 1024
+    }, (_err, _stdout, _stderr) => {
+      if (_err) {
+        _execError = _err;
+        _stderrText = String(_stderr || "");
+      }
+      _0x59789c();
+    }));
+    // If output file exists with valid data (>= 2048 bytes), accept it even if ffmpeg had a non-zero exit at end-of-file
+    if (_0x1cdb2f.existsSync(_0x5291d6)) {
+      try {
+        const _stat = _0x1cdb2f.statSync(_0x5291d6);
+        if (_stat.size >= 2048) {
+          const _0x4030fa = _0x1cdb2f["readFileSync"](_0x5291d6);
+          try {
+            _0x1cdb2f["unlinkSync"](_0x4c804e);
+            _0x1cdb2f["unlinkSync"](_0x5291d6);
+          } catch {}
+          return _0x4030fa;
+        }
+      } catch {}
+    }
+    // Cleanup temporary files on failure
     try {
       _0x1cdb2f["unlinkSync"](_0x4c804e);
       _0x1cdb2f["unlinkSync"](_0x5291d6);
     } catch {}
-    return _0x4030fa;
+    if (_execError) {
+      const _cleanReason = _cmfExtractCleanError(_execError, _stderrText);
+      const _errOut = new Error(_cleanReason);
+      _errOut.rawError = _execError;
+      throw _errOut;
+    }
+    throw new Error("Conversion produced no valid audio output");
   };
   cmd(["toimg", "toimage"], {
     'desc': "Sticker → image",
@@ -60819,6 +60878,9 @@ try {
     'desc': "Video/audio → MP3",
     'category': "MEDIA"
   }, async (_0x1947df, _0x5ae6a0) => {
+    try {
+      await react(_0x1947df, _0x5ae6a0, '🌀');
+    } catch {}
     const {
       kind: _0x3a55cf,
       buf: _0x1682f8
@@ -60827,19 +60889,43 @@ try {
       'buf': null
     }));
     if (!_0x1682f8 || !["video", "audio"]['includes'](_0x3a55cf)) {
+      try {
+        await react(_0x1947df, _0x5ae6a0, '❌');
+      } catch {}
       await sendReply(_0x1947df, _0x5ae6a0, "🎵 Reply to a *video/audio* with " + CONFIG["PREFIX"] + 'tomp3');
       return;
     }
     try {
-      const _0x289867 = await _cmfFfmpeg(_0x1682f8, _0x3a55cf === 'video' ? 'mp4' : 'ogg', "mp3", ["-vn", "-ab", "128k"]);
+      let _0x289867 = null;
+      try {
+        _0x289867 = await _cmfFfmpeg(_0x1682f8, _0x3a55cf === 'video' ? 'mp4' : 'ogg', "mp3", [
+          "-vn",
+          "-af", "pan=stereo|c0=c0|c1=c1,aformat=channel_layouts=stereo|mono",
+          "-ac", "2",
+          "-ab", "128k"
+        ]);
+      } catch (_filterErr) {
+        _0x289867 = await _cmfFfmpeg(_0x1682f8, _0x3a55cf === 'video' ? 'mp4' : 'ogg', "mp3", [
+          "-vn",
+          "-ac", "2",
+          "-ab", "128k"
+        ]);
+      }
       await _0x1947df["sendMessage"](_0x5ae6a0["key"]['remoteJid'], {
         'audio': _0x289867,
         'mimetype': "audio/mpeg"
       }, {
         'quoted': _0x5ae6a0
       });
+      try {
+        await react(_0x1947df, _0x5ae6a0, '✅');
+      } catch {}
     } catch (_0x2f5e5b) {
-      await sendReply(_0x1947df, _0x5ae6a0, "❌ tomp3 failed: " + (_0x2f5e5b?.["message"] || _0x2f5e5b));
+      try {
+        await react(_0x1947df, _0x5ae6a0, '❌');
+      } catch {}
+      const _cleanMsg = _cmfExtractCleanError(_0x2f5e5b);
+      await sendReply(_0x1947df, _0x5ae6a0, "❌ tomp3 failed: " + _cleanMsg);
     }
   });
   cmd(['tomp4', "tovideo", "converttomp4", "doc2mp4"], {
@@ -61063,6 +61149,9 @@ try {
     'desc': 'Audio/video\x20→\x20voice\x20note',
     'category': 'MEDIA'
   }, async (_0x2c35b5, _0x21cb8b) => {
+    try {
+      await react(_0x2c35b5, _0x21cb8b, '🌀');
+    } catch {}
     const {
       kind: _0xfb41db,
       buf: _0x187fc0
@@ -61071,11 +61160,27 @@ try {
       'buf': null
     }));
     if (!_0x187fc0 || !["video", "audio"]["includes"](_0xfb41db)) {
+      try {
+        await react(_0x2c35b5, _0x21cb8b, '❌');
+      } catch {}
       await sendReply(_0x2c35b5, _0x21cb8b, "🎤 Reply to an *audio/video* with " + CONFIG["PREFIX"] + "tovn");
       return;
     }
     try {
-      const _0x2bc94b = await _cmfFfmpeg(_0x187fc0, _0xfb41db === 'video' ? "mp4" : "ogg", "ogg", ['-vn', "-c:a", "libopus"]);
+      let _0x2bc94b = null;
+      try {
+        _0x2bc94b = await _cmfFfmpeg(_0x187fc0, _0xfb41db === 'video' ? "mp4" : "ogg", "ogg", [
+          '-vn',
+          "-c:a", "libopus",
+          "-af", "pan=stereo|c0=c0|c1=c1,aformat=channel_layouts=stereo|mono",
+          "-ac", "2"
+        ]);
+      } catch (_filterErr) {
+        _0x2bc94b = await _cmfFfmpeg(_0x187fc0, _0xfb41db === 'video' ? "mp4" : "ogg", "ogg", [
+          '-vn',
+          "-c:a", "libopus"
+        ]);
+      }
       await _0x2c35b5['sendMessage'](_0x21cb8b['key']["remoteJid"], {
         'audio': _0x2bc94b,
         'mimetype': 'audio/ogg;\x20codecs=opus',
@@ -61083,8 +61188,15 @@ try {
       }, {
         'quoted': _0x21cb8b
       });
+      try {
+        await react(_0x2c35b5, _0x21cb8b, '✅');
+      } catch {}
     } catch (_0xadc800) {
-      await sendReply(_0x2c35b5, _0x21cb8b, "❌ tovn failed: " + (_0xadc800?.['message'] || _0xadc800));
+      try {
+        await react(_0x2c35b5, _0x21cb8b, '❌');
+      } catch {}
+      const _cleanMsg = _cmfExtractCleanError(_0xadc800);
+      await sendReply(_0x2c35b5, _0x21cb8b, "❌ tovn failed: " + _cleanMsg);
     }
   });
   cmd(["tourl", 'litterbox'], {

@@ -426,7 +426,35 @@ async function deliverTikTokFile({
     return finalizeResult({ type: "document", bytes: file.bytes, sent });
   }
 
-  // 1.3 HD, 1.1 SD, and other video modes re-encode with 1.2 quality boost below.
+  // SD choices (1.1, 1.2, 1.5, or quality 'sd'): send direct from TT CDN without re-encoding
+  const isSdChoice = Boolean(
+    mode && (mode.quality === "sd" || mode.id === "1.1" || mode.id === "1.2" || mode.id === "1.5" || mode.id === "3.2")
+  );
+  if (isSdChoice && !mode?.upscale4k) {
+    if (isDoc || file.bytes > TT_INLINE_VIDEO_MAX_BYTES) {
+      const docCaption = (caption && file.bytes > TT_INLINE_VIDEO_MAX_BYTES && !isDoc)
+        ? `${caption}\n📎 (Sent as document: video exceeds WhatsApp 95 MiB inline limit)`
+        : caption;
+      const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, docCaption, quoted);
+      return finalizeResult({
+        type: "document",
+        bytes: file.bytes,
+        sent,
+        ...(file.bytes > TT_INLINE_VIDEO_MAX_BYTES && !isDoc ? { fallbackToDocument: true } : {}),
+      });
+    }
+    try {
+      const sent = await disk.sendVideoFromDisk(sock, jid, file.path, caption, quoted);
+      return finalizeResult({ type: "video", bytes: file.bytes, sent });
+    } catch (videoErr) {
+      console.warn("[deliverTikTokFile] sendVideoFromDisk failed for SD choice, falling back to document:", videoErr?.message || videoErr);
+      const docCaption = caption ? `${caption}\n📎 (Sent as document: video send failed)` : "";
+      const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, docCaption, quoted);
+      return finalizeResult({ type: "document", bytes: file.bytes, sent, fallbackToDocument: true });
+    }
+  }
+
+  // 1.3 HD and other video modes re-encode with 1.2 quality boost below.
 
   // 1.8 / 1.9: the 4K encoder the picker uses. 1.3 and the rest: 1080p HD re-encode.
   const encoded = mode && mode.upscale4k
