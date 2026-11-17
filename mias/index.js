@@ -149,6 +149,7 @@ import _0x4c5f42 from 'ws';
 import _0x4a8c7e from 'axios';
 import fetchRetryPolicy from './lib/fetchRetryPolicy.cjs';
 import tmpfilesResolver from './lib/tmpfilesResolver.cjs';
+import joinTargetParser from './lib/joinTargetParser.cjs';
 import _0x256ff7 from 'http';
 import _0x549fbc from 'https';
 import _0x2a74f2 from 'fs';
@@ -33703,11 +33704,31 @@ try {
           await sendReply(_0x26c589, _0x4f6918, "Usage: " + CONFIG["PREFIX"] + "join <group link or invite code>");
           return;
         }
-        let _0x23591e = _0x34a19b;
-        const _0x24b2e5 = _0x34a19b['match'](/chat\.whatsapp\.com\/([A-Za-z0-9_-]+)/i);
-        if (_0x24b2e5) {
-          _0x23591e = _0x24b2e5[0x1];
+        const _joinTarget = joinTargetParser.parseJoinTarget(_0x34a19b);
+        if (_joinTarget.kind === 'channel') {
+          let _chMeta = null;
+          try { _chMeta = await _0x26c589["newsletterMetadata"]('invite', _joinTarget.code); } catch {}
+          const _chJid = _chMeta?.id || _chMeta?.jid;
+          if (!_chJid) {
+            await sendReply(_0x26c589, _0x4f6918, "❌ Channel link not found or no longer valid. Check the link and try again.");
+            return;
+          }
+          const _chName = _chMeta?.thread_metadata?.name?.text || _chMeta?.name || 'channel';
+          try {
+            await _0x26c589["newsletterFollow"](_chJid);
+            await react(_0x26c589, _0x4f6918, '✅');
+            await sendReply(_0x26c589, _0x4f6918, "✅ Joined channel *" + _chName + "*");
+          } catch (_chErr) {
+            const _chMsg = String(_chErr?.message || '').toLowerCase();
+            await sendReply(_0x26c589, _0x4f6918, _chMsg.includes('already') ? "ℹ️ I already follow *" + _chName + "*." : "❌ Failed to follow channel: " + (_chErr?.message || 'unknown error'));
+          }
+          return;
         }
+        if (_joinTarget.kind !== 'group') {
+          await sendReply(_0x26c589, _0x4f6918, "❌ That isn't a WhatsApp group or channel link. Send a link starting with https://chat.whatsapp.com/ or https://whatsapp.com/channel/");
+          return;
+        }
+        let _0x23591e = _joinTarget.code;
         _0x23591e = _0x23591e['replace'](/[^A-Za-z0-9_-]/g, '');
         if (_0x23591e["length"] < 0x8) {
           await sendReply(_0x26c589, _0x4f6918, "❌ Invalid invite link/code.");
