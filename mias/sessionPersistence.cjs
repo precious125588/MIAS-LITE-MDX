@@ -475,6 +475,17 @@ async function deleteSessionCompletely(options = {}) {
     return { ok: false, error: 'session_identifier_required' };
   }
 
+  // Ownership check: if someone else owns this session and force is not explicitly set,
+  // do not allow automatic cleanup or spurious logouts to wipe active bot credentials.
+  try {
+    const ownership = require('../sessionOwnership');
+    const who = options.caller || options.who || (options.isPairing ? ownership.OWNER_PAIRING : null);
+    if (who && !options.force && !ownership.mayWipe(number || jid || explicitDir, who)) {
+      console.warn(`[session-persistence] Aborting deleteSessionCompletely for ${number || jid}: guarded by active ownership`);
+      return { ok: false, error: 'ownership_protected', guarded: true };
+    }
+  } catch {}
+
   console.log(`[session-persistence] Purging all session files and database records for ${number || jid} (reason: ${reason})`);
 
   // Wait for an already queued snapshot before deleting its rows. Otherwise
