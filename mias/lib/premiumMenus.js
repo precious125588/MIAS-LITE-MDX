@@ -116,7 +116,9 @@ export const SETTINGS_MISC_DUPLICATES = new Set([
   'antibroadcast', 'anticall', 'antiviewonce', 'antivonce',
 ]);
 export function isMenuEntryVisible(name, entry, context = {}) {
-  if (normalizeMenuCategory(entry?.category) === 'MISC' && SETTINGS_MISC_DUPLICATES.has(String(name).toLowerCase())) return false;
+  const cmdKey = String(name || '').toLowerCase();
+  if (cmdKey === 'antivonce' || cmdKey === 'antiviewonce' || cmdKey === 'antivo') return false;
+  if (normalizeMenuCategory(entry?.category) === 'MISC' && SETTINGS_MISC_DUPLICATES.has(cmdKey)) return false;
   if (!entry || typeof entry.handler !== 'function' || entry.disabled || entry.enabled === false || entry.hidden || entry.internal || /^Internal\b/i.test(entry.desc || '')) return false;
   if (context.owner === undefined) return true; // registry-wide audits, not a user response
   if (entry.creatorOnly && !context.creator) return false;
