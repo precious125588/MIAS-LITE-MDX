@@ -100,46 +100,24 @@ async function searchLevanterPlugins(rawQuery, opts = {}) {
  * @param {Object} opts
  * @returns {string}
  */
-function formatPluginCard(plugin, opts = {}) {
+function formatPluginCard(plugin) {
   if (!plugin || !plugin.url) {
     return '❌ No plugin information available.';
   }
 
-  const prefix = typeof opts.prefix === 'string' ? opts.prefix : '.';
-  const allItems = Array.isArray(opts.allItems) ? opts.allItems : [plugin];
-  const creatorDisplay = plugin.creator?.name
-    ? `${plugin.creator.name} (@${plugin.creator.username})`
-    : `@${plugin.creator?.username || 'anonymous'}`;
-
   const lines = [
-    '╔══════════════════════╗',
-    '   🔌 *LEVANTER PLUGIN*',
-    '╚══════════════════════╝',
+    '\u200e╔══════════════════════╗',
+    '\u200e   🔌 *LEVANTER PLUGIN*',
+    '\u200e╚══════════════════════╝',
     '',
-    `📦 *Name:* ${plugin.name}`,
-    `📝 *Desc:* ${plugin.desc || 'No description provided.'}`,
-    `👤 *Creator:* ${creatorDisplay}`,
-    `🏷️ *Type:* ${plugin.type || 'misc'}`,
-    `⭐ *Score:* ${plugin.score >= 0 ? '+' : ''}${plugin.score} (👍 ${plugin.upvotes} | 👎 ${plugin.downvotes})`,
+    `\u200e📦 *Name:* ${plugin.name || 'Unnamed Plugin'}`,
+    `\u200e📝 *Desc:* ${plugin.desc || 'No description provided.'}`,
+    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━',
     '',
-    '🔗 *Gist URL:*',
-    `${plugin.url}`,
-    '',
-    '━━━━━━━━━━━━━━━━━━━━',
-    '💡 *To Install:*',
-    `${prefix}plugin ${plugin.url}`,
-    '━━━━━━━━━━━━━━━━━━━━'
+    '\u200e🔗 *Gist URL:*',
+    `\u200e${plugin.url}`,
+    '\u200e━━━━━━━━━━━━━━━━━━━━━━━━━'
   ];
-
-  if (allItems.length > 1) {
-    lines.push('');
-    lines.push(`📋 *Other Matches (${allItems.length - 1}):*`);
-    for (let i = 1; i < Math.min(allItems.length, 5); i++) {
-      const it = allItems[i];
-      lines.push(`${i}. *${it.name}*`);
-      lines.push(`   ↳ ${prefix}getplugin ${it.name}`);
-    }
-  }
 
   return lines.join('\n');
 }
