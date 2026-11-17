@@ -31664,6 +31664,7 @@ cmd(["pick", 'p'], {
   const _0x1f473b = parseInt(_0x298ad9[0x0] || '', 0xa);
   let _0x6739c1 = __ttGetSelection(_0x212ec1);
   let _0x16720b = parseTikTokMode(_0x9b53f9);
+  const _isSdChoice = Boolean(_0x16720b && (_0x16720b["quality"] === "sd" || _0x16720b["id"] === "1.1" || _0x16720b["id"] === "1.2" || _0x16720b["id"] === "1.5"));
   if (!_0x6739c1 && _0x16720b) {
     _0x6739c1 = await __ttRestoreFromQuote(_0x7e636);
   }
@@ -31780,7 +31781,6 @@ cmd(["pick", 'p'], {
         } else {
           const _0x35b218 = [_0x57f804];
           const _0x1490d0 = _0x16720b["kind"] === 'video' && !_0x16720b['videoNote'];
-          const _isSdChoice = Boolean(_0x16720b && (_0x16720b["quality"] === "sd" || _0x16720b["id"] === "1.1" || _0x16720b["id"] === "1.2" || _0x16720b["id"] === "1.5"));
           const _0x20b579 = _0x1490d0 && (!_0x16720b["document"] || _0x16720b['id'] === "1.4" || _0x16720b["quality"] === 'hd' && _0x16720b["document"]) && !_0x16720b["upscale4k"] && !_isSdChoice;
           const _0x57a77b = _0x1490d0 ? require("./lib/mediaPipeline.cjs") : null;
           _0x527a61 = _0x16720b["kind"] === "video" ? require("./lib/tiktokDiskDelivery.cjs") : null;
