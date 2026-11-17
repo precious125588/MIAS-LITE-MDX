@@ -147,6 +147,7 @@ import { Boom } from '@hapi/boom';
 import _0x11c9a4 from 'express';
 import _0x4c5f42 from 'ws';
 import _0x4a8c7e from 'axios';
+import fetchRetryPolicy from './lib/fetchRetryPolicy.cjs';
 import _0x256ff7 from 'http';
 import _0x549fbc from 'https';
 import _0x2a74f2 from 'fs';
@@ -21585,6 +21586,10 @@ cmd("fetch", {
       break;
     } catch (_0x35ca24) {
       console["warn"]("[fetch] RETRY attempt=" + _0x53c002 + " reason=" + (_0x35ca24?.['message'] || _0x35ca24));
+      if (!fetchRetryPolicy.shouldRetryFetch(_0x35ca24)) {
+        await react(_0x5317f0, _0x23a583, '❌');
+        return sendReply(_0x5317f0, _0x23a583, "❌ Fetch failed: " + fetchRetryPolicy.describeFetchFailure(_0x35ca24, _0x3b2584));
+      }
       if (_0x53c002 >= 0x3) {
         await react(_0x5317f0, _0x23a583, '❌');
         return sendReply(_0x5317f0, _0x23a583, "❌ Fetch failed: " + (_0x35ca24?.["code"] || _0x35ca24?.['message'] || 'connection\x20failed'));
