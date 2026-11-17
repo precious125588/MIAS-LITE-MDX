@@ -16,14 +16,15 @@ function normalizeCommandName(raw) {
 
 function buildAliasReport(input, commands, aliases, opts = {}) {
   const name = normalizeCommandName(input);
+  const pfx = typeof opts.prefix === 'string' ? opts.prefix : '.';
   if (!name) {
-    return '🔎 *Check alias*\n\nUsage: .checkalias <command>\nExample: .checkalias ping';
+    return `🔎 *Check alias*\n\nUsage: ${pfx}checkalias <command>\nExample: ${pfx}checkalias ping`;
   }
 
   const entry = commands && typeof commands.get === 'function' ? commands.get(name) : undefined;
   const aliasTarget = aliases && typeof aliases.get === 'function' ? aliases.get(name) : undefined;
   if (!entry && !aliasTarget) {
-    return `❌ No command named *.${name}* was found.`;
+    return `❌ No command named *${pfx}${name}* was found.`;
   }
 
   const canonical = String(entry?.canonical || aliasTarget || name).toLowerCase();
@@ -41,9 +42,9 @@ function buildAliasReport(input, commands, aliases, opts = {}) {
   }
   const list = [...found].sort();
 
-  const lines = ['🔎 *Check alias*', '', `Command: *.${canonical}*`];
-  lines.push(`Aliases: ${list.length ? list.map(a => `.${a}`).join(', ') : 'None'}`);
-  if (name !== canonical) lines.push(`\n*.${name}* is an alias of *.${canonical}*.`);
+  const lines = ['🔎 *Check alias*', '', `Command: *${pfx}${canonical}*`];
+  lines.push(`Aliases: ${list.length ? list.map(a => `${pfx}${a}`).join(', ') : 'None'}`);
+  if (name !== canonical) lines.push(`\n*${pfx}${name}* is an alias of *${pfx}${canonical}*.`);
   if (typeof opts.isDisabled === 'function' && opts.isDisabled(canonical)) {
     lines.push('\n⚠️ This command is currently disabled.');
   }

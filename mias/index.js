@@ -1046,6 +1046,12 @@ function normalizeConfiguredPrefix(_0x48079c) {
   if (!_0x236d94) return '.';
   return NO_PREFIX_VALUES["has"](_0x236d94["toLowerCase"]()) ? '' : _0x236d94;
 }
+function getEffectivePrefix() {
+  if (typeof CONFIG !== 'undefined' && CONFIG && typeof CONFIG.PREFIX === 'string') {
+    return CONFIG.PREFIX;
+  }
+  return '.';
+}
 function botConfigPath() {
   const _0x5df9c3 = process.env.AUTH_DIR ? _0xf9fd94["resolve"](process.env.AUTH_DIR) : _0xf9fd94["join"](__dirname, 'prezzy_auth');
   return _0xf9fd94["join"](_0x5df9c3, 'bot-config.json');
@@ -1099,7 +1105,7 @@ const CONFIG = {
   'BOT_PIC': process.env.BOT_PIC || "https://files.catbox.moe/05rqy6.png"
 };
 const statusEditFlow = createStatusEditFlow({
-  'prefix': () => CONFIG["PREFIX"]
+  'prefix': () => getEffectivePrefix()
 });
 let _sessionOwnerName = '';
 function usableOwnerName(_0x3d8ccb) {
@@ -1901,7 +1907,7 @@ function trackSteeze(_0x43eebd, _0x3196ad) {
     return;
   }
   const _0x4a17b1 = String(_0x3196ad["message"]?.["conversation"] || _0x3196ad["message"]?.["extendedTextMessage"]?.["text"] || '');
-  if (_0x4a17b1['startsWith'](CONFIG["PREFIX"] || '.') || isCommandBody(_0x4a17b1)) {
+  if ((CONFIG["PREFIX"] ? _0x4a17b1['startsWith'](CONFIG["PREFIX"]) : false) || isCommandBody(_0x4a17b1)) {
     return;
   }
   const _0x52360d = {
@@ -4095,7 +4101,7 @@ async function connectToWA(_0x4ec381 = ![]) {
                 const _0x1f7f6f = _0x3c4e46(_0x13b803);
                 if (_0x1f7f6f) {
                   const _0x17ad84 = _0x5d18aa(_0x1f7f6f);
-                  _0x17ad84 && (_0x135b10 = (CONFIG["PREFIX"] || '.') + _0x17ad84);
+                  _0x17ad84 && (_0x135b10 = getEffectivePrefix() + _0x17ad84);
                 }
               }
             } catch (_0x389c5c) {}
@@ -4397,7 +4403,7 @@ async function connectToWA(_0x4ec381 = ![]) {
                 const _0x3e21c3 = _0x5efa77(_0x1d928d);
                 if (_0x3e21c3) {
                   const _0x250115 = _0x2831db(_0x3e21c3);
-                  _0x250115 && (_0x135b10 = (CONFIG["PREFIX"] || '.') + _0x250115['trim']()['replace'](/^[.\/!#]/, ''));
+                  _0x250115 && (_0x135b10 = getEffectivePrefix() + _0x250115['trim']()['replace'](/^[.\/!#]/, ''));
                 }
               }
             } catch (_0xe103ba) {}
@@ -4539,7 +4545,7 @@ async function connectToWA(_0x4ec381 = ![]) {
                 const _0x47e0b4 = getStickerHash(_0x1f3a54);
                 const _0x1ffaba = _0x47e0b4 ? stickerGetCmd(_0x47e0b4) : null;
                 if (_0x1ffaba) {
-                  _0x135b10 = (CONFIG['PREFIX'] || '.') + _0x1ffaba;
+                  _0x135b10 = getEffectivePrefix() + _0x1ffaba;
                 }
               }
             } catch (_0x5769f6) {}
@@ -5333,7 +5339,7 @@ async function connectToWA(_0x4ec381 = ![]) {
                       await sendReply(_0x5ec14e, _0x1b3ecb, _0x508720["response"]);
                       return;
                     } else {
-                      _0x508720['name'] && (_0x135b10 = (CONFIG['PREFIX'] || '.') + _0x508720["name"]['trim']()["replace"](/^[.\/!#]/, ''));
+                      _0x508720['name'] && (_0x135b10 = getEffectivePrefix() + _0x508720["name"]['trim']()["replace"](/^[.\/!#]/, ''));
                     }
                   }
                 }
@@ -5357,7 +5363,7 @@ async function connectToWA(_0x4ec381 = ![]) {
                 const _0x3e8b34 = _0x5e568d["endsWith"]('@g.us') ? _0x1b3ecb["key"]["participant"] || _0x1b3ecb['participant'] || _0x5e568d : _0x5e568d;
                 const _0x290c8d = await handleWizardInput(_0x5ec14e, _0x1b3ecb, _0x135b10, {
                   'sender': _0x3e8b34,
-                  'prefix': CONFIG["PREFIX"] || '.'
+                  'prefix': getEffectivePrefix()
                 });
                 if (_0x290c8d) {
                   return;
@@ -5538,7 +5544,7 @@ async function connectToWA(_0x4ec381 = ![]) {
               try {
                 await sendButtonHomeScreen(_0x5ec14e, _0x1b3ecb["key"]["remoteJid"], _0x1b3ecb, {
                   'userName': _0x1b3ecb["pushName"],
-                  'prefix': CONFIG['PREFIX'] || '.'
+                  'prefix': getEffectivePrefix()
                 });
                 _0x3e238f = !![];
               } catch (_0x13ba92) {
@@ -5546,7 +5552,7 @@ async function connectToWA(_0x4ec381 = ![]) {
               }
               if (!_0x3e238f) {
                 try {
-                  const _0x4e0c6a = CONFIG["PREFIX"] || '.';
+                  const _0x4e0c6a = getEffectivePrefix();
                   const _0x21804b = (() => {
                     try {
                       const _0x26a1c0 = globalThis["__MIAS_MENU_CATEGORIES__"];
@@ -6950,9 +6956,21 @@ function parseCommandBody(_0x40b419 = '') {
       };
     }
   }
-  // Explicit no-prefix mode (.setprefix none): a known command word runs the command.
-  // A leading "." still works as a fallback.
-  if (CONFIG && CONFIG.PREFIX === '' && !_0x5f49af.startsWith('.')) {
+  // Explicit no-prefix mode (.setprefix none / null): a known command word runs the command.
+  // A leading "." (or other standard prefix like !, #, /) still works as a fallback.
+  if (CONFIG && CONFIG.PREFIX === '') {
+    const _pfxMatch = _0x5f49af.match(/^[.!\/#]/);
+    if (_pfxMatch) {
+      const _pfx = _pfxMatch[0];
+      const _sliced = _0x5f49af.slice(_pfx.length).trim();
+      const _pfxCmd = (_sliced.split(/\s+/)[0] || '').toLowerCase();
+      const _isKnown = (typeof commands !== 'undefined' && commands.has(_pfxCmd)) ||
+                       (typeof aliases !== 'undefined' && aliases.has(_pfxCmd)) ||
+                       (typeof customCmds !== 'undefined' && customCmds.has(_pfxCmd));
+      if (_pfxCmd && _isKnown) {
+        return { 'isCommand': true, 'prefix': _pfx, 'raw': _sliced, 'name': _pfxCmd };
+      }
+    }
     const _bareName = (_0x5f49af.split(/\s+/)[0] || '').toLowerCase();
     const _knownCmd = (typeof commands !== 'undefined' && commands.has(_bareName)) ||
                       (typeof aliases !== 'undefined' && aliases.has(_bareName)) ||
@@ -7042,6 +7060,21 @@ function normalizeOutgoingText(_0x50215c, _0x226102 = null) {
   _0x5eea9d = _0x5eea9d["replace"](/\bMAIS MDX\b/gi, _0x2dd2e0);
   _0x5eea9d = _0x5eea9d["replace"](/\bMIA[’'\s]*S\b/gi, _0x2dd2e0);
   _0x5eea9d = _0x5eea9d["replace"](/\bMAIS\b/gi, _0x2dd2e0);
+  if (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.PREFIX === '') {
+    // When prefix is null or none, the bot replies raw without command prefixes like .
+    _0x5eea9d = _0x5eea9d.replace(/\b(Usage:\s*)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(Example:\s*)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(Use:\s*)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(Use\s+)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(Type\s+)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(Send\s+)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(Run\s+)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(with\s+)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(from\s+)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\b(or\s+)\.([a-zA-Z0-9_-]+)/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/(\n)\.([a-zA-Z0-9_-]+(?:\s|$))/g, '$1$2');
+    _0x5eea9d = _0x5eea9d.replace(/\*\.([a-zA-Z0-9_-]+)\*/g, '*$1*');
+  }
   return _0x5eea9d;
 }
 function normalizeOutgoingPayload(_0x567a2d, _0x44eff0 = null) {
@@ -10335,7 +10368,7 @@ cmd(["checkalias"], {
   'desc': "Show a command's canonical name and aliases",
   'category': "SYSTEM"
 }, async (_sock, _msg, _args) => {
-  const _report = __aliasCheck.buildAliasReport(Array.isArray(_args) ? _args[0] : _args, commands, aliases, { isDisabled: isCommandDisabled });
+  const _report = __aliasCheck.buildAliasReport(Array.isArray(_args) ? _args[0] : _args, commands, aliases, { isDisabled: isCommandDisabled, prefix: getEffectivePrefix() });
   return await sendReply(_sock, _msg, _report);
 });
 const __aliasStore = require("./lib/aliasStore.cjs");
@@ -11247,7 +11280,7 @@ const MENU_CATEGORIES = [{
 }, {
   'name': "SEARCH",
   'emoji': '🔍',
-  'cmds': ['define', "football", "github", "githubcode", 'githubissues', "githubrepo", "google", "image", "lyrics", 'news', "wallpaper", 'wiki', 'ytinfo', "ytsearch"]
+  'cmds': ['define', "football", "getplugin", "github", "githubcode", 'githubissues', "githubrepo", "google", "image", "lyrics", 'news', "wallpaper", 'wiki', 'ytinfo', "ytsearch"]
 }, {
   'name': "SESSION",
   'emoji': '🔑',
@@ -23454,10 +23487,11 @@ cmd(['setprefix', "prefix"], {
   'ownerOnly': !![]
 }, async (_0x103982, _0x2248ba, _0x4bd3f4) => {
   if (!_0x4bd3f4[0x0]) {
-    await sendReply(_0x103982, _0x2248ba, "Usage: " + (CONFIG["PREFIX"] || '.') + "setprefix <new prefix>\nTip: *setprefix none* = commands work with no prefix. *setprefix .* = back to the dot.\nCurrent prefix: *" + (CONFIG['PREFIX'] || "(none)") + '*');
+    const _p = getEffectivePrefix();
+    await sendReply(_0x103982, _0x2248ba, "Usage: " + _p + "setprefix <new prefix>\nTip: *setprefix none* = commands work with no prefix. *setprefix .* = back to the dot.\nCurrent prefix: *" + (CONFIG['PREFIX'] || "(none)") + '*');
     return;
   }
-  const _0x2579ca = String(_0x4bd3f4["join"]('\x20')["trim"]());
+  const _0x2579ca = String(_0x4bd3f4["join"](' ')["trim"]()).replace(/^['"`]+|['"`]+$/g, '').trim();
   const _0x4df0f0 = normalizeConfiguredPrefix(_0x2579ca);
   if (_0x4df0f0["length"] > 0x8 || /\s/["test"](_0x4df0f0)) {
     await sendReply(_0x103982, _0x2248ba, "❌ Prefix must be 8 characters or fewer and contain no spaces.");
@@ -23487,7 +23521,64 @@ cmd(['setprefix', "prefix"], {
   } catch (_0x495860) {
     console["error"]("[setprefix] failed to persist bot prefix:", _0x495860?.["message"] || _0x495860);
   }
-  await sendReply(_0x103982, _0x2248ba, "✅ Prefix changed to: *" + _0x51d36c + "*\n\n" + (CONFIG['PREFIX'] ? 'Use:\x20' + CONFIG["PREFIX"] + "menu" : "Commands now work without a prefix, e.g. menu. Send setprefix . to go back."));
+  await sendReply(_0x103982, _0x2248ba, "✅ Prefix changed to: *" + _0x51d36c + "*\n\n" + (CONFIG['PREFIX'] ? 'Use: ' + CONFIG["PREFIX"] + "menu" : "Commands now work without a prefix, e.g. menu. Send setprefix . to go back."));
+});
+
+const {
+  searchLevanterPlugins: __searchLevanterPlugins,
+  formatPluginCard: __formatPluginCard
+} = require("./lib/levanterPluginSearch.cjs");
+
+cmd(["getplugin", "pluginsearch", "findplugin", "fetchplugin", "getplugins"], {
+  'desc': "Search Levanter plugin directory and get gist URLs — .getplugin <query>",
+  'category': "SEARCH"
+}, async (_sock, _msg, _args) => {
+  const _query = Array.isArray(_args) ? _args.join(' ').trim() : String(_args || '').trim();
+  const _pfx = getEffectivePrefix();
+  if (!_query) {
+    return await sendReply(_sock, _msg, "🔌 *Levanter Plugin Search*\n\nUsage: " + _pfx + "getplugin <name>\nExample: " + _pfx + "getplugin couple\n\nDirectly finds Gist URLs from levanter.site/plugin so you don't have to visit the website.");
+  }
+  await react(_sock, _msg, '🔍').catch(() => {});
+  try {
+    const _res = await __searchLevanterPlugins(_query);
+    if (!_res.success) {
+      return await sendReply(_sock, _msg, "❌ " + (_res.error || "Failed to search Levanter plugins right now. Try again later."));
+    }
+    if (!_res.items || _res.items.length === 0) {
+      return await sendReply(_sock, _msg, "❌ No Levanter plugins found matching *" + _query + "*.\n\nTip: Check spelling or try searching for *couple*, *ig*, *font*, etc.");
+    }
+    const _cardText = __formatPluginCard(_res.items[0], { allItems: _res.items, query: _query, prefix: _pfx });
+    await react(_sock, _msg, '🔌').catch(() => {});
+
+    const _remoteJid = _msg?.key?.remoteJid;
+    const _avatarUrl = _res.items[0]?.creator?.avatar;
+    let _sentCard = false;
+    if (_remoteJid && _avatarUrl && typeof _avatarUrl === 'string' && _avatarUrl.startsWith('http')) {
+      try {
+        await _sock.sendMessage(_remoteJid, {
+          text: _beautifyMentions(normalizeOutgoingText(_cardText, _msg)),
+          contextInfo: {
+            externalAdReply: {
+              title: _res.items[0].name || 'Levanter Plugin',
+              body: _res.items[0].desc ? _res.items[0].desc.slice(0, 60) : 'Levanter Plugin Gist',
+              thumbnailUrl: _avatarUrl,
+              mediaType: 1,
+              sourceUrl: _res.items[0].url || 'https://levanter.site/plugin',
+              renderLargerThumbnail: false,
+              showAdAttribution: false
+            }
+          }
+        }, { quoted: _msg });
+        _sentCard = true;
+      } catch {}
+    }
+    if (!_sentCard) {
+      await sendReply(_sock, _msg, _cardText);
+    }
+  } catch (_err) {
+    console.error("[getplugin] error:", _err?.message || _err);
+    await sendReply(_sock, _msg, "❌ Error searching for plugin: " + (_err?.message || "unknown error"));
+  }
 });
 cmd("broadcast", {
   'desc': "Broadcast message to all groups + DMs — .broadcast <msg>",
@@ -23630,8 +23721,8 @@ const __ext = createExternalPluginSystem({
   'aliases': aliases,
   'addMenu': (_0x3769c1, _0x3ca9f6) => _addCmdToMenuCategory(_0x3769c1, _0x3ca9f6),
   'removeMenu': _0x2a07a7 => _removeCmdFromMenuCategory(_0x2a07a7),
-  'prefix': () => CONFIG["PREFIX"] || '.',
-  'prefixes': () => Array["isArray"](CONFIG["PREFIXES"]) && CONFIG['PREFIXES']["length"] ? CONFIG["PREFIXES"] : [CONFIG["PREFIX"] || '.'],
+  'prefix': () => getEffectivePrefix(),
+  'prefixes': () => Array["isArray"](CONFIG["PREFIXES"]) && CONFIG['PREFIXES']["length"] ? CONFIG["PREFIXES"] : (CONFIG["PREFIX"] === '' ? ['', '.'] : [getEffectivePrefix()]),
   'getBody': _0x34b2be => getBody(_0x34b2be),
   'getSender': _0x1ba177 => getSender(_0x1ba177),
   'isSudo': _0x1588d0 => isSudo(_0x1588d0),

@@ -59,7 +59,10 @@ export function createExternalPluginSystem(host) {
   } catch (error) {
     console.error("[eplugin] could not restore saved variables:", error.message);
   }
-  const prefix = () => String(host.prefix?.() ?? ".");
+  const prefix = () => {
+    const p = host.prefix?.();
+    return p !== undefined && p !== null ? String(p) : ".";
+  };
   // Levanter's config values a plugin can read from its context (the config.js keys it uses).
   // Anything else a plugin needs is a saved variable (.setvar), merged in by buildCtx().
   const configDefaults = () => ({
