@@ -249,24 +249,116 @@ async function deliverVideoWithTTHD(_0x2bdfd8, _0x1c5b8c, _0x50737f, {
   });
 }
 // 1.3 HD delivery for downloaded videos (AIO, Facebook, Instagram).
-// Same encoder as the TikTok 1.3 command; falls back to the source video if encoding fails.
-async function deliverVideoHd13(sock, jid, buf, { caption = '', fileName = 'video_' + Date.now() + '.mp4', quoted = null } = {}) {
-  let toSend = buf;
-  if (Buffer.isBuffer(buf)) {
+// Same encoder as the TikTok 1.3 command (HD 1.3 with 1.2 quality boost); falls back to the source video if encoding fails.
+async function deliverVideoHd13(sock, jid, media, { caption = '', fileName = 'video_' + Date.now() + '.mp4', quoted = null, url = null, title = '' } = {}) {
+  const ttd = require('./lib/ttDelivery.cjs');
+  const disk = require('./lib/tiktokDiskDelivery.cjs');
+  const mediaCache = require('./lib/mediaDeliveryCache.cjs');
+  const fs = require('fs');
+  const fsp = require('fs/promises');
+  const os = require('os');
+  const path = require('path');
+
+  let sourcePath = null;
+  let mustCleanSource = false;
+  let encoded = null;
+
+  try {
+    if (typeof media === 'string' && fs.existsSync(media)) {
+      sourcePath = media;
+    } else if (Buffer.isBuffer(media)) {
+      sourcePath = path.join(os.tmpdir(), `hd13_src_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.mp4`);
+      await fsp.writeFile(sourcePath, media);
+      mustCleanSource = true;
+    } else if (media && typeof media.path === 'string' && fs.existsSync(media.path)) {
+      sourcePath = media.path;
+    } else if (media && Buffer.isBuffer(media.buffer)) {
+      sourcePath = path.join(os.tmpdir(), `hd13_src_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.mp4`);
+      await fsp.writeFile(sourcePath, media.buffer);
+      mustCleanSource = true;
+    } else {
+      throw new Error('Invalid media passed to deliverVideoHd13');
+    }
+
+    const stat = await fsp.stat(sourcePath).catch(() => null);
+    const sourceBytes = stat?.size || 0;
+
+    // Fast media cache check for repeat downloads
+    const cleanUrl = url || (media && typeof media === 'object' && media.url ? String(media.url).trim() : null);
+    const cacheKey = cleanUrl ? `hd13:${cleanUrl}:video` : null;
+    let cached = null;
+    if (cacheKey) cached = mediaCache.getCachedMedia(cacheKey);
+    if (!cached && sourcePath) {
+      try {
+        const h = mediaCache.computeFileHash(sourcePath);
+        if (h) cached = mediaCache.getCachedMedia(`sha256:${h}`);
+      } catch {}
+    }
+
+    if (cached) {
+      try {
+        const res = await mediaCache.sendViaMediaKeys(sock, jid, cached, { caption, quoted, fileName, type: 'video' });
+        if (res?.key?.id) return res;
+      } catch {}
+      try {
+        const fwd = await mediaCache.sendViaForwardFallback(sock, jid, cached, { quoted });
+        if (fwd?.key?.id) return fwd;
+      } catch {}
+    }
+
+    // Run TT cmd 1.3 HD encoder (1.2 boost, 25MB target for fast delivery)
     try {
-      toSend = await prepareTikTokVideo(buf);
+      encoded = await ttd.reencodeHdForWhatsApp(sourcePath, {
+        boost: 1.2,
+        sourceQualityBoost: 1.2,
+        maxBytes: ttd.TT_INLINE_VIDEO_MAX_BYTES,
+      });
     } catch (err) {
-      console.warn('[hd13] encode failed, sending source video:', err?.message || err);
-      toSend = buf;
+      console.warn('[hd13] re-encode error, using source video:', err?.message || err);
+      encoded = { path: sourcePath, bytes: sourceBytes, untouched: true, fallback: true };
+    }
+
+    const finalPath = encoded?.path || sourcePath;
+    const finalStat = await fsp.stat(finalPath).catch(() => null);
+    const finalBytes = finalStat?.size || encoded?.bytes || sourceBytes;
+
+    let sent = null;
+    if (finalBytes > ttd.TT_INLINE_VIDEO_MAX_BYTES) {
+      sent = await disk.sendDocumentFromDisk(sock, jid, finalPath, fileName, caption, quoted);
+    } else {
+      try {
+        sent = await disk.sendWithRateLimitRetry(async () => {
+          const res = await sock.sendMessage(jid, {
+            video: { url: finalPath },
+            mimetype: 'video/mp4',
+            caption,
+            fileName,
+          }, { quoted });
+          if (!res?.key?.id) throw new Error('WhatsApp did not confirm video send');
+          return res;
+        });
+      } catch (videoErr) {
+        sent = await disk.sendDocumentFromDisk(sock, jid, finalPath, fileName, caption, quoted);
+      }
+    }
+
+    if (sent?.key?.id) {
+      if (cacheKey) try { mediaCache.recordSentMedia(cacheKey, sent); } catch {}
+      try {
+        const ph = mediaCache.computeFileHash(finalPath);
+        if (ph) mediaCache.recordSentMedia(`sha256:${ph}`, sent);
+      } catch {}
+    }
+
+    return sent;
+  } finally {
+    if (encoded && !encoded.untouched && !encoded.fallback && typeof encoded.cleanup === 'function') {
+      try { await encoded.cleanup(); } catch {}
+    }
+    if (mustCleanSource && sourcePath) {
+      try { await fsp.unlink(sourcePath); } catch {}
     }
   }
-  return await deliverMediaWithDiskTemp(sock, jid, toSend, {
-    type: 'video',
-    caption,
-    fileName,
-    mimetype: 'video/mp4',
-    quoted,
-  });
 }
 async function reencodeVideoFileHd13(filePath) {
   try {
@@ -25478,9 +25570,12 @@ const __facebookCommand = __facebookDownloader["createFacebookCommand"]({
   'resolveMedia': __resolveFacebookMedia,
   'sendVideo': (_0x5016a3, _0x4e98b4, _0x34bef5, {
     caption: _0x439ea9
-  }) => deliverVideoHd13(_0x5016a3, _0x4e98b4['key']["remoteJid"], _0x34bef5["buffer"], {
+  }) => deliverVideoHd13(_0x5016a3, _0x4e98b4['key']["remoteJid"], _0x34bef5, {
     'caption': _0x439ea9,
-    'quoted': _0x4e98b4
+    'quoted': _0x4e98b4,
+    'url': _0x34bef5?.["url"],
+    'title': _0x34bef5?.["title"],
+    'fileName': "facebook_" + Date['now']() + ".mp4",
   }),
   'sendDocument': (_0x481147, _0x14f67d, _0x51ed84, {
     caption: _0x5086cd

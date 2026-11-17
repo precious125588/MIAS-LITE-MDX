@@ -257,6 +257,7 @@ async function resolveAndDownloadFacebook(inputUrl, providers = [], options = {}
         source: candidate.source,
         quality: candidate.quality,
         score: candidate.score,
+        url: candidate.url || url,
       };
     } catch (error) {
       lastDownloadError = toDownloadError(error, response);
@@ -359,13 +360,19 @@ function createFacebookCommand(dependencies = {}) {
       const title = String(media.title || 'Facebook video').slice(0, 180);
       const quality = media.quality || 'Best available';
       const caption = `📘 *Facebook · ${quality}*\n\n${title}`;
-      await updateStatus(`🌀 Downloaded ${quality} source. Sending the original video without re-encoding…`);
+      if (mode === 'audio') {
+        await updateStatus(`🌀 Downloaded ${quality} source. Extracting audio & delivering…`);
+      } else if (mode === 'doc' || mode === 'document') {
+        await updateStatus(`🌀 Downloaded ${quality} source. Preparing document delivery…`);
+      } else {
+        await updateStatus(`🌀 Downloaded ${quality} source. Re-encoding in 1.3 HD & delivering…`);
+      }
 
       let deliveredAs;
       if (mode === 'audio') {
         let audio;
         try {
-          audio = await dependencies.extractAudio(media.buffer, media);
+          audio = await dependencies.extractAudio(media.buffer || media.path, media);
         } catch {
           throw makeError('FB_AUDIO_FAILED', 'Audio extraction failed.');
         }
@@ -379,7 +386,7 @@ function createFacebookCommand(dependencies = {}) {
         try {
           await dependencies.sendVideo(sock, msg, media, { caption });
           deliveredAs = 'video';
-        } catch {
+        } catch (videoErr) {
           try {
             await dependencies.sendDocument(sock, msg, media, { caption });
             deliveredAs = 'file';
