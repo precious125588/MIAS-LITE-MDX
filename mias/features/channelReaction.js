@@ -228,15 +228,19 @@ export function decodeHtmlEntities(str = "") {
  * Resolve WhatsApp Channel Name from link.
  */
 export async function resolveChannelName(channelOrPostUrl, jwtToken = "", timeoutMs = 8000) {
-  if (!channelOrPostUrl) return "WhatsApp Channel";
+  if (!channelOrPostUrl) return "";
 
-  // Match channel base link
   const m = channelOrPostUrl.match(/https?:\/\/(?:www\.)?whatsapp\.com\/channel\/([a-zA-Z0-9_-]+)/i);
-  if (!m) return "WhatsApp Channel";
+  if (!m) return "";
   const channelCode = m[1];
   const channelBase = `https://whatsapp.com/channel/${channelCode}`;
 
-  // 1. Try Asitha metadata-proxy if jwtToken is present
+  const isInvalid = (str) => {
+    if (!str || typeof str !== "string") return true;
+    const s = str.trim().toLowerCase();
+    return s.length < 2 || /view update|channel update|whatsapp channel|^whatsapp$/i.test(s) || s.includes("whatsapp.com");
+  };
+
   if (jwtToken) {
     try {
       const proxyUrl = `${ASITHA_API_BASE}/channel/metadata-proxy?url=${encodeURIComponent(channelBase)}`;
@@ -250,13 +254,13 @@ export async function resolveChannelName(channelOrPostUrl, jwtToken = "", timeou
       if (pr.ok) {
         const pd = await pr.json();
         if (pd?.name && typeof pd.name === "string") {
-          return decodeHtmlEntities(pd.name);
+          const decoded = decodeHtmlEntities(pd.name);
+          if (!isInvalid(decoded)) return decoded;
         }
       }
     } catch (_) {}
   }
 
-  // 2. Fetch directly from WhatsApp Channel Open Graph tags
   try {
     const wr = await fetch(channelBase, {
       headers: {
@@ -271,21 +275,17 @@ export async function resolveChannelName(channelOrPostUrl, jwtToken = "", timeou
         || html.match(/<meta\s+name=[\"\']title[\"\']\s+content=[\"\']([^\"\']+)[\"\']/i);
       if (ogMatch && ogMatch[1]) {
         const decoded = decodeHtmlEntities(ogMatch[1]);
-        if (decoded && !/WhatsApp Channel/i.test(decoded)) {
-          return decoded;
-        }
+        if (!isInvalid(decoded)) return decoded;
       }
       const titleTag = html.match(/<title>([^<]+)<\/title>/i);
       if (titleTag && titleTag[1]) {
         const tDecoded = decodeHtmlEntities(titleTag[1]).replace(/\s*\|\s*WhatsApp$/i, "").trim();
-        if (tDecoded && !/WhatsApp Channel/i.test(tDecoded)) {
-          return tDecoded;
-        }
+        if (!isInvalid(tDecoded)) return tDecoded;
       }
     }
   } catch (_) {}
 
-  return `Channel (${channelCode})`;
+  return "";
 }
 
 /**
@@ -459,19 +459,7 @@ export function installChannelReaction(ctx = {}) {
 
     // If no URL provided, show usage help
     if (!tokens.length || !tokens[0].includes("whatsapp.com/channel/")) {
-      const usage = [
-        "📢 *Channel Reaction Manager*",
-        "",
-        `*Usage:* ${P}react <post-url> [mass|1|10|20|30|40|50] [emojis]`,
-        `*Alias:* ${P}reaction <post-url> mass`,
-        "",
-        "*Examples:*",
-        `• ${P}react https://whatsapp.com/channel/0029Vaa1t6l5q08V1jdCS33q/100 mass`,
-        `• ${P}react https://whatsapp.com/channel/0029Vaa1t6l5q08V1jdCS33q/100 50`,
-        `• ${P}react https://whatsapp.com/channel/0029Vaa1t6l5q08V1jdCS33q/100 mass 🔥,❤️,👏`,
-        "",
-        "_Note: \"mass\" sends Maximum / All Bots reactions (cost: 1 Coin). Creator only._"
-      ].join("\n");
+      const usage = `*Usage:* ${P}react <post-url> [mass|count] [emojis]\n*Example:* ${P}react https://whatsapp.com/channel/... mass`;
       const replyFn = typeof sendReply === "function" ? sendReply : (s, m, t) => s.sendMessage(jid, { text: t }, { quoted: m });
       await replyFn(sock, msg, usage);
       return;
@@ -495,8 +483,9 @@ export function installChannelReaction(ctx = {}) {
     // Resolve channel name
     const channelName = await resolveChannelName(postUrl, auth.jwtToken);
 
-    // Send in-progress status message: "sending reactions to (channel Name)"
-    await replyFn(sock, msg, `🌀 Sending reactions to *${channelName}* (${countVal === "all" ? "Maximum / All Bots" : countVal + " bots"})...`).catch(() => {});
+    // Send in-progress status message
+    const targetLabel = channelName ? `*${channelName}*` : "channel";
+    await replyFn(sock, msg, `🌀 Sending reactions to ${targetLabel} (${countVal === "all" ? "Maximum" : countVal + " bots"})...`).catch(() => {});
 
     try {
       const result = await sendChannelReactions({
@@ -515,18 +504,16 @@ export function installChannelReaction(ctx = {}) {
       }
       delayedClearReact(sock, msg, 2500);
 
-      const countLabel = result.count === "all" ? "Maximum (All Bots)" : `${result.count} reactions`;
-      const doneText = [
+      const countLabel = result.count === "all" ? "Maximum" : `${result.count} reactions`;
+      const doneLines = [
         "✅ *.sent*",
         "",
-        `🎉 Successfully sent *${countLabel}* to *${channelName}*!`,
-        "",
-        `• *Post Link:* ${postUrl}`,
+        `🎉 Successfully sent *${countLabel}*${channelName ? ` to *${channelName}*` : ""}!`,
+        `• *Post:* ${postUrl}`,
         `• *Emojis:* ${result.reacts}`,
-        "• *Deduction:* 1 Coin",
-        "",
-        "> Powered by Asitha Channel Manager"
-      ].join("\n");
+        "• *Deduction:* 1 Coin"
+      ];
+      const doneText = doneLines.join("\n");
 
       await replyFn(sock, msg, doneText);
     } catch (err) {
@@ -539,11 +526,11 @@ export function installChannelReaction(ctx = {}) {
       delayedClearReact(sock, msg, 3000);
 
       const errText = [
-        `❌ *Failed to send reactions to ${channelName}*`,
+        `❌ *Failed to send reactions${channelName ? ` to ${channelName}` : ""}*`,
         "",
         `*Error:* ${err.message || "Unknown error"}`,
         "",
-        "_Tip: Check coin balance with " + P + "coin or set your captcha token with " + P + "reacttoken <token>_"
+        `_Tip: Check coin balance with ${P}coin or set key with ${P}reacttoken <key>_`
       ].join("\n");
 
       await replyFn(sock, msg, errText);
@@ -585,7 +572,7 @@ export function installChannelReaction(ctx = {}) {
       delayedClearReact(sock, msg, 2500);
 
       const coinMsg = [
-        "🪙 *ASITHA COIN BALANCE*",
+        "🪙 *COIN BALANCE*",
         "",
         `• *Account:* *${user.email || user.username || user.name || "Creator"}*`,
         `• *Balance:* *${coins}* COINS`,
@@ -603,11 +590,11 @@ export function installChannelReaction(ctx = {}) {
       delayedClearReact(sock, msg, 3000);
 
       const errText = [
-        "❌ *Could not fetch Asitha Coin balance*",
+        "❌ *Could not fetch coin balance*",
         "",
         `*Reason:* ${err.message}`,
         "",
-        `_To authenticate, set ASITHA_JWT_TOKEN in config or run ${P}reacttoken <jwtToken>_`
+        `_To authenticate, set ASITHA_API_KEY in config or run ${P}reacttoken <key>_`
       ].join("\n");
 
       await replyFn(sock, msg, errText);
@@ -643,7 +630,7 @@ export function installChannelReaction(ctx = {}) {
     if (typeof react === "function") await react(sock, msg, "✅").catch(() => {});
     delayedClearReact(sock, msg, 2500);
 
-    await replyFn(sock, msg, "✅ *Asitha token saved successfully!* You can now run " + P + "coin and " + P + "react.");
+    await replyFn(sock, msg, "✅ *Token saved successfully!* You can now run " + P + "coin and " + P + "react.");
   });
 
   return true;
