@@ -1,4 +1,5 @@
 'use strict';
+try { require('dotenv').config({ quiet: true }); } catch (_) {}
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
