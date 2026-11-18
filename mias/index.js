@@ -49143,49 +49143,6 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
         return;
       }
       _0x4e039f['__miasMentionOn'] = !![];
-      _0x4e039f['ev']['on']('messages.upsert', async _0xf3b4c1 => {
-        try {
-          globalThis["__tkickSock"] = _0x4e039f;
-        } catch {}
-        try {
-          if (_0xf3b4c1['type'] && _0xf3b4c1["type"] !== "notify") {
-            return;
-          }
-          for (const _0x49e143 of _0xf3b4c1['messages'] || []) {
-            try {
-              if (!_0x49e143 || !_0x49e143["message"] || _0x49e143['key']['fromMe']) {
-                continue;
-              }
-              const _0x43465a = _0x49e143['key']["remoteJid"] || '';
-              if (!_0x43465a["endsWith"]('@g.us')) {
-                continue;
-              }
-              if (!_0x520151(_0x4e039f, _0x49e143)) {
-                continue;
-              }
-              const _0x3d2f4e = Date["now"]();
-              const _0x508c94 = _0x1eaeeb["get"](_0x43465a) || 0x0;
-              if (_0x3d2f4e - _0x508c94 < 0xea60) {
-                continue;
-              }
-              _0x1eaeeb["set"](_0x43465a, _0x3d2f4e);
-              _0x49e143["__miasMentionHandled"] = !![];
-              const _0x5b66f5 = _0x49e143["key"]["participant"] || _0x49e143['participant'];
-              const _0x5d180a = String(_0x5b66f5 || '')["split"]('@')[0x0]["replace"](/[^0-9]/g, '');
-              const _0x591477 = (CONFIG['OWNER_NAME'] || "Owner")["trim"]();
-              const _0x1d7ec2 = "👋 Hey @" + _0x5d180a + "! I'm *" + _0x591477 + '*\x27s\x20bot\x20—\x20type\x20*' + CONFIG['PREFIX'] + 'menu*\x20to\x20see\x20what\x20I\x20can\x20do.';
-              try {
-                await _0x4e039f["sendMessage"](_0x43465a, {
-                  'text': _0x1d7ec2,
-                  'mentions': _0x5b66f5 ? [_0x5b66f5] : []
-                }, {
-                  'quoted': _0x49e143
-                });
-              } catch {}
-            } catch {}
-          }
-        } catch {}
-      });
     });
     const _0x3b4bc7 = globalThis["__miasAutoReplyCD"] ||= new Map();
     globalThis['__miasAutoReplyAllowed'] = function (_0x4fbe17) {
