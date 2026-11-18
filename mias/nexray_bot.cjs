@@ -3355,8 +3355,44 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   cmd(['tg-sticker', 'tgsticker', 'telegramsticker', 'tgs', 'tgstickers', 'tg-stickers'], { desc: 'Download Telegram sticker pack or convert image to Telegram sticker format', category: 'Nexray-Tools' }, async (sock, msg, args) => {
-    // 1. Extract Telegram Bot Token if passed in args or available in environment/config
-    let tgToken = String(process.env.TELEGRAM_BOT_TOKEN || process.env.TGS_BOT_TOKEN || process.env.TG_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || CONFIG?.TELEGRAM_BOT_TOKEN || '').trim();
+    // 1. Resolve Telegram Bot Token from env, config, or direct .env file scan
+    let tgToken = '';
+    try {
+      tgToken = String(process.env.TELEGRAM_BOT_TOKEN || process.env.TGS_BOT_TOKEN || process.env.TG_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || CONFIG?.TELEGRAM_BOT_TOKEN || '').trim();
+    } catch {}
+
+    if (!tgToken) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const candidates = [
+          path.resolve(process.cwd(), '.env'),
+          path.resolve(__dirname, '..', '.env'),
+          path.resolve(__dirname, '.env')
+        ];
+        for (const cp of candidates) {
+          if (fs.existsSync(cp)) {
+            const lines = fs.readFileSync(cp, 'utf8').split(/\r?\n/);
+            for (const line of lines) {
+              const m = line.match(/^\s*(?:export\s+)?(TELEGRAM_BOT_TOKEN|TGS_BOT_TOKEN|TG_BOT_TOKEN|BOT_TOKEN)\s*=\s*(.*)$/);
+              if (m) {
+                let val = m[2].trim();
+                if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                  val = val.slice(1, -1).trim();
+                }
+                if (val) {
+                  tgToken = val;
+                  process.env.TELEGRAM_BOT_TOKEN = tgToken;
+                  break;
+                }
+              }
+            }
+            if (tgToken) break;
+          }
+        }
+      } catch {}
+    }
+
     const tokenIdx = (args || []).findIndex(a => /^\d{8,12}:[A-Za-z0-9_-]{35,}$/.test(String(a || '').trim()));
     if (tokenIdx !== -1) {
       tgToken = args[tokenIdx].trim();
@@ -3372,85 +3408,90 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
       const packShortName = packMatch[1];
       await react(sock, msg, '🎭');
 
-      if (tgToken) {
+      if (!tgToken) {
+        // Try fallback mirror if no token configured
         try {
-          const api = `https://api.telegram.org/bot${tgToken}`;
-          const res = await axios.get(`${api}/getStickerSet`, {
-            params: { name: packShortName },
-            timeout: 30000,
-            validateStatus: () => true
-          });
-
-          if (res.data?.ok && res.data?.result) {
-            const set = res.data.result;
-            const packTitle = set.title || packShortName;
-            const stickers = (set.stickers || []).slice(0, 15);
-
-            if (!stickers.length) {
-              return sendReply(sock, msg, `🎭 *${packTitle}*\n⚠️ No stickers found in this pack.`);
-            }
-
-            await sendReply(sock, msg, `🎭 *${packTitle}*\n⏳ Downloading ${stickers.length} stickers...`);
-
-            let sent = 0;
-            for (const item of stickers) {
-              try {
-                const fileRes = await axios.get(`${api}/getFile`, {
-                  params: { file_id: item.file_id },
-                  timeout: 20000
-                });
-                const filePath = fileRes.data?.result?.file_path;
-                if (!filePath) continue;
-
-                const fileBytes = await axios.get(`https://api.telegram.org/file/bot${tgToken}/${filePath}`, {
-                  responseType: 'arraybuffer',
-                  timeout: 25000
-                });
-                const rawBuf = Buffer.from(fileBytes.data);
-                const stickerBuf = await _convertMediaToWebpSticker(rawBuf, filePath);
-
-                await sock.sendMessage(msg.key.remoteJid, { sticker: stickerBuf }, { quoted: msg });
-                sent++;
-                await new Promise(r => setTimeout(r, 600));
-              } catch (e) {
-                console.error('[tgsticker] Error converting/sending sticker:', e && e.message);
-              }
-            }
-
-            if (sent > 0) {
-              await react(sock, msg, '✅');
-              return;
-            }
-          } else if (res.data?.error_code === 401) {
-            await sendReply(sock, msg, `❌ *Telegram Error*\nInvalid bot token. Check TELEGRAM_BOT_TOKEN in .env`);
-            await react(sock, msg, '❌');
-            return;
-          } else if (res.data?.description) {
-            await sendReply(sock, msg, `❌ *Telegram Error*\n${res.data.description}`);
-            await react(sock, msg, '❌');
+          const packUrl = `https://t.me/addstickers/${packShortName}`;
+          const r = await nx.tools.telegramSticker({ url: packUrl });
+          const m = await _media(r, axios);
+          if (m) {
+            await _sendImg(sock, msg, m.buf, `🎭 *Telegram Sticker: ${packShortName}*`);
+            await react(sock, msg, '✅');
             return;
           }
-        } catch (err) {
-          console.error('[tgsticker] Token fetch failed:', err.message);
-        }
+        } catch {}
+
+        await sendReply(sock, msg, `🎭 *Telegram Stickers*\n⚠️ Token missing. Add TELEGRAM_BOT_TOKEN in .env`);
+        await react(sock, msg, '❌');
+        return;
       }
 
-      // If no token was configured or token call was skipped, attempt NexRay or public mirrors without leaking 401
       try {
-        const packUrl = `https://t.me/addstickers/${packShortName}`;
-        const r = await nx.tools.telegramSticker({ url: packUrl });
-        const m = await _media(r, axios);
-        if (m) {
-          await _sendImg(sock, msg, m.buf, `🎭 *Telegram Sticker: ${packShortName}*`);
-          await react(sock, msg, '✅');
+        const api = `https://api.telegram.org/bot${tgToken}`;
+        const res = await axios.get(`${api}/getStickerSet`, {
+          params: { name: packShortName },
+          timeout: 30000,
+          validateStatus: () => true
+        });
+
+        if (res.data?.ok && res.data?.result) {
+          const set = res.data.result;
+          const packTitle = set.title || packShortName;
+          const stickers = (set.stickers || []).slice(0, 15);
+
+          if (!stickers.length) {
+            return sendReply(sock, msg, `🎭 *${packTitle}*\n⚠️ No stickers found in this pack.`);
+          }
+
+          await sendReply(sock, msg, `🎭 *${packTitle}*\n⏳ Downloading ${stickers.length} stickers...`);
+
+          let sent = 0;
+          for (const item of stickers) {
+            try {
+              const fileRes = await axios.get(`${api}/getFile`, {
+                params: { file_id: item.file_id },
+                timeout: 20000
+              });
+              const filePath = fileRes.data?.result?.file_path;
+              if (!filePath) continue;
+
+              const fileBytes = await axios.get(`https://api.telegram.org/file/bot${tgToken}/${filePath}`, {
+                responseType: 'arraybuffer',
+                timeout: 25000
+              });
+              const rawBuf = Buffer.from(fileBytes.data);
+              const stickerBuf = await _convertMediaToWebpSticker(rawBuf, filePath);
+
+              await sock.sendMessage(msg.key.remoteJid, { sticker: stickerBuf }, { quoted: msg });
+              sent++;
+              await new Promise(r => setTimeout(r, 600));
+            } catch (e) {
+              console.error('[tgsticker] Error converting/sending sticker:', e && e.message);
+            }
+          }
+
+          if (sent > 0) {
+            await react(sock, msg, '✅');
+            return;
+          }
+          await sendReply(sock, msg, `❌ *Telegram Error*\nFailed to send converted stickers.`);
+          await react(sock, msg, '❌');
+          return;
+        } else if (res.data?.error_code === 401) {
+          await sendReply(sock, msg, `❌ *Telegram Error*\nInvalid bot token. Check TELEGRAM_BOT_TOKEN in .env`);
+          await react(sock, msg, '❌');
+          return;
+        } else if (res.data?.description) {
+          await sendReply(sock, msg, `❌ *Telegram Error*\n${res.data.description}`);
+          await react(sock, msg, '❌');
           return;
         }
-      } catch {}
-
-      // If pack could not be downloaded without token, provide concise 2-line notice
-      await sendReply(sock, msg, `🎭 *Telegram Stickers*\n⚠️ Token missing or failed. Add TELEGRAM_BOT_TOKEN in .env`);
-      await react(sock, msg, '❌');
-      return;
+      } catch (err) {
+        console.error('[tgsticker] Token fetch failed:', err.message);
+        await sendReply(sock, msg, `❌ *Telegram Error*\n${err?.response?.data?.description || err.message || 'Connection failed.'}`);
+        await react(sock, msg, '❌');
+        return;
+      }
     }
 
     // CASE B: Image conversion to Telegram sticker format (512x512)
@@ -3499,7 +3540,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     }
   });
 
-  cmd(['tiktok-earnings', 'ttearnings'], { desc: 'Estimate TikTok creator earnings', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    cmd(['tiktok-earnings', 'ttearnings'], { desc: 'Estimate TikTok creator earnings', category: 'Nexray-Tools' }, async (sock, msg, args) => {
     const username = args[0]; if (!username) return _noArgs(sock, msg, 'tiktok-earnings <username>');
     await react(sock, msg, '💰');
     try {
