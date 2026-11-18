@@ -199,6 +199,7 @@ import { installSettingsCommand } from './features/settingsCommands.js';
 import { installSplitVideo } from './features/splitVideo.js';
 import { convertToMp4 } from './lib/videoTools.js';
 import { installPairCommands } from './features/pairCommands.js';
+import { installChannelReaction } from './features/channelReaction.js';
 import { installRentBotCommands } from './features/rentBotCommands.js';
 import { installSetsudoCommand, installSudoCommand, sudoPending as _0x3341c1 } from './features/sudoCommands.js';
 import { createCmdGrantStore, installCmdGrantCommands } from './features/cmdGrants.js';
@@ -2959,7 +2960,7 @@ async function connectToWA(_0x4ec381 = ![]) {
         'creds': _0x28c414["creds"],
         'keys': _0x28c414["keys"]
       },
-      'browser': typeof Browsers !== 'undefined' && Browsers?.["macOS"] ? Browsers["macOS"]("Safari") : typeof Browsers !== "undefined" && Browsers?.["ubuntu"] ? Browsers["macOS"]("Safari") : ["Mac OS", 'Safari', "17.4.1"],
+      'browser': typeof Browsers !== 'undefined' && Browsers?.["macOS"] ? Browsers["macOS"]("Safari") : ["Mac OS", 'Safari', "17.4.1"],
       'markOnlineOnConnect': process.env.MARK_ONLINE === '0' ? ![] : _isAlwaysOnlineEnabled(),
       'syncFullHistory': ![],
       'shouldSyncHistoryMessage': () => ![],
@@ -50894,7 +50895,7 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
             'creds': _0x5ba0fe["creds"],
             'keys': _0x5ba0fe['keys']
           },
-          'browser': typeof Browsers !== 'undefined' && Browsers?.["macOS"] ? Browsers["macOS"]('Safari') : typeof Browsers !== "undefined" && Browsers?.["ubuntu"] ? Browsers['macOS']("Safari") : ["Mac OS", "Safari", "17.4.1"],
+          'browser': typeof Browsers !== 'undefined' && Browsers?.["macOS"] ? Browsers["macOS"]('Safari') : ["Mac OS", "Safari", "17.4.1"],
           'markOnlineOnConnect': ![],
           'generateHighQualityLinkPreview': ![],
           'defaultQueryTimeoutMs': 0xea60,
@@ -61969,6 +61970,15 @@ installPairCommands({
   'cmd': (..._0x2fa64c) => cmd(..._0x2fa64c),
   'sendReply': (..._0x5c80c3) => sendReply(..._0x5c80c3),
   'CONFIG': CONFIG
+});
+installChannelReaction({
+  cmd: (..._0xcrCmd) => cmd(..._0xcrCmd),
+  sendReply: (..._0xcrReply) => sendReply(..._0xcrReply),
+  react: (..._0xcrReact) => react(..._0xcrReact),
+  CONFIG: CONFIG,
+  isOwner: _0xcrOwner => isOwner(_0xcrOwner),
+  isCreator: _0xcrCreator => isCreator(_0xcrCreator),
+  getSender: _0xcrSender => getSender(_0xcrSender)
 });
 installRentBotCommands({
   'cmd': (..._0x23fd7e) => cmd(..._0x23fd7e),

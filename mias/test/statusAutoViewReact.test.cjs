@@ -75,18 +75,21 @@ console.log('Testing Auto View Status & Auto React Status logic...');
 
   // Verify shouldSilenceForPrivateMode has status@broadcast bypass
   assert(
+    /_0x25f7b6\[["']?key["']?\]\[["']?remoteJid["']?\]\s*===\s*['"]status@broadcast['"]/.test(code) ||
     code.includes("if(_0x25f7b6[_0x3209f8(0x10be)][_0x3209f8(0x1eea)]==='status@broadcast')return![];"),
     'shouldSilenceForPrivateMode must exempt status@broadcast'
   );
 
   // Verify shouldProcessIncomingMessage has status@broadcast bypass
   assert(
+    /_0x444f2c\?\.\[['"]key['"]\]\?\.\[['"]remoteJid['"]\]\s*===\s*['"]status@broadcast['"]/.test(code) ||
     code.includes("if(_0x444f2c?.['key']?.['remoteJid']==='status@broadcast')return!![];"),
     'shouldProcessIncomingMessage must accept status@broadcast'
   );
 
   // Verify view and react filters are decoupled in status handler
   assert(
+    /_0x3e51a1\s*=\s*!_0x43dca8\['statusAuthorAllowed'\]\(_0x3fb4e2,\s*'react',\s*_0x1e21e3\)/.test(code) ||
     code.includes("const _0x3e51a1=!_0x43dca8['statusAuthorAllowed'](_0x3fb4e2,'react',_0x1e21e3);"),
     'React filter must not be coupled to view filter (_0x72b4b2 || removed)'
   );

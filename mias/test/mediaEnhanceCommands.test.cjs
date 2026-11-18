@@ -3,6 +3,20 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const { execSync } = require("node:child_process");
+
+// Ensure test fixture files exist in /tmp
+try {
+  if (!fs.existsSync("/tmp/test_in.jpg")) {
+    execSync("ffmpeg -y -f lavfi -i color=c=blue:s=100x100:d=1 -frames:v 1 /tmp/test_in.jpg", { stdio: "ignore" });
+  }
+} catch (_) {}
+try {
+  if (!fs.existsSync("/tmp/sample.mp4")) {
+    execSync("ffmpeg -y -f lavfi -i testsrc=size=160x120:rate=1:duration=1 -pix_fmt yuv420p /tmp/sample.mp4", { stdio: "ignore" });
+  }
+} catch (_) {}
+
 const me = require("../features/mediaEnhance.cjs");
 const v39 = require("../precious-fixes-v39.cjs");
 
