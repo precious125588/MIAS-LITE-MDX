@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import { createRequire } from "module";
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 const require = createRequire(import.meta.url);
 
@@ -183,8 +184,90 @@ export async function convertToMp4(inPath, outPath, { kind = "video", timeoutMs 
   };
   let ok = false;
   if (kind === "sticker") {
-    ok = await attempt(["-i", inPath, "-movflags", "+faststart", "-pix_fmt", "yuv420p", "-vf", `${scaleEven},fps=15`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20"])
-      || await attempt(["-loop", "1", "-t", "3", "-i", inPath, "-movflags", "+faststart", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]);
+    // Check if the sticker is an animated WebP
+    let animated = false;
+    try {
+      const buf = fs.readFileSync(inPath);
+      if (buf.length > 12 && buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP") {
+        for (let off = 12; off + 8 <= buf.length;) {
+          const tag = buf.subarray(off, off + 4).toString("ascii");
+          const sz = buf.readUInt32LE(off + 4);
+          if (tag === "ANIM" || tag === "ANMF") {
+            animated = true;
+            break;
+          }
+          off += 8 + sz + (sz % 2);
+        }
+      }
+    } catch {}
+
+    const tempCleanups = [];
+    try {
+      if (animated) {
+        const tempGif = path.join(os.tmpdir(), `stk_anim_${Date.now()}_${Math.random().toString(36).slice(2)}.gif`);
+        tempCleanups.push(tempGif);
+        let gifReady = false;
+
+        // 1. Try sharp
+        try {
+          const sharp = require("sharp");
+          const gBuf = await sharp(inPath, { animated: true }).gif().toBuffer();
+          if (gBuf && gBuf.length > 0) {
+            fs.writeFileSync(tempGif, gBuf);
+            gifReady = true;
+          }
+        } catch {}
+
+        // 2. Try ImageMagick
+        if (!gifReady) {
+          for (const bin of ["magick", "convert"]) {
+            try {
+              const res = await runCapture(bin, [inPath, tempGif], 20000);
+              if (res.code === 0 && fs.existsSync(tempGif) && fs.statSync(tempGif).size > 0) {
+                gifReady = true;
+                break;
+              }
+            } catch {}
+          }
+        }
+
+        if (gifReady) {
+          ok = await attempt(["-i", tempGif, "-movflags", "+faststart", "-pix_fmt", "yuv420p", "-vf", `${scaleEven},fps=15`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]);
+        }
+      }
+
+      // Static sticker or animated fallback:
+      if (!ok) {
+        ok = await attempt(["-loop", "1", "-t", "3", "-i", inPath, "-movflags", "+faststart", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]);
+      }
+
+      if (!ok) {
+        ok = await attempt(["-i", inPath, "-movflags", "+faststart", "-pix_fmt", "yuv420p", "-vf", `${scaleEven},fps=15`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]);
+      }
+
+      // Fallback: convert static webp to PNG first
+      if (!ok) {
+        const tempPng = path.join(os.tmpdir(), `stk_stat_${Date.now()}_${Math.random().toString(36).slice(2)}.png`);
+        tempCleanups.push(tempPng);
+        let pngReady = false;
+        for (const bin of ["dwebp", "magick", "convert"]) {
+          try {
+            const r = await runCapture(bin, bin === "dwebp" ? [inPath, "-o", tempPng] : [inPath, tempPng], 10000);
+            if (r.code === 0 && fs.existsSync(tempPng) && fs.statSync(tempPng).size > 0) {
+              pngReady = true;
+              break;
+            }
+          } catch {}
+        }
+        if (pngReady) {
+          ok = await attempt(["-loop", "1", "-t", "3", "-i", tempPng, "-movflags", "+faststart", "-pix_fmt", "yuv420p", "-vf", scaleEven, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]);
+        }
+      }
+    } finally {
+      for (const f of tempCleanups) {
+        try { fs.unlinkSync(f); } catch {}
+      }
+    }
   } else if (kind === "image") {
     ok = await attempt(["-loop", "1", "-t", "5", "-i", inPath, "-vf", scaleEven, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-preset", "veryfast", "-crf", "20"]);
   } else if (kind === "audio") {

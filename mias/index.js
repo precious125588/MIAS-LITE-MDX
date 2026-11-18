@@ -198,6 +198,7 @@ import { ensureDiskSpace, getMediaLimitBytes, isNoSpaceError, TIKTOK_DOWNLOAD_MA
 import { installSettingsCommand } from './features/settingsCommands.js';
 import { installSplitVideo } from './features/splitVideo.js';
 import { convertToMp4 } from './lib/videoTools.js';
+import { evaluateNumericAndScientific, simplifySymbolicAlgebra, formatNumber } from './lib/calcEngine.js';
 import { installPairCommands } from './features/pairCommands.js';
 import { installRentBotCommands } from './features/rentBotCommands.js';
 import { installSetsudoCommand, installSudoCommand, sudoPending as _0x3341c1 } from './features/sudoCommands.js';
@@ -20304,21 +20305,65 @@ cmd(["creator", "dev", "developer", "botcreator"], {
     await sendReply(_0x3c59b6, _0x4e6fba, _0x1b131d);
   }
 });
-cmd("calc", {
-  'desc': "Calculator — .calc <expression>",
+cmd(["calc", "calculate", "solve", "maths"], {
+  'desc': "Universal Calculator & Science Solver — math, physics, chemistry, algebra (.calc <expression>)",
   'category': "TOOLS"
 }, async (_0x5c726b, _0x1c5d8f, _0x65d70c) => {
-  if (!_0x65d70c["length"]) {
-    await sendReply(_0x5c726b, _0x1c5d8f, "Usage: " + CONFIG["PREFIX"] + "calc <expression>");
+  const query = (_0x65d70c || []).join(' ').trim();
+  if (!query) {
+    await sendReply(_0x5c726b, _0x1c5d8f, "🧮 *Universal Calculator & Science Solver*\n\n" +
+      "Usage: " + CONFIG["PREFIX"] + "calc <expression or problem>\n\n" +
+      "Examples:\n" +
+      "• Arithmetic: " + CONFIG["PREFIX"] + "calc 2^10 + 50% * 200\n" +
+      "• Scientific: " + CONFIG["PREFIX"] + "calc sin(pi/2) + sqrt(144)\n" +
+      "• Symbolic: " + CONFIG["PREFIX"] + "calc x + x\n" +
+      "• Constants: " + CONFIG["PREFIX"] + "calc c * 2 (speed of light)\n" +
+      "• Equations: " + CONFIG["PREFIX"] + "calc 2x + 4 = 10\n" +
+      "• Science: " + CONFIG["PREFIX"] + "calc molar mass of H2SO4\n" +
+      "• Physics: " + CONFIG["PREFIX"] + "calc kinetic energy 10kg at 20m/s");
     return;
   }
-  try {
-    const _0x36ad04 = _0x65d70c["join"]('\x20')["replace"](/[^0-9+\-*/.() ]/g, '');
-    const _0xf1f79 = Function("\"use strict\"; return (" + _0x36ad04 + ')')();
-    await sendReply(_0x5c726b, _0x1c5d8f, "🧮 *Calculator*\n\n" + _0x36ad04 + " = *" + _0xf1f79 + '*');
-  } catch {
-    await sendReply(_0x5c726b, _0x1c5d8f, "❌ Invalid expression.");
+
+  // 1. Pure numeric & scientific calculation
+  const numRes = evaluateNumericAndScientific(query);
+  if (numRes !== null) {
+    await sendReply(_0x5c726b, _0x1c5d8f, "🧮 *Calculator*\n\n📥 Input: `" + query + "`\n📤 Result: *" + formatNumber(numRes) + "*");
+    return;
   }
+
+  // 2. Symbolic algebra simplification & linear equation solving (e.g. x + x => 2x)
+  const algRes = simplifySymbolicAlgebra(query);
+  if (algRes !== null) {
+    await sendReply(_0x5c726b, _0x1c5d8f, "🧮 *Algebra Solver*\n\n📥 Expression: `" + query + "`\n📤 Result: *" + algRes + "*");
+    return;
+  }
+
+  // 3. Complex science, physics, chemistry & word problems via AI Solver
+  await react(_0x5c726b, _0x1c5d8f, '🧮');
+  try {
+    let aiAnswer = null;
+    try {
+      aiAnswer = await _dcAiText("/ai/mathgpt", "text", query);
+    } catch {}
+    if (!aiAnswer || typeof aiAnswer !== 'string' || aiAnswer.length < 2) {
+      try {
+        aiAnswer = await _dcAiText("/ai/gpt4", "text", "You are an expert scientific calculator and problem solver for mathematics, physics, and chemistry. Solve accurately, concisely, and show the final answer clearly: " + query);
+      } catch {}
+    }
+    if (!aiAnswer || typeof aiAnswer !== 'string' || aiAnswer.length < 2) {
+      try {
+        aiAnswer = await freeAI(query, "You are an expert scientific calculator and problem solver for mathematics, physics, and chemistry. Solve accurately, concisely, and show the final answer clearly.");
+      } catch {}
+    }
+    if (aiAnswer && typeof aiAnswer === 'string' && aiAnswer.trim().length > 0) {
+      await sendReply(_0x5c726b, _0x1c5d8f, "🧮 *Science & Math Solver*\n\n📥 Problem: `" + query + "`\n\n" + aiAnswer.trim());
+      await react(_0x5c726b, _0x1c5d8f, '✅');
+      return;
+    }
+  } catch {}
+
+  await react(_0x5c726b, _0x1c5d8f, '❌');
+  await sendReply(_0x5c726b, _0x1c5d8f, "❌ Could not evaluate: `" + query + "`\nPlease check your syntax or try rephrasing.");
 });
 cmd("calendar", {
   'desc': "Show calendar for current month (image)",
@@ -47249,160 +47294,6 @@ cmd(["todoc", "todocument", "tofile"], {
     await sendReply(_0x57a7ec, _0x78bb4d, "❌ todoc failed: " + (_0x3ef415?.["message"] || _0x3ef415));
   }
 });
-cmd(["tovid", "tovideo", "stickertovid", 'imgtovid', "giftomp4"], {
-  'desc': "Convert sticker/GIF/image to video",
-  'category': "MEDIA"
-}, async (_0x2ba38f, _0x23ccd3) => {
-  const _0x216a5d = _0x23ccd3["message"]?.["extendedTextMessage"]?.['contextInfo'];
-  const _0x154cdb = _0x216a5d?.['quotedMessage'];
-  const _0x5c6780 = _0x154cdb?.["stickerMessage"] || _0x23ccd3["message"]?.["stickerMessage"];
-  const _0x243243 = _0x154cdb?.["imageMessage"] || _0x23ccd3["message"]?.['imageMessage'];
-  const _0x438c15 = _0x154cdb?.["videoMessage"] || _0x23ccd3["message"]?.["videoMessage"];
-  const _0x208e80 = _0x5c6780 || _0x243243 || _0x438c15;
-  if (!_0x208e80) {
-    await sendReply(_0x2ba38f, _0x23ccd3, "❌ Reply to a sticker, image, or GIF with " + CONFIG["PREFIX"] + "tovid");
-    return;
-  }
-  await react(_0x2ba38f, _0x23ccd3, '🌀');
-  const {
-    execFile: _0x3c0b71
-  } = await import("child_process");
-  const _0x3e6722 = _0xfa23c5 => new Promise((_0x4e8742, _0x29604d) => {
-    const _0x158511 = String(_0xfa23c5)["match"](/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
-    if (!_0x158511['length']) {
-      return _0x29604d(new Error("tovid: empty command"));
-    }
-    const _0x129e40 = _0x158511["shift"]();
-    const _0x521cde = _0x158511['map'](_0x50eb4a => _0x50eb4a["replace"](/^["']|["']$/g, ''));
-    _0x3c0b71(_0x129e40, _0x521cde, {
-      'maxBuffer': 0x100 * 0x400 * 0x400,
-      'timeout': 0x493e0
-    }, (_0x33f132, _0x53e4fc, _0x5f9191) => {
-      if (_0x33f132) {
-        _0x33f132["message"] = (_0x33f132["message"] || '') + '\x20' + String(_0x5f9191 || '')["slice"](-0x190);
-        _0x29604d(_0x33f132);
-      } else {
-        _0x4e8742(_0x53e4fc);
-      }
-    });
-  });
-  const _0x5d77eb = _0x49291b["tmpdir"]();
-  const _0x246694 = Date["now"]();
-  const _0x569781 = _0x5c6780 ? 'webp' : _0x243243 ? "jpg" : "mp4";
-  const _0xcc7b1a = _0xf9fd94['join'](_0x5d77eb, "tovid_in_" + _0x246694 + '.' + _0x569781);
-  const _0x2e752f = _0xf9fd94['join'](_0x5d77eb, "tovid_out_" + _0x246694 + ".mp4");
-  const _0x1c89a3 = await _0x2ba38f["sendMessage"](_0x23ccd3["key"]["remoteJid"], {
-    'text': "🎞️ *Converting to video...*"
-  }, {
-    'quoted': _0x23ccd3
-  });
-  try {
-    const _0x2a15eb = _0x5c6780 ? "sticker" : _0x243243 ? "image" : "video";
-    const _0x520e30 = await downloadContentFromMessage(_0x208e80, _0x2a15eb);
-    let _0x1c0a82 = Buffer["from"]([]);
-    let _0x4d58a4;
-    const _0x1bc10a = () => {
-      clearTimeout(_0x4d58a4);
-      _0x4d58a4 = setTimeout(() => {
-        try {
-          _0x520e30["destroy"]?.(new Error("media download stalled"));
-        } catch {}
-      }, 0xea60);
-    };
-    _0x1bc10a();
-    try {
-      for await (const _0x53b7c6 of _0x520e30) {
-        _0x1bc10a();
-        _0x1c0a82 = Buffer["concat"]([_0x1c0a82, _0x53b7c6]);
-        if (_0x1c0a82["length"] > 0x50 * 0x400 * 0x400) {
-          throw new Error("file too large (>80MB)");
-        }
-      }
-    } finally {
-      clearTimeout(_0x4d58a4);
-    }
-    if (!_0x1c0a82["length"]) {
-      throw new Error('empty\x20media\x20download\x20—\x20re-send\x20the\x20sticker/image\x20and\x20try\x20again');
-    }
-    _0x2a74f2["writeFileSync"](_0xcc7b1a, _0x1c0a82);
-    let _0x1b5256;
-    let _0x34d52e;
-    if (_0x5c6780) {
-      const _0x2e8a10 = _0x1c0a82["length"] > 0x10 && _0x1c0a82["subarray"](0x0, 0x4)["toString"]("ascii") === "RIFF" && _0x1c0a82["subarray"](0x8, 0xc)["toString"]("ascii") === "WEBP";
-      let _0x2a8c33 = ![];
-      if (_0x2e8a10) {
-        for (let _0x3ef755 = 0xc; _0x3ef755 + 0x8 <= _0x1c0a82["length"];) {
-          const _0x43da15 = _0x1c0a82["subarray"](_0x3ef755, _0x3ef755 + 0x4)['toString']('ascii');
-          const _0xea2282 = _0x1c0a82["readUInt32LE"](_0x3ef755 + 0x4);
-          if (_0x43da15 === "ANIM" || _0x43da15 === 'ANMF') {
-            _0x2a8c33 = !![];
-            break;
-          }
-          _0x3ef755 += 0x8 + _0xea2282 + _0xea2282 % 0x2;
-        }
-      }
-      if (!_0x2a8c33 && _0x2e8a10) {
-        await sendReply(_0x2ba38f, _0x23ccd3, "❌ This is a *static sticker* and cannot be converted to video. Only *animated stickers* can be converted.");
-        try {
-          await react(_0x2ba38f, _0x23ccd3, '❌');
-        } catch {}
-        try {
-          _0x2a74f2["unlinkSync"](_0xcc7b1a);
-        } catch {}
-        return;
-      }
-      try {
-        const _0x3fb03d = require("sharp");
-        const _0xb12e62 = await _0x3fb03d(_0x1c0a82, {
-          'animated': !![]
-        })['gif']()["toBuffer"]();
-        _0x2a74f2["writeFileSync"](_0xcc7b1a, _0xb12e62);
-      } catch (_0x43624b) {}
-      _0x1b5256 = 'ffmpeg\x20-y\x20-v\x20error\x20-i\x20\x22' + _0xcc7b1a + '\x22\x20-map\x200:v:0\x20-map\x200:a:0?\x20-movflags\x20+faststart\x20-pix_fmt\x20yuv420p\x20-vf\x20\x22scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=15\x22\x20-c:v\x20libx264\x20-preset\x20veryfast\x20-crf\x2023\x20\x22' + _0x2e752f + '\x22';
-      _0x34d52e = "ffmpeg -y -v error -i \"" + _0xcc7b1a + "\" -map 0:v:0 -movflags +faststart -pix_fmt yuv420p -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -c:v libx264 -preset veryfast -crf 23 \"" + _0x2e752f + '\x22';
-    } else {
-      _0x243243 ? (_0x1b5256 = "ffmpeg -y -loop 1 -t 5 -i \"" + _0xcc7b1a + "\" -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -c:v libx264 -pix_fmt yuv420p -movflags faststart -preset veryfast -crf 23 \"" + _0x2e752f + '\x22', _0x34d52e = "ffmpeg -y -loop 1 -t 5 -i \"" + _0xcc7b1a + "\" -vf \"scale=720:720:force_original_aspect_ratio=decrease,pad=720:720:(ow-iw)/2:(oh-ih)/2:color=black,zoompan=z='min(zoom+0.0015,1.5)':d=125:s=720x720,fps=25\" -c:v libx264 -pix_fmt yuv420p -movflags faststart -preset veryfast -crf 23 \"" + _0x2e752f + '\x22') : (_0x1b5256 = "ffmpeg -y -i \"" + _0xcc7b1a + "\" -c:v libx264 -pix_fmt yuv420p -movflags faststart -preset veryfast -crf 23 -c:a aac \"" + _0x2e752f + '\x22', _0x34d52e = "ffmpeg -y -i \"" + _0xcc7b1a + "\" -c:v libx264 -pix_fmt yuv420p -movflags faststart \"" + _0x2e752f + '\x22');
-    }
-    try {
-      await _0x3e6722(_0x1b5256, {
-        'stdio': 'pipe',
-        'timeout': 0xafc8
-      });
-    } catch {
-      await _0x3e6722(_0x34d52e, {
-        'stdio': 'pipe',
-        'timeout': 0x7530
-      });
-    }
-    const _0x65965c = _0x2a74f2["readFileSync"](_0x2e752f);
-    const _0x36f0ba = _0x5c6780 ? "🎞️ Sticker → Video" : _0x243243 ? "🎞️ Image → Video" : "🎞️ Video converted";
-    await _0x2ba38f['sendMessage'](_0x23ccd3["key"]['remoteJid'], {
-      'video': _0x65965c,
-      'mimetype': "video/mp4",
-      'caption': _0x36f0ba
-    }, {
-      'quoted': _0x23ccd3
-    });
-    try {
-      await editMessage(_0x2ba38f, _0x23ccd3["key"]["remoteJid"], _0x1c89a3["key"], '🎞️\x20*Done!*\x20✅');
-    } catch {}
-    await react(_0x2ba38f, _0x23ccd3, '✅');
-  } catch (_0x4d3d77) {
-    await react(_0x2ba38f, _0x23ccd3, '❌');
-    try {
-      await editMessage(_0x2ba38f, _0x23ccd3["key"]['remoteJid'], _0x1c89a3['key'], "❌ tovid failed: " + (_0x4d3d77?.["message"] || _0x4d3d77));
-    } catch {
-      await sendReply(_0x2ba38f, _0x23ccd3, "❌ tovid failed: " + (_0x4d3d77?.["message"] || _0x4d3d77));
-    }
-  } finally {
-    try {
-      _0x2a74f2['unlinkSync'](_0xcc7b1a);
-    } catch {}
-    try {
-      _0x2a74f2["unlinkSync"](_0x2e752f);
-    } catch {}
-  }
-});
 cmd(['aivid', "aivideo", "videogen", "vidgen"], {
   'desc': "Generate an AI video from a text prompt",
   'category': 'AI'
@@ -60978,7 +60869,7 @@ try {
       await sendReply(_0x1947df, _0x5ae6a0, "❌ tomp3 failed: " + _cleanMsg);
     }
   });
-  cmd(['tomp4', "tovideo", "converttomp4", "doc2mp4"], {
+  cmd(['tomp4', "tovid", "tovideo", "converttomp4", "doc2mp4", "stickertovid", "imgtovid", "giftomp4"], {
     'desc': "Convert any video/DOC/sticker to normal MP4",
     'category': 'MEDIA'
   }, async (_0x3f4d38, _0x47f06a) => {
