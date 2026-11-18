@@ -1,6 +1,6 @@
 {
-  "buildId": "auto-20261118-221132",
-  "builtAt": "2026-11-18T22:11:32.793Z",
+  "buildId": "auto-20261118-221159",
+  "builtAt": "2026-11-18T22:11:59.281Z",
   "files": {
     "server.js": "1fb88b9c25947b99554ac30f596350a32943679a29de716a507dd18d029bb35e",
     "mias/index.js": "2dd7ca613f740f56f0ceca05753a23f3f3cdd1d972f43855403d0aebc93c607b",
@@ -15,7 +15,7 @@
   ],
   "timestamp": 1792324803412,
   "target": "precious-v2.1-fix-whois-target-detection",
-  "commit": "aadd5bfa8a5de9c5bfb514ade59153431298f0dd",
-  "sha": "aadd5bfa8a5de9c5bfb514ade59153431298f0dd",
+  "commit": "eb57aacc8ff9d26eb12749f6f91f70d45ea2d82c",
+  "sha": "eb57aacc8ff9d26eb12749f6f91f70d45ea2d82c",
   "stamp": "auto-20261109-073907"
 }
