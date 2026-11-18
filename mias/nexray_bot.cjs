@@ -57,28 +57,195 @@ async function _media(r, ax) {
   return null;
 }
 
-async function _getImgFromMsg(msg, dlFn) {
-  const m = msg.message || {};
-  // Check every known wrapper type's contextInfo so reply-to-image always works
-  const _ctx = (k) => m[k]?.contextInfo?.quotedMessage?.imageMessage ?? null;
-  const imgMsg =
-    m.imageMessage                        ||  // current msg IS an image
-    _ctx('extendedTextMessage')           ||  // text reply to image  ← most common
-    _ctx('imageMessage')                  ||  // image reply to image
-    _ctx('videoMessage')                  ||
-    _ctx('audioMessage')                  ||
-    _ctx('stickerMessage')                ||
-    _ctx('documentMessage')               ||
-    _ctx('buttonsResponseMessage')        ||
-    _ctx('templateButtonReplyMessage')    ||
-    _ctx('ephemeralMessage')              ||
-    _ctx('viewOnceMessage')               ||
-    null;
+function _unwrapBaileysMsg(m) {
+  let cur = m;
+  for (let i = 0; i < 5 && cur; i++) {
+    const next =
+      cur.ephemeralMessage?.message ||
+      cur.viewOnceMessage?.message ||
+      cur.viewOnceMessageV2?.message ||
+      cur.viewOnceMessageV2Extension?.message ||
+      cur.documentWithCaptionMessage?.message;
+    if (next) cur = next;
+    else break;
+  }
+  return cur || {};
+}
+
+async function _getImgFromMsg(msg, dlFn, sock) {
+  if (!msg) return null;
+
+  // 1. Direct smsg helpers (most reliable when smsg is used)
+  if (typeof msg.quoted?.download === 'function') {
+    try {
+      const b = await msg.quoted.download();
+      if (Buffer.isBuffer(b) && b.length > 50) return b;
+    } catch {}
+  }
+  if (typeof msg.download === 'function' && (msg.mtype === 'imageMessage' || msg.type === 'image')) {
+    try {
+      const b = await msg.download();
+      if (Buffer.isBuffer(b) && b.length > 50) return b;
+    } catch {}
+  }
+
+  // 2. Unwrap Baileys wrappers
+  const root = msg.message ? _unwrapBaileysMsg(msg.message) : {};
+
+  // Check if current message is an image
+  let imgMsg = root.imageMessage || null;
+
+  // Check contextInfo quotedMessage
+  if (!imgMsg) {
+    for (const key of Object.keys(root)) {
+      const quoted = root[key]?.contextInfo?.quotedMessage;
+      if (quoted) {
+        const unwrappedQuoted = _unwrapBaileysMsg(quoted);
+        if (unwrappedQuoted.imageMessage) {
+          imgMsg = unwrappedQuoted.imageMessage;
+          break;
+        }
+        if (unwrappedQuoted.documentMessage && unwrappedQuoted.documentMessage.mimetype?.startsWith('image/')) {
+          imgMsg = unwrappedQuoted.documentMessage;
+          break;
+        }
+      }
+    }
+  }
+
+  // Also check msg.quoted?.message directly
+  if (!imgMsg && msg.quoted?.message) {
+    const q = _unwrapBaileysMsg(msg.quoted.message);
+    if (q.imageMessage) imgMsg = q.imageMessage;
+    else if (q.documentMessage && q.documentMessage.mimetype?.startsWith('image/')) imgMsg = q.documentMessage;
+  }
+
   if (!imgMsg) return null;
-  const stream = await dlFn(imgMsg, 'image');
-  let buf = Buffer.from([]);
-  for await (const chunk of stream) buf = Buffer.concat([buf, chunk]);
-  return buf.length > 100 ? buf : null;
+
+  // 3. Download via dlFn (downloadContentFromMessage)
+  if (typeof dlFn === 'function') {
+    try {
+      const stream = await dlFn(imgMsg, 'image');
+      let buf = Buffer.from([]);
+      for await (const chunk of stream) buf = Buffer.concat([buf, chunk]);
+      if (buf.length > 50) return buf;
+    } catch {}
+  }
+
+  // 4. Download via sock.downloadMediaMessage
+  if (typeof sock?.downloadMediaMessage === 'function') {
+    try {
+      const buf = await sock.downloadMediaMessage({ message: { imageMessage: imgMsg } });
+      if (Buffer.isBuffer(buf) && buf.length > 50) return buf;
+    } catch {}
+    if (msg.quoted) {
+      try {
+        const buf = await sock.downloadMediaMessage(msg.quoted);
+        if (Buffer.isBuffer(buf) && buf.length > 50) return buf;
+      } catch {}
+    }
+  }
+
+  return null;
+}
+
+async function _uploadImageBuf(buf, ax) {
+  if (!Buffer.isBuffer(buf) || buf.length < 50) return null;
+
+  // Provider 1: uguu.se via native fetch
+  try {
+    if (typeof FormData !== 'undefined' && typeof Blob !== 'undefined' && typeof fetch !== 'undefined') {
+      const form = new FormData();
+      form.append('files[]', new Blob([buf], { type: 'image/jpeg' }), 'image.jpg');
+      const r = await fetch('https://uguu.se/upload.php', { method: 'POST', body: form, signal: AbortSignal.timeout(15000) });
+      if (r.ok) {
+        const j = await r.json();
+        const u = j?.files?.[0]?.url;
+        if (u && typeof u === 'string' && u.startsWith('http')) return u;
+      }
+    }
+  } catch {}
+
+  // Provider 2: qu.ax via native fetch
+  try {
+    if (typeof FormData !== 'undefined' && typeof Blob !== 'undefined' && typeof fetch !== 'undefined') {
+      const form = new FormData();
+      form.append('files[]', new Blob([buf], { type: 'image/jpeg' }), 'image.jpg');
+      const r = await fetch('https://qu.ax/upload.php', { method: 'POST', body: form, signal: AbortSignal.timeout(15000) });
+      if (r.ok) {
+        const j = await r.json();
+        const u = j?.files?.[0]?.url;
+        if (u && typeof u === 'string' && u.startsWith('http')) return u;
+      }
+    }
+  } catch {}
+
+  // Provider 3: uguu.se via form-data / axios
+  try {
+    const FormDataPkg = require('form-data');
+    const form = new FormDataPkg();
+    form.append('files[]', buf, { filename: 'image.jpg', contentType: 'image/jpeg' });
+    const r = await (ax || require('axios')).post('https://uguu.se/upload.php', form, {
+      headers: form.getHeaders(),
+      timeout: 15000
+    });
+    const u = r?.data?.files?.[0]?.url;
+    if (u && typeof u === 'string' && u.startsWith('http')) return u;
+  } catch {}
+
+  // Provider 4: catbox via form-data / axios
+  try {
+    const FormDataPkg = require('form-data');
+    const form = new FormDataPkg();
+    form.append('reqtype', 'fileupload');
+    form.append('fileToUpload', buf, { filename: 'image.jpg', contentType: 'image/jpeg' });
+    const r = await (ax || require('axios')).post('https://catbox.moe/user/api.php', form, {
+      headers: { ...form.getHeaders(), 'User-Agent': 'Mozilla/5.0' },
+      timeout: 15000
+    });
+    if (typeof r?.data === 'string' && r.data.startsWith('http')) return r.data.trim();
+  } catch {}
+
+  return null;
+}
+
+async function _resolveImgMedia(sock, msg, args, dlFn, ax, nx) {
+  // 1. Direct HTTP URL in args
+  const argUrl = (args || []).find(a => typeof a === 'string' && /^https?:\/\//i.test(a.trim()));
+  if (argUrl) return { url: argUrl.trim(), buf: null };
+
+  // 2. Replied or attached image
+  let buf = null;
+  try {
+    buf = await _getImgFromMsg(msg, dlFn, sock);
+  } catch {}
+
+  if (buf && buf.length > 50) {
+    // Upload buffer to get a public URL for API endpoints
+    const cdnUrl = await _uploadImageBuf(buf, ax);
+    if (cdnUrl) return { url: cdnUrl, buf };
+
+    // Fallback: nx.uploader
+    try {
+      if (nx?.uploader?.upload) {
+        const up = await nx.uploader.upload({ file: buf });
+        const u = up?.result?.url || up?.data?.url || up?.url;
+        if (u && typeof u === 'string' && /^https?:\/\//i.test(u)) return { url: u, buf };
+      }
+    } catch {}
+
+    return { url: null, buf };
+  }
+
+  // 3. Quoted text containing a URL
+  try {
+    const q = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const qTxt = q?.conversation || q?.extendedTextMessage?.text || msg.quoted?.text || '';
+    const m = qTxt.match(/https?:\/\/\S+/i);
+    if (m) return { url: m[0], buf: null };
+  } catch {}
+
+  return { url: null, buf: null };
 }
 
 async function _sendImg(sock, msg, buf, caption) {
@@ -2813,14 +2980,64 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['blurface', 'blur-face'], { desc: 'Blur faces in an image', category: 'Nexray-Tools' }, async (sock, msg, args) => {
-    const url = args[0]; if (!url) return _noArgs(sock, msg, 'blurface <image-url>');
+  cmd(['blurface', 'blur-face', 'blur'], { desc: 'Blur faces or image (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
     await react(sock, msg, '😶');
     try {
-      const r = await nx.tools.blurface({ url }); const m = await _media(r, axios);
-      if (m) { await _sendImg(sock, msg, m.buf, '😶 *Blur Face*'); await react(sock, msg, '✅'); }
-      else throw new Error('No image returned');
-    } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
+      const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
+      if (!url && !buf) return _noArgs(sock, msg, 'blurface <image-url>  — or reply to an image with .blurface');
+
+      let resultBuf = null;
+
+      // 1. Try NexRay AI face blur endpoint if URL is available
+      if (url) {
+        try {
+          const r = await nx.tools.blurface({ url });
+          const m = await _media(r, axios);
+          if (m?.buf) resultBuf = m.buf;
+        } catch {}
+      }
+
+      if (resultBuf) {
+        await _sendImg(sock, msg, resultBuf, '😶 *Face Blurred*');
+        await react(sock, msg, '✅');
+        return;
+      }
+
+      // 2. Fallback: if no face was found or NexRay was unable to blur faces,
+      // apply general image blur using sharp or Jimp so the blur ALWAYS works
+      if (buf) {
+        try {
+          let sharp;
+          try { sharp = require('sharp'); } catch {}
+          if (sharp) {
+            resultBuf = await sharp(buf).blur(12).toBuffer();
+          }
+        } catch {}
+
+        if (!resultBuf) {
+          try {
+            let Jimp;
+            try { Jimp = require('jimp'); } catch {}
+            if (Jimp) {
+              const j = await Jimp.read(buf);
+              j.blur(10);
+              resultBuf = await j.getBufferAsync(Jimp.MIME_JPEG);
+            }
+          } catch {}
+        }
+
+        if (resultBuf) {
+          await _sendImg(sock, msg, resultBuf, '😶 *Image Blurred*');
+          await react(sock, msg, '✅');
+          return;
+        }
+      }
+
+      throw new Error('Failed to blur image. Please ensure the image is accessible and try again.');
+    } catch (e) {
+      await sendReply(sock, msg, `❌ Error: ${e.message}`);
+      await react(sock, msg, '❌');
+    }
   });
 
   cmd(['brokenlink', 'check-link'], { desc: 'Check for broken links on a website', category: 'Nexray-Tools' }, async (sock, msg, args) => {
@@ -3155,14 +3372,52 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['unblur', 'deblur'], { desc: 'Unblur a blurry image', category: 'Nexray-Tools' }, async (sock, msg, args) => {
-    const url = args[0]; if (!url) return _noArgs(sock, msg, 'unblur <image-url>');
+  cmd(['unblur', 'deblur', 'un-blur'], { desc: 'Unblur and enhance a blurry image (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
     await react(sock, msg, '🔍');
     try {
-      const r = await nx.tools.unblur({ url }); const m = await _media(r, axios);
-      if (m) { await _sendImg(sock, msg, m.buf, '🔍 *Image Unblurred*'); await react(sock, msg, '✅'); }
-      else throw new Error('No image returned');
-    } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
+      const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
+      if (!url && !buf) return _noArgs(sock, msg, 'unblur <image-url>  — or reply to an image with .unblur');
+
+      let resultBuf = null;
+
+      // 1. Primary: NexRay unblur endpoint
+      if (url) {
+        try {
+          const r = await nx.tools.unblur({ url });
+          const m = await _media(r, axios);
+          if (m?.buf) resultBuf = m.buf;
+        } catch {}
+      }
+
+      // 2. Secondary fallback: NexRay Remini AI enhancer
+      if (!resultBuf && url) {
+        try {
+          const r = await nx.tools.remini({ url });
+          const m = await _media(r, axios);
+          if (m?.buf) resultBuf = m.buf;
+        } catch {}
+      }
+
+      // 3. Tertiary fallback: NexRay enhancer
+      if (!resultBuf && url) {
+        try {
+          const r = await nx.tools.enhancer({ url });
+          const m = await _media(r, axios);
+          if (m?.buf) resultBuf = m.buf;
+        } catch {}
+      }
+
+      if (resultBuf) {
+        await _sendImg(sock, msg, resultBuf, '🔍 *Image Unblurred*');
+        await react(sock, msg, '✅');
+        return;
+      }
+
+      throw new Error('Failed to unblur image. Please ensure the image is accessible and try again.');
+    } catch (e) {
+      await sendReply(sock, msg, `❌ Error: ${e.message}`);
+      await react(sock, msg, '❌');
+    }
   });
 
   cmd(['upscale', 'upscale-img'], { desc: 'Upscale image resolution', category: 'Nexray-Tools' }, async (sock, msg, args) => {
