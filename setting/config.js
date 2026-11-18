@@ -13,6 +13,8 @@
 
 'use strict';
 
+try { require('dotenv').config(); } catch (_) {}
+
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -29,6 +31,8 @@ const CONFIG_FILE_KEYS = [
   'LOG_LEVEL',
   'APP_URL',
   'SELF_PING_INTERVAL_MINUTES',
+  'TELEGRAM_BOT_TOKEN',
+  'TGS_BOT_TOKEN',
 ];
 
 function applyConfigFile() {
