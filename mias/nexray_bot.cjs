@@ -3355,11 +3355,34 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   cmd(['tg-sticker', 'tgsticker', 'telegramsticker', 'tgs', 'tgstickers', 'tg-stickers'], { desc: 'Download Telegram sticker pack or convert image to Telegram sticker format', category: 'Nexray-Tools' }, async (sock, msg, args) => {
-    // 1. Resolve Telegram Bot Token from env, config, or direct .env file scan
+    // 1. Resolve Telegram Bot Token from env, config, config.json, or direct .env file scan
     let tgToken = '';
     try {
-      tgToken = String(process.env.TELEGRAM_BOT_TOKEN || process.env.TGS_BOT_TOKEN || process.env.TG_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || CONFIG?.TELEGRAM_BOT_TOKEN || '').trim();
+      tgToken = String(process.env.TELEGRAM_BOT_TOKEN || process.env.TGS_BOT_TOKEN || process.env.TG_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || CONFIG?.TELEGRAM_BOT_TOKEN || global.TELEGRAM_BOT_TOKEN || '').trim();
     } catch {}
+
+    if (!tgToken) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const jsonCandidates = [
+          path.resolve(process.cwd(), 'config.json'),
+          path.resolve(__dirname, '..', 'config.json'),
+          path.resolve(__dirname, 'config.json')
+        ];
+        for (const jp of jsonCandidates) {
+          if (fs.existsSync(jp)) {
+            const jdata = JSON.parse(fs.readFileSync(jp, 'utf8'));
+            const val = String(jdata?.TELEGRAM_BOT_TOKEN || jdata?.TGS_BOT_TOKEN || '').trim();
+            if (val) {
+              tgToken = val;
+              process.env.TELEGRAM_BOT_TOKEN = tgToken;
+              break;
+            }
+          }
+        }
+      } catch {}
+    }
 
     if (!tgToken) {
       try {
