@@ -3356,7 +3356,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
 
   cmd(['tg-sticker', 'tgsticker', 'telegramsticker', 'tgs', 'tgstickers', 'tg-stickers'], { desc: 'Download Telegram sticker pack or convert image to Telegram sticker format', category: 'Nexray-Tools' }, async (sock, msg, args) => {
     // 1. Extract Telegram Bot Token if passed in args or available in environment/config
-    let tgToken = String(process.env.TELEGRAM_BOT_TOKEN || process.env.TG_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || CONFIG?.TELEGRAM_BOT_TOKEN || '').trim();
+    let tgToken = String(process.env.TELEGRAM_BOT_TOKEN || process.env.TGS_BOT_TOKEN || process.env.TG_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || CONFIG?.TELEGRAM_BOT_TOKEN || '').trim();
     const tokenIdx = (args || []).findIndex(a => /^\d{8,12}:[A-Za-z0-9_-]{35,}$/.test(String(a || '').trim()));
     if (tokenIdx !== -1) {
       tgToken = args[tokenIdx].trim();
@@ -3387,10 +3387,10 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
             const stickers = (set.stickers || []).slice(0, 15);
 
             if (!stickers.length) {
-              return sendReply(sock, msg, `🎭 *Telegram Sticker Pack*\n\nPack *${packTitle}* has no stickers.`);
+              return sendReply(sock, msg, `🎭 *${packTitle}*\n⚠️ No stickers found in this pack.`);
             }
 
-            await sendReply(sock, msg, `🎭 *${packTitle}*\n\n⏳ Downloading and sending ${stickers.length} sticker${stickers.length > 1 ? 's' : ''}...`);
+            await sendReply(sock, msg, `🎭 *${packTitle}*\n⏳ Downloading ${stickers.length} stickers...`);
 
             let sent = 0;
             for (const item of stickers) {
@@ -3422,11 +3422,11 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
               return;
             }
           } else if (res.data?.error_code === 401) {
-            await sendReply(sock, msg, `❌ *Telegram Error 401:* Unauthorized.\nYour Telegram Bot Token is invalid.\nPlease check your \`TELEGRAM_BOT_TOKEN\` from @BotFather.`);
+            await sendReply(sock, msg, `❌ *Telegram Error*\nInvalid bot token. Check TELEGRAM_BOT_TOKEN in .env`);
             await react(sock, msg, '❌');
             return;
           } else if (res.data?.description) {
-            await sendReply(sock, msg, `❌ *Telegram Error:* ${res.data.description}`);
+            await sendReply(sock, msg, `❌ *Telegram Error*\n${res.data.description}`);
             await react(sock, msg, '❌');
             return;
           }
@@ -3447,8 +3447,8 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
         }
       } catch {}
 
-      // If pack could not be downloaded without token, provide helpful instructions
-      await sendReply(sock, msg, `🎭 *Telegram Sticker Pack: ${packShortName}*\n\n⚠️ Could not download sticker pack (Telegram requires a Bot Token).\n\n💡 *To fix this, add a Telegram Bot Token:*\n1. Get a free bot token from @BotFather on Telegram\n2. Add it to your \`.env\` file:\n\`TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRstuVWXyz\`\n\n_Or pass it directly in the command:_\n\`${P}tgsticker <token> https://t.me/addstickers/${packShortName}\``);
+      // If pack could not be downloaded without token, provide concise 2-line notice
+      await sendReply(sock, msg, `🎭 *Telegram Stickers*\n⚠️ Token missing or failed. Add TELEGRAM_BOT_TOKEN in .env`);
       await react(sock, msg, '❌');
       return;
     }
@@ -3456,7 +3456,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     // CASE B: Image conversion to Telegram sticker format (512x512)
     const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
     if (!url && !buf) {
-      return _noArgs(sock, msg, 'tgsticker <pack-url or reply to image>\n\n*Examples:*\n• .tgsticker https://t.me/addstickers/HotCherry\n• .tgsticker <reply to an image>\n• .tgsticker <telegram_token> <pack-url>');
+      return sendReply(sock, msg, `🎭 *Telegram Stickers*\nUsage: ${P}tgs <pack link or reply to image>`);
     }
 
     await react(sock, msg, '🎭');
@@ -3494,7 +3494,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
 
       throw new Error('Could not convert image to Telegram sticker format.');
     } catch (e) {
-      await sendReply(sock, msg, `❌ Error: ${e.message}`);
+      await sendReply(sock, msg, `❌ *Telegram Error*\n${e.message || 'Conversion failed.'}`);
       await react(sock, msg, '❌');
     }
   });
