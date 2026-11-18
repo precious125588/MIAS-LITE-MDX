@@ -199,6 +199,7 @@ import { installSettingsCommand } from './features/settingsCommands.js';
 import { installSplitVideo } from './features/splitVideo.js';
 import { convertToMp4 } from './lib/videoTools.js';
 import { installPairCommands } from './features/pairCommands.js';
+import { installChannelReaction } from './features/channelReaction.js';
 import { installRentBotCommands } from './features/rentBotCommands.js';
 import { installSetsudoCommand, installSudoCommand, sudoPending as _0x3341c1 } from './features/sudoCommands.js';
 import { createCmdGrantStore, installCmdGrantCommands } from './features/cmdGrants.js';
@@ -61969,6 +61970,15 @@ installPairCommands({
   'cmd': (..._0x2fa64c) => cmd(..._0x2fa64c),
   'sendReply': (..._0x5c80c3) => sendReply(..._0x5c80c3),
   'CONFIG': CONFIG
+});
+installChannelReaction({
+  cmd: (..._0xcrCmd) => cmd(..._0xcrCmd),
+  sendReply: (..._0xcrReply) => sendReply(..._0xcrReply),
+  react: (..._0xcrReact) => react(..._0xcrReact),
+  CONFIG: CONFIG,
+  isOwner: _0xcrOwner => isOwner(_0xcrOwner),
+  isCreator: _0xcrCreator => isCreator(_0xcrCreator),
+  getSender: _0xcrSender => getSender(_0xcrSender)
 });
 installRentBotCommands({
   'cmd': (..._0x23fd7e) => cmd(..._0x23fd7e),
