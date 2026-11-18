@@ -2073,6 +2073,7 @@ function install(ctx) {
         if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
       }
 
+      try { require('../lib/telegramTokenStore.cjs').loadIntoEnv(); } catch (_) {}
       const token = String(process.env.TELEGRAM_BOT_TOKEN || process.env.TG_BOT_TOKEN || '').trim();
       if (token) {
         // Telegram bot tokens contain a colon; keep it in the path because
@@ -2112,7 +2113,7 @@ function install(ctx) {
 
       const status = lastError?.message || 'provider unavailable';
       throw new Error(
-        `${status}. The old sticker provider is unavailable; configure TELEGRAM_BOT_TOKEN for the official Telegram fallback.`,
+        `${status}. The old sticker provider is unavailable; owner can send .settoken <bot token> to enable the official Telegram fallback.`,
       );
     };
 

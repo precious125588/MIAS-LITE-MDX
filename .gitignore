@@ -21,3 +21,6 @@ nexstore/creator_video_links.json
 nexstore/creator_video_links.json.*
 # Runtime pid file for the supervised bot process (never commit)
 .run/
+
+# Telegram bot token saved by .settoken (secret, never commit)
+nexstore/secrets/

@@ -3354,7 +3354,14 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
+  // .settoken: owner saves the Telegram bot token persistently (lib/telegramTokenStore.cjs)
+  try { require('../lib/telegramTokenStore.cjs').loadIntoEnv(); } catch (_) {}
+  const _setTokenHandler = require('../lib/telegramTokenCommand.cjs').createSetTokenHandler({ sendReply, react, axios });
+  cmd(['settoken', 'settgtoken'], { desc: 'Save the Telegram bot token used by .tgs (owner only, kept across restarts and updates)', category: 'OWNER', ownerOnly: true }, _setTokenHandler);
+
   cmd(['tg-sticker', 'tgsticker', 'telegramsticker', 'tgs', 'tgstickers', 'tg-stickers'], { desc: 'Download Telegram sticker pack or convert image to Telegram sticker format', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    // 0. Load the saved token (.settoken) into the environment before resolving it
+    try { require('../lib/telegramTokenStore.cjs').loadIntoEnv(); } catch (_) {}
     // 1. Resolve Telegram Bot Token from env, config, config.json, or direct .env file scan
     let tgToken = '';
     try {
@@ -3444,7 +3451,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
           }
         } catch {}
 
-        await sendReply(sock, msg, `🎭 *Telegram Stickers*\n⚠️ Token missing. Add TELEGRAM_BOT_TOKEN in .env`);
+        await sendReply(sock, msg, `🎭 *Telegram Stickers*\n⚠️ Token missing. Owner: send .settoken <bot token> to save it`);
         await react(sock, msg, '❌');
         return;
       }
@@ -3501,7 +3508,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
           await react(sock, msg, '❌');
           return;
         } else if (res.data?.error_code === 401) {
-          await sendReply(sock, msg, `❌ *Telegram Error*\nInvalid bot token. Check TELEGRAM_BOT_TOKEN in .env`);
+          await sendReply(sock, msg, `❌ *Telegram Error*\nInvalid bot token. Owner: send .settoken <new token> to replace it`);
           await react(sock, msg, '❌');
           return;
         } else if (res.data?.description) {
