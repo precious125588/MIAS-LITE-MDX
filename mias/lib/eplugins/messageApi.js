@@ -175,6 +175,14 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
       payload = { delete: options.key || msg.key };
     } else if (type === "text") {
       payload = typeof content === "string" ? { text: content } : { ...content };
+    } else if (type === "poll" || (content && typeof content === "object" && (content.poll || content.selectableOptionsCount !== undefined))) {
+      const q = content.name || content.question || options.name || "Poll";
+      let vals = content.values || [];
+      if (!vals.length && Array.isArray(content.options)) {
+        vals = content.options.map(o => typeof o === "string" ? o : o.optionName || String(o));
+      }
+      const count = content.selectableOptionsCount || options.selectableCount || 1;
+      payload = { poll: { name: q, values: vals, selectableCount: count } };
     } else if (["image", "video", "audio", "document", "sticker"].includes(type)) {
       payload = { [type]: content };
       if (options.caption !== undefined) payload.caption = options.caption;

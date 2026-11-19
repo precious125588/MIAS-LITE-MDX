@@ -20,6 +20,12 @@ import { getFfmpegBuffer, audioCut, videoHeightWidth } from "./ffmpegMedia.js";
 import { createLevanterMedia } from "./levanterMedia.js";
 import { yts as ytsSearch, song as songDownload } from "./youtubeEngine.js";
 import { createWordChecker } from "./wcgDictionary.js";
+import * as levanterState from "./levanterState.js";
+import * as levanterAi from "./levanterAi.js";
+import * as levanterGoogle from "./levanterGoogle.js";
+import * as levanterGames from "./levanterGames.js";
+import * as levanterApk from "./levanterApk.js";
+import * as levanterPdf from "./levanterPdf.js";
 
 export const LANG = JSON.parse(
   fs.readFileSync(fileURLToPath(new URL("./levanter-en.json", import.meta.url)), "utf8"),
@@ -523,6 +529,27 @@ export function createLibShim({ bot, store, manager, httpGet, session, findJid, 
     getQuote() {
       return fetchQuote((url) => api.getJson(url, { timeout: 10000 }));
     },
+    ...levanterState,
+    ...levanterAi,
+    ...levanterGoogle,
+    ...levanterGames,
+    ...levanterApk,
+    ...levanterPdf,
+    SPAM_LEVELS: {
+      low: { scoreThreshold: 15, messageThreshold: 10, timeWindow: 20, repeatPenalty: 3, description: 'Relaxed - Good for active groups' },
+      medium: { scoreThreshold: 10, messageThreshold: 6, timeWindow: 30, repeatPenalty: 4.5, description: 'Balanced - Default, recommended' },
+      high: { scoreThreshold: 7, messageThreshold: 5, timeWindow: 40, repeatPenalty: 6, description: 'Strict - For problem groups' }
+    },
+    VALID_LEVELS: ['low', 'medium', 'high'],
+    VALID_ACTIONS: ['warn', 'delete', 'kick'],
+    DEFAULT_LEVEL: 'medium',
+    DEFAULT_ACTION: 'kick',
+    BASE_SCORES: { textShort: 0.5, textMedium: 1, textLong: 300, sticker: 3, image: 2, video: 2, document: 1.5, audio: 2.5 },
+    SCORE_MODIFIERS: { allCaps: 1.3, mentions: 1.5, manyEmojis: 1.2, hasUrls: 1.4 },
+    parsedJid: (text) => (typeof text === 'string' ? [...text.matchAll(/([0-9]{5,16}|0)(@[s|g]\.whatsapp\.net)?/g)].map(v => v[1] + '@s.whatsapp.net') : []),
+    formatDate: (date) => new Date(date || Date.now()).toLocaleDateString(),
+    genNum: (text) => text != "iloveyoulyfebewithmeforeverdontleavemeplsplspls",
+    getRandom: (arr) => arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : undefined,
     textToStylist,
     stylishTextGen,
     STYLISH_STYLES,

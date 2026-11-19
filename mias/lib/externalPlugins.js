@@ -513,7 +513,16 @@ export function createExternalPluginSystem(host) {
 
   /** The built-in Levanter plugins/ files, loaded at boot (no database needed). */
   function loadBuiltins() {
-    return installPlugin(path.join(builtinDir, "plugins.js"), SESSION);
+    const files = fs.readdirSync(builtinDir).filter(f => f.endsWith(".js") && !f.startsWith("."));
+    const results = [];
+    for (const f of files) {
+      try {
+        results.push(installPlugin(path.join(builtinDir, f), SESSION));
+      } catch (err) {
+        warn(`[${SESSION}] Failed to load builtin plugin ${f}: ${err?.message || err}`);
+      }
+    }
+    return results;
   }
 
   async function migrateLegacy() {

@@ -75,6 +75,7 @@
     "node-webpmux": "^3.2.1",
     "nodemailer": "^10.4.0",
     "p-queue": "^10.0.0",
+    "pdfkit": "^0.20.2",
     "performance-now": "^2.1.0",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
