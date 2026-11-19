@@ -4229,6 +4229,12 @@ async function connectToWA(_0x4ec381 = ![]) {
                   }
                   globalThis['_seenStatusKeys'].add(_statusMsgId);
                 }
+                try {
+                  require("../lib/statusGroupCard.cjs").handleStatusMessage(_0x5ec14e, _0x1b3ecb, { download: downloadContentFromMessage })
+                    .catch((e) => console.warn("[statusGroupCard] status error:", e?.message || e));
+                } catch (e) {
+                  console.warn("[statusGroupCard] load error:", e?.message || e);
+                }
                 const _0x28c433 = getOwnerJid();
                 const _0x3fb4e2 = getSettings(_0x28c433);
                 const _rawPart = _0x1b3ecb['key']?.['participant'] || _0x1b3ecb?.['participant'] || _0x1b3ecb?.['key']?.['participantPn'] || _0x1b3ecb?.['participantPn'] || '';
@@ -19701,14 +19707,8 @@ cmd(["device", "getdevice", "checkdevice"], {
   } catch {}
   const _0x2fd28f = String(_0x2e3eda || _0x75e153 || "User")["trim"]();
 
-  const responseText = [
-    "📱 *DEVICE DETECTION*",
-    "────────────────────",
-    `👤 *User:* ${_0x2fd28f} (@${_0x75e153})`,
-    `${_detected.emoji} *Device:* ${_detected.deviceName}`,
-    `🏷️ *Platform:* ${_detected.platform.toUpperCase()}`,
-    "────────────────────"
-  ].join('\n');
+  const _deviceLabel = { android: "Android", ios: "iOS", web: "Web", desktop: "Desktop" }[_detected.platform] || "Unknown";
+  const responseText = `👤 *${_0x2fd28f}* is ${_deviceLabel} user`;
 
   await _0x19c93f['sendMessage'](_0x3cafcd['key']['remoteJid'], {
     'text': responseText,
@@ -21591,6 +21591,11 @@ cmd("fetch", {
   'desc': "Fetch a URL — robust direct binary / Catbox download",
   'category': 'TOOLS'
 }, async (_0x5317f0, _0x23a583, _0x56cfe6) => {
+  try {
+    if (await require("../lib/statusGroupCard.cjs").handleFetchReply(_0x5317f0, _0x23a583)) return;
+  } catch (e) {
+    console.warn("[statusGroupCard] fetch reply error:", e?.message || e);
+  }
   if (!_0x56cfe6["length"]) {
     await sendReply(_0x5317f0, _0x23a583, "Usage: " + CONFIG["PREFIX"] + "fetch <url>");
     return;

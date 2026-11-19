@@ -24,3 +24,6 @@ nexstore/creator_video_links.json.*
 
 # Telegram bot token saved by .settoken (secret, never commit)
 nexstore/secrets/
+
+# Runtime status-card cache (media kept while a status is live)
+nexstore/status-cards/
