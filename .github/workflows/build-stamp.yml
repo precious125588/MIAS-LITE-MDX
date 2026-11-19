@@ -30,8 +30,8 @@ jobs:
         run: node -e "require('./lib/precious-stale-guard.cjs').verify({name:'ci'})"
       - name: Commit the refreshed stamp
         run: |
-          git config user.name "𝑷𝑹𝑬𝑪𝑰𝑶𝑼𝑺 x"
-          git config user.email "ebukaonyemachi119@gmail.com"
+          git config user.name "precious125588"
+          git config user.email "212720487+precious125588@users.noreply.github.com"
           git add lib/precious-build-stamp.json
           if git diff --cached --quiet; then
             echo "Stamp already current"; exit 0
