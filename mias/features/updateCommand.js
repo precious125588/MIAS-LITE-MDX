@@ -396,8 +396,26 @@ function writeBuildStamp(sha, message = "Rollback", author = "MIAS LITE MDX") {
  */
 export async function applyUpdateCode(remoteSha, commitMessage, author) {
   let pulled = false;
+  const hasGit = fs.existsSync(path.join(REPO_ROOT, ".git"));
 
-  if (fs.existsSync(path.join(REPO_ROOT, ".git"))) {
+  if (!hasGit) {
+    // Panel install (no .git): download the new archive now, before the restart. Writing only the
+    // build stamp left the old files on disk, and the restart did not re-run the code sync.
+    try {
+      const { syncLatestCode } = require("../../lib/code-updater.cjs");
+      const local = readLocalCommit();
+      const result = await syncLatestCode({
+        root: REPO_ROOT,
+        local: { sha: local.sha },
+        remote: { sha: remoteSha },
+        log: (line) => console.log(line),
+      });
+      pulled = !!result?.updated || result?.reason === "current";
+      if (!pulled) console.error("[UPDATER] Archive update did not apply:", result?.reason, result?.detail || "");
+    } catch (err) {
+      console.error("[UPDATER] Archive update failed:", err?.message || err);
+    }
+  } else if (fs.existsSync(path.join(REPO_ROOT, ".git"))) {
     try {
       const previousSha = execSync("git rev-parse HEAD", {
         cwd: REPO_ROOT,
@@ -424,7 +442,8 @@ export async function applyUpdateCode(remoteSha, commitMessage, author) {
     }
   }
 
-  writeBuildStamp(remoteSha, commitMessage, author || "precious125588");
+  // Stamp only what really landed; otherwise the next check would think the new code is already here.
+  if (hasGit || pulled) writeBuildStamp(remoteSha, commitMessage, author || "precious125588");
   return pulled;
 }
 
@@ -907,7 +926,7 @@ export function installUpdateCommand(ctx) {
       }
 
       // Frame 2: Found commit with what was fixed
-      await sleep(800);
+      await sleep(300);
       await sock.sendMessage(jid, { react: { text: "📥", key: msg.key } }).catch(() => {});
       const foundText =
         `✨ *Found:* \`${remote.sha.slice(0, 7)}\`\n` +
@@ -917,8 +936,13 @@ export function installUpdateCommand(ctx) {
       liveKey = await editOrSend(sock, jid, foundText, liveKey, msg);
 
       // Frame 3: Pull code and apply
-      await sleep(1000);
-      await applyUpdateCode(remote.sha, remote.message, remote.author);
+      await sleep(300);
+      const applied = await applyUpdateCode(remote.sha, remote.message, remote.author);
+      if (!applied) {
+        await sock.sendMessage(jid, { react: { text: "⚠️", key: msg.key } }).catch(() => {});
+        await editOrSend(sock, jid, `❌ *Update failed:* could not download commit \`${remote.sha.slice(0, 7)}\`. Still on the current code.`, liveKey, msg);
+        return;
+      }
 
       await sock.sendMessage(jid, { react: { text: "🚀", key: msg.key } }).catch(() => {});
       const installedText =
