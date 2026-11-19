@@ -357,7 +357,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
       n.startsWith('ramalan') ||
       n.startsWith('random') ||
       n.startsWith('dc') ||
-      ['wanted', 'wasted', 'editor-wanted', 'editor-wasted', 'ewanted', 'ewasted', 'musiccard', 'music-card', 'spotifycard', 'mcard', 'nomer-hoki', 'nomerhoki', 'arti-nama', 'artinama', 'weton', 'fb-dl', 'fbdl', 'facebook-dl'].includes(n)
+      ['wasted', 'editor-wasted', 'ewasted', 'musiccard', 'music-card', 'spotifycard', 'mcard', 'nomer-hoki', 'nomerhoki', 'arti-nama', 'artinama', 'weton', 'fb-dl', 'fbdl', 'facebook-dl'].includes(n)
     )) return;
     return _origCmd(names, opts, handler);
   };
@@ -3098,12 +3098,13 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     }
   });
 
-  cmd(['kiss', 'kissme', 'kiss-photo'], { desc: 'Kiss photo effect on faces (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  // Levanter photoEditor engine handler
+  const _runLevanterPhotoEditor = async (sock, msg, args, { method, emoji, title, failMsg, cmdName }) => {
     const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
     if (!url && !buf) {
-      return sendReply(sock, msg, `📌 *Usage:* ${P}kiss <reply to image or url>\n_Reply to an image or provide an image URL._`);
+      return sendReply(sock, msg, `📌 *Usage:* ${P}${cmdName} <reply to image or url>\n_Reply to an image or provide an image URL._`);
     }
-    await react(sock, msg, '💋');
+    await react(sock, msg, emoji);
     try {
       let targetUrl = url;
       if (!targetUrl && buf) {
@@ -3113,27 +3114,213 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
         throw new Error('Could not upload image for processing. Please try again.');
       }
 
-      // Levanter photoEditor kiss effect
-      const editorUrl = `https://levanter.onrender.com/editor?method=kisses_on_face_photo_effect&url=${encodeURIComponent(targetUrl)}`;
-      const res = await axios.get(editorUrl, { timeout: 30000 });
+      const editorUrl = `https://levanter.onrender.com/editor?method=${encodeURIComponent(method)}&url=${encodeURIComponent(targetUrl)}`;
+      const res = await axios.get(editorUrl, { timeout: 35000 });
       const data = res?.data;
 
       if (data?.status && data?.result) {
-        const imgRes = await axios.get(data.result, { responseType: 'arraybuffer', timeout: 20000 });
+        const imgRes = await axios.get(data.result, { responseType: 'arraybuffer', timeout: 25000 });
         if (imgRes?.data) {
-          await _sendImg(sock, msg, Buffer.from(imgRes.data), '💋 *Kiss Photo Effect*');
+          await _sendImg(sock, msg, Buffer.from(imgRes.data), `${emoji} *${title}*`);
           await react(sock, msg, '✅');
           return;
         }
       }
 
-      const errMsg = data?.result || 'Face not detected in image. Please use a clear portrait photo.';
+      const errMsg = data?.result || failMsg || 'Face or subject not detected. Please use a clear portrait photo.';
       await sendReply(sock, msg, `❌ ${errMsg}`);
       await react(sock, msg, '❌');
     } catch (e) {
       await sendReply(sock, msg, `❌ Error: ${e.message}`);
       await react(sock, msg, '❌');
     }
+  };
+
+  // 1. Enhance
+  cmd(['enhance', 'enhancer'], { desc: 'Enhance image quality like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'enhance',
+      emoji: '✨',
+      title: 'Image Enhanced',
+      failMsg: 'Failed to enhance image. Please ensure image is accessible.',
+      cmdName: 'enhance'
+    });
+  });
+
+  // 2. Kiss
+  cmd(['kiss', 'kissme', 'kiss-photo'], { desc: 'Kiss photo effect on faces like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'kisses_on_face_photo_effect',
+      emoji: '💋',
+      title: 'Kiss Photo Effect',
+      failMsg: 'Face not detected in image. Please use a clear portrait photo.',
+      cmdName: 'kiss'
+    });
+  });
+
+  // 3. Sketch
+  cmd(['sketch', 'sketch-photo'], { desc: 'Convert photo to sketch drawing like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'sketch',
+      emoji: '🎨',
+      title: 'Sketch Photo Effect',
+      failMsg: 'Failed to apply sketch effect. Please ensure image is accessible.',
+      cmdName: 'sketch'
+    });
+  });
+
+  // 4. Pencil
+  cmd(['pencil', 'pencil-sketch'], { desc: 'Graphite pencil sketch effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'graphite_pencil_sketch',
+      emoji: '✏️',
+      title: 'Pencil Sketch Effect',
+      failMsg: 'Failed to apply pencil effect. Please ensure image is accessible.',
+      cmdName: 'pencil'
+    });
+  });
+
+  // 5. Color
+  cmd(['color', 'color-sketch'], { desc: 'Color pencil sketch effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'color_pencil_sketch',
+      emoji: '🖍️',
+      title: 'Color Sketch Effect',
+      failMsg: 'Failed to apply color sketch effect. Please ensure image is accessible.',
+      cmdName: 'color'
+    });
+  });
+
+  // 6. Bokeh
+  cmd(['bokeh', 'bokeh-effect'], { desc: 'Bokeh blur photo effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'christmas_bokeh',
+      emoji: '✨',
+      title: 'Bokeh Photo Effect',
+      failMsg: 'Failed to apply bokeh effect. Please ensure image is accessible.',
+      cmdName: 'bokeh'
+    });
+  });
+
+  // 7. Wanted
+  cmd(['wanted', 'wanted-poster'], { desc: 'Put photo in a Wanted poster like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'wanted',
+      emoji: '📜',
+      title: 'Wanted Poster Effect',
+      failMsg: 'Failed to create wanted poster. Please ensure image is accessible.',
+      cmdName: 'wanted'
+    });
+  });
+
+  // 8. Look
+  cmd(['look', 'dramatic-look'], { desc: 'Dramatic cinematic photo look like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'dramatic_look',
+      emoji: '🎭',
+      title: 'Dramatic Look Effect',
+      failMsg: 'Failed to apply dramatic look. Please ensure image is accessible.',
+      cmdName: 'look'
+    });
+  });
+
+  // 9. Gandm (Glasses & Mustache)
+  cmd(['gandm', 'mustache', 'glasses-mustache'], { desc: 'Hipster glasses and mustache overlay like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'hipster_glasses_and_mustache',
+      emoji: '🥸',
+      title: 'Glasses & Mustache Effect',
+      failMsg: 'Face not detected. Please use a clear portrait photo.',
+      cmdName: 'gandm'
+    });
+  });
+
+  // 10. Dark
+  cmd(['dark', 'dark-knight'], { desc: 'The Dark Knight photo effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'the_dark_knight',
+      emoji: '🦇',
+      title: 'Dark Knight Effect',
+      failMsg: 'Failed to apply dark knight effect. Please ensure image is accessible.',
+      cmdName: 'dark'
+    });
+  });
+
+  // 11. Makeup
+  cmd(['makeup', 'beauty-makeup'], { desc: 'Beauty and makeup portrait filter like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'makeup',
+      emoji: '💄',
+      title: 'Makeup Photo Effect',
+      failMsg: 'Face not detected. Please use a clear portrait photo.',
+      cmdName: 'makeup'
+    });
+  });
+
+  // 12. Cartoon
+  cmd(['cartoon', 'cartoon-photo'], { desc: 'Cartoon style portrait transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'cartoon',
+      emoji: '🖼️',
+      title: 'Cartoon Photo Effect',
+      failMsg: 'Failed to apply cartoon effect. Please ensure image is accessible.',
+      cmdName: 'cartoon'
+    });
+  });
+
+  // 13. Demon
+  cmd(['demon', 'demon-eyes'], { desc: 'Demon eyes photo transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'demon_eyes_effect',
+      emoji: '😈',
+      title: 'Demon Eyes Effect',
+      failMsg: 'Face or eyes not detected. Please use a clear portrait photo.',
+      cmdName: 'demon'
+    });
+  });
+
+  // 14. Bloody
+  cmd(['bloody', 'halloween-mask'], { desc: 'Halloween bloody mask photo effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'halloween_mask',
+      emoji: '🩸',
+      title: 'Bloody Mask Effect',
+      failMsg: 'Face not detected. Please use a clear portrait photo.',
+      cmdName: 'bloody'
+    });
+  });
+
+  // 15. Zombie
+  cmd(['zombie', 'zombie-face'], { desc: 'Zombie horror transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'zombie',
+      emoji: '🧟',
+      title: 'Zombie Photo Effect',
+      failMsg: 'Face not detected. Please use a clear portrait photo.',
+      cmdName: 'zombie'
+    });
+  });
+
+  // 16. Horned
+  cmd(['horned', 'horned-goblin'], { desc: 'Horned goblin face transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'horned_goblin',
+      emoji: '👺',
+      title: 'Horned Goblin Effect',
+      failMsg: 'Face not detected. Please use a clear portrait photo.',
+      cmdName: 'horned'
+    });
+  });
+
+  // 17. Skull
+  cmd(['skull', 'skull-makeup'], { desc: 'Skull face makeup effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    return _runLevanterPhotoEditor(sock, msg, args, {
+      method: 'skull_makeup',
+      emoji: '💀',
+      title: 'Skull Makeup Effect',
+      failMsg: 'Face not detected. Please use a clear portrait photo.',
+      cmdName: 'skull'
+    });
   });
 
   cmd(['brokenlink', 'check-link'], { desc: 'Check for broken links on a website', category: 'Nexray-Tools' }, async (sock, msg, args) => {
@@ -3185,16 +3372,6 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     try {
       const r = await nx.tools.emojimix({ emoji1: args[0], emoji2: args[1] }); const m = await _media(r, axios);
       if (m) { await _sendImg(sock, msg, m.buf, `🎨 *Emoji Mix: ${args[0]}+${args[1]}*`); await react(sock, msg, '✅'); }
-      else throw new Error('No image returned');
-    } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
-  });
-
-  cmd(['enhance', 'enhancer'], { desc: 'Enhance image quality', category: 'Nexray-Tools' }, async (sock, msg, args) => {
-    const url = args[0]; if (!url) return _noArgs(sock, msg, 'enhance <image-url>');
-    await react(sock, msg, '✨');
-    try {
-      const r = await nx.tools.enhancer({ url }); const m = await _media(r, axios);
-      if (m) { await _sendImg(sock, msg, m.buf, '✨ *Image Enhanced*'); await react(sock, msg, '✅'); }
       else throw new Error('No image returned');
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
@@ -3314,14 +3491,108 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['removebg', 'remove-bg'], { desc: 'Remove background from image', category: 'Nexray-Tools' }, async (sock, msg, args) => {
-    const url = args[0]; if (!url) return _noArgs(sock, msg, 'removebg <image-url>');
+  cmd(['rmbg', 'removebg', 'rmwbg', 'remove-bg', 'bgremove'], { desc: 'Remove background from image like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
+    if (!url && !buf) {
+      return sendReply(sock, msg, `📌 *Usage:* ${P}rmbg <reply to image or url>\n_Reply to an image or provide an image URL._`);
+    }
     await react(sock, msg, '✂️');
     try {
-      const r = await nx.tools.removebg({ url }); const m = await _media(r, axios);
-      if (m) { await _sendImg(sock, msg, m.buf, '✂️ *Background Removed*'); await react(sock, msg, '✅'); }
-      else throw new Error('No image returned');
-    } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
+      let imageBuffer = buf;
+      if (!imageBuffer && url) {
+        try {
+          const dl = await axios.get(url, { responseType: 'arraybuffer', timeout: 15000 });
+          if (dl?.data) imageBuffer = Buffer.from(dl.data);
+        } catch {}
+      }
+
+      const apiKey = process.env.RMBG_KEY || CONFIG?.RMBG_KEY || process.env.REMOVEBG_KEY || CONFIG?.REMOVEBG_KEY;
+      let resultBuf = null;
+
+      // 1. If RMBG_KEY is configured, call Levanter remove.bg API endpoint directly
+      if (apiKey) {
+        try {
+          let FormDataPkg;
+          try { FormDataPkg = require('form-data'); } catch {
+            const imp = await import('form-data');
+            FormDataPkg = imp.default || imp;
+          }
+          const form = new FormDataPkg();
+          form.append('size', 'auto');
+          if (imageBuffer) {
+            form.append('image_file', imageBuffer, { filename: 'image.png', contentType: 'image/png' });
+          } else if (url) {
+            form.append('image_url', url);
+          }
+          const res = await axios.post('https://api.remove.bg/v1.0/removebg', form, {
+            headers: {
+              'X-Api-Key': apiKey,
+              ...form.getHeaders()
+            },
+            responseType: 'arraybuffer',
+            timeout: 30000
+          });
+          if (res?.data && res.data.length > 50) {
+            resultBuf = Buffer.from(res.data);
+          }
+        } catch (err) {
+          console.warn('[rmbg] remove.bg API call failed, falling back to providers:', err?.message || err);
+        }
+      }
+
+      // 2. Fallback providers if remove.bg key not set or failed
+      if (!resultBuf && url && nx?.tools?.removebg) {
+        try {
+          const r = await nx.tools.removebg({ url });
+          const m = await _media(r, axios);
+          if (m?.buf) resultBuf = m.buf;
+        } catch {}
+      }
+
+      if (!resultBuf && imageBuffer) {
+        try {
+          let FormDataPkg;
+          try { FormDataPkg = require('form-data'); } catch {
+            const imp = await import('form-data');
+            FormDataPkg = imp.default || imp;
+          }
+          const providers = [
+            'https://api.ryzendesu.vip/api/tools/removebg',
+            'https://api.siputzx.my.id/api/tools/removebg'
+          ];
+          for (const pUrl of providers) {
+            try {
+              const form = new FormDataPkg();
+              form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+              const r = await axios.post(pUrl, form, {
+                headers: form.getHeaders(),
+                responseType: 'arraybuffer',
+                timeout: 15000
+              });
+              if (r?.data && r.data.length > 500 && r.data[0] === 0x89) {
+                resultBuf = Buffer.from(r.data);
+                break;
+              }
+            } catch {}
+          }
+        } catch {}
+      }
+
+      if (!resultBuf && !apiKey) {
+        return sendReply(sock, msg, `❌ *RMBG API Key Required*\n_Set RMBG_KEY in environment or remove.bg API key to use remove.bg._`);
+      }
+
+      if (resultBuf) {
+        await _sendImg(sock, msg, resultBuf, '✂️ *Background Removed*');
+        await react(sock, msg, '✅');
+        return;
+      }
+
+      throw new Error('Failed to remove background. Please ensure image is accessible and try again.');
+    } catch (e) {
+      await sendReply(sock, msg, `❌ Error: ${e.message}`);
+      await react(sock, msg, '❌');
+    }
   });
 
   cmd(['removebg2', 'remove-bgv1'], { desc: 'Remove background from image v1', category: 'Nexray-Tools' }, async (sock, msg, args) => {

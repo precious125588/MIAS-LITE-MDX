@@ -62220,7 +62220,7 @@ cmd(['unpin', "unpinmsg", 'unpinchat'], {
     'prefix': CONFIG["PREFIX"] || '.'
   });
 });
-cmd(['hd', "hdvideo", 'hd-video', "remini", "enhance", 'upscale'], {
+cmd(['hd', "hdvideo", 'hd-video', "remini", 'upscale'], {
   'desc': "Enhance image/video quality — reply to a photo or video",
   'category': "MEDIA"
 }, async (_0x4a3d24, _0x1cba37) => {
