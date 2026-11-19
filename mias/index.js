@@ -6347,7 +6347,6 @@ async function getDisplayName(_0x436ad4, _0x56c95c, _0x3b8217) {
   }
   const _0x3dfa6a = getSavedContactName(_0x4fcfd0);
   if (isMeaningfulName(_0x3dfa6a)) {
-    pushNameCache["set"](_0x4fcfd0, _0x3dfa6a);
     return _0x3dfa6a;
   }
   if (_0x3b8217) {
@@ -19622,9 +19621,15 @@ cmd("vcf", {
     await sendReply(_0x1fa5da, _0x50a63b, '❌\x20VCF\x20error:\x20' + _0x1e0cc2["message"]);
   }
 });
-function _detectUserDevice(stanzaId = '', targetJid = '', key = {}) {
-  const id = String(stanzaId || key?.id || '').trim();
-  const jid = String(targetJid || key?.participant || key?.remoteJid || '').trim();
+function _callerPushName(msg) {
+  return String(msg?.pushName || '').trim();
+}
+
+function _detectUserDevice(stanzaId = '', targetJid = '') {
+  // Only the TARGET's own message id can reveal their client. Never fall back to the
+  // caller's command message id: that made every target look like the caller's device.
+  const id = String(stanzaId || '').trim();
+  const jid = String(targetJid || '').trim();
 
   const deviceMatch = jid.match(/:(\d+)@/);
   const deviceIndex = deviceMatch ? parseInt(deviceMatch[1], 10) : 0;
@@ -19634,25 +19639,10 @@ function _detectUserDevice(stanzaId = '', targetJid = '', key = {}) {
   let deviceName = 'WhatsApp Mobile';
   let emoji = '📱';
 
-  if (/^3EB0/i.test(id) || /^3EB[0-9A-F]/i.test(id) || id.length === 16) {
-    platform = 'web';
-    deviceName = 'WhatsApp Web';
-    emoji = '💻';
-  } else if (/^BAE5/i.test(id)) {
-    platform = 'web';
-    deviceName = 'WhatsApp Web (Bot)';
-    emoji = '🤖';
-  } else if (/^3A[0-9A-F]{10,}/i.test(id) || (id.startsWith('3A') && id.length >= 18)) {
-    platform = 'ios';
-    deviceName = 'iPhone (iOS)';
-    emoji = '🍎';
-  } else if (/^[0-9A-F]{32}$/i.test(id) || id.length === 22 || id.length === 12) {
-    platform = 'android';
-    deviceName = 'Android Phone';
-    emoji = '📱';
-  } else if (getBaileysDevice) {
+  if (id) {
+    // Baileys' own decoder first
     try {
-      const bDev = String(getBaileysDevice(id) || '').toLowerCase();
+      const bDev = String((getBaileysDevice && getBaileysDevice(id)) || '').toLowerCase();
       if (bDev === 'ios') {
         platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
       } else if (bDev === 'android') {
@@ -19663,6 +19653,18 @@ function _detectUserDevice(stanzaId = '', targetJid = '', key = {}) {
         platform = 'desktop'; deviceName = 'WhatsApp Desktop'; emoji = '🖥️';
       }
     } catch {}
+    // Known id patterns as a fallback only
+    if (platform === 'unknown') {
+      if (/^3EB0/i.test(id)) {
+        platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
+      } else if (/^BAE5/i.test(id)) {
+        platform = 'web'; deviceName = 'WhatsApp Web (Bot)'; emoji = '🤖';
+      } else if (/^3A[0-9A-F]{10,}/i.test(id)) {
+        platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
+      } else if (/^[0-9A-F]{32}$/i.test(id)) {
+        platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
+      }
+    }
   }
 
   if (platform === 'unknown' && isLinkedDevice) {
@@ -19685,6 +19687,7 @@ cmd(["device", "getdevice", "checkdevice"], {
   const _0x206e18 = getContextInfo(_0x3cafcd);
   let _0x5d159f = toStandardJid(resolveLid(_0x206e18?.["mentionedJid"]?.[0x0] || _0x206e18?.["participant"] || ''));
   let _0xb2a0e0 = _0x206e18?.["stanzaId"] || '';
+  let _isSelfTarget = false;
 
   if (!_0x5d159f && _0x3993a0[0x0]) {
     const _0x469125 = _0x3993a0[0x0]["replace"](/[^0-9]/g, '');
@@ -19697,13 +19700,18 @@ cmd(["device", "getdevice", "checkdevice"], {
   if (!_0x5d159f) {
     _0x5d159f = toStandardJid(resolveLid(getSender(_0x3cafcd) || ''));
     _0xb2a0e0 = _0x3cafcd["key"]?.['id'] || '';
+    _isSelfTarget = true;
   }
 
-  const _detected = _detectUserDevice(_0xb2a0e0, _0x5d159f, _0x3cafcd["key"]);
+  const _detected = _detectUserDevice(_0xb2a0e0, _0x5d159f);
   const _0x75e153 = _cleanNum(_0x5d159f);
+  // Profile pushname only (never the saved contact name)
   let _0x2e3eda = _0x75e153;
   try {
-    _0x2e3eda = await getDisplayName(_0x19c93f, _0x5d159f, isGroup(_0x3cafcd) ? _0x3cafcd["key"]['remoteJid'] : null);
+    const _pn = _isSelfTarget ? _callerPushName(_0x3cafcd) : '';
+    const _cached = pushNameCache["get"](_0x75e153)?.["trim"]?.() || '';
+    const _cand = _pn || _cached;
+    if (isMeaningfulName(_cand)) _0x2e3eda = _cand;
   } catch {}
   const _0x2fd28f = String(_0x2e3eda || _0x75e153 || "User")["trim"]();
 
