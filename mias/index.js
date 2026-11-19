@@ -19716,7 +19716,9 @@ cmd(["device", "getdevice", "checkdevice"], {
   const _0x2fd28f = String(_0x2e3eda || _0x75e153 || "User")["trim"]();
 
   const _deviceLabel = { android: "Android", ios: "iOS", web: "Web", desktop: "Desktop" }[_detected.platform] || "Unknown";
-  const responseText = `👤 *${_0x2fd28f}* is ${_deviceLabel} user`;
+  const responseText = _detected.platform === 'unknown'
+    ? `👤 *${_0x2fd28f}* — device not detectable. Reply to one of their messages and send .device to check.`
+    : `👤 *${_0x2fd28f}* is ${_deviceLabel} user`;
 
   await _0x19c93f['sendMessage'](_0x3cafcd['key']['remoteJid'], {
     'text': responseText,
