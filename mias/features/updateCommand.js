@@ -28,6 +28,7 @@ const PENDING_FALLBACK = path.join(REPO_ROOT, "database", "pending-update.json")
 const PENDING_ROLLBACK_FILE = path.join(REPO_ROOT, "nexstore", "pending-rollback.json");
 const PENDING_ROLLBACK_FALLBACK = path.join(REPO_ROOT, "database", "pending-rollback.json");
 const AUTO_UPDATE_NOTICE = path.join(REPO_ROOT, "nexstore", "pending-auto-notice.json");
+const UPDATE_NOTIFIED_FILE = path.join(REPO_ROOT, "nexstore", "update-notified.json");
 const ROLLBACK_FILE = path.join(REPO_ROOT, "nexstore", "rollback-state.json");
 const ROLLBACK_FALLBACK = path.join(REPO_ROOT, "database", "rollback-state.json");
 const RECENT_COMMITS_CACHE = path.join(REPO_ROOT, "nexstore", "recent-commits.json");
@@ -627,6 +628,36 @@ async function handleAutoUpdateBackgroundNotice() {
 /**
  * Background auto-update check daemon: runs 20s after boot, then every 3 minutes
  */
+/**
+ * Auto-update is off: when GitHub has a newer code commit, tell the owner once per commit
+ * to run .update. Stamp-only commits are skipped, as in the automatic path.
+ */
+async function notifyOwnerOfManualUpdate(CONFIG) {
+  const ownerNumber = String(CONFIG?.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
+  const sock = globalThis.__MIAS_SOCK__;
+  if (!ownerNumber || !sock || !sock.user || typeof sock.sendMessage !== "function") return;
+
+  const local = readLocalCommit();
+  const remote = await fetchRemoteCommit();
+  if (!remote.sha || !local.sha) return;
+  if (remote.sha.toLowerCase() === local.sha.toLowerCase()) return;
+
+  let seen = null;
+  try { seen = JSON.parse(fs.readFileSync(UPDATE_NOTIFIED_FILE, "utf8")); } catch {}
+  if (seen?.sha && seen.sha.toLowerCase() === remote.sha.toLowerCase()) return;
+
+  const diff = await fetchChangedFiles(local.sha, remote.sha);
+  if (!diff) return;
+  if (!diff.unknown && isStampOnlyChange(diff.files)) return;
+
+  const headline = String(remote.message || "New commit").split("\n")[0].slice(0, 80);
+  await sock.sendMessage(`${ownerNumber}@s.whatsapp.net`, {
+    text: `🆕 *New update found:* _${headline}_\nUse *.update* to apply it.`,
+  });
+  fs.mkdirSync(path.dirname(UPDATE_NOTIFIED_FILE), { recursive: true });
+  fs.writeFileSync(UPDATE_NOTIFIED_FILE, JSON.stringify({ sha: remote.sha, notifiedAt: Date.now() }), "utf8");
+}
+
 let _autoUpdateTimer = null;
 let _lastStampOnlySha = null;
 function startAutoUpdatePoller(ctx) {
@@ -698,7 +729,10 @@ function startAutoUpdatePoller(ctx) {
       const botSettings = typeof getSettings === "function" ? getSettings("bot") : null;
       // Auto-update is ON by default unless explicitly set to false
       const isEnabled = botSettings?.autoUpdate !== false && String(process.env.AUTO_UPDATE || "").toLowerCase() !== "off";
-      if (!isEnabled) return;
+      if (!isEnabled) {
+        await notifyOwnerOfManualUpdate(CONFIG);
+        return;
+      }
 
       const local = readLocalCommit();
       const remote = await fetchRemoteCommit();
