@@ -19705,15 +19705,25 @@ cmd(["device", "getdevice", "checkdevice"], {
 
   const _detected = _detectUserDevice(_0xb2a0e0, _0x5d159f);
   const _0x75e153 = _cleanNum(_0x5d159f);
-  // Profile pushname only (never the saved contact name)
-  let _0x2e3eda = _0x75e153;
+  let _0x2e3eda = '';
   try {
-    const _pn = _isSelfTarget ? _callerPushName(_0x3cafcd) : '';
-    const _cached = pushNameCache["get"](_0x75e153)?.["trim"]?.() || '';
-    const _cand = _pn || _cached;
-    if (isMeaningfulName(_cand)) _0x2e3eda = _cand;
+    if (_isSelfTarget) {
+      _0x2e3eda = _callerPushName(_0x3cafcd);
+    } else {
+      const _disp = await getDisplayName(_0x19c93f, _0x5d159f, _0x3cafcd?.['key']?.['remoteJid']);
+      if (_disp && !/^\+?\d+$/['test'](_disp) && isMeaningfulName(_disp)) {
+        _0x2e3eda = _disp;
+      }
+      if (!_0x2e3eda) {
+        const _cached = pushNameCache["get"](_0x75e153)?.["trim"]?.() || pushNameCache["get"](_cleanNum(_0x5d159f))?.["trim"]?.() || '';
+        if (isMeaningfulName(_cached) && !/^\+?\d+$/['test'](_cached)) {
+          _0x2e3eda = _cached;
+        }
+      }
+    }
   } catch {}
-  const _0x2fd28f = String(_0x2e3eda || _0x75e153 || "User")["trim"]();
+  const _hasUsername = isMeaningfulName(_0x2e3eda) && !/^\+?\d+$/['test'](_0x2e3eda);
+  const _0x2fd28f = _hasUsername ? _0x2e3eda : "@" + (_0x75e153 || "user");
 
   const _deviceLabel = { android: "Android", ios: "iOS", web: "Web", desktop: "Desktop" }[_detected.platform] || "Unknown";
   const responseText = _detected.platform === 'unknown'
@@ -21602,7 +21612,7 @@ cmd("fetch", {
   'category': 'TOOLS'
 }, async (_0x5317f0, _0x23a583, _0x56cfe6) => {
   try {
-    if (await require("../lib/statusGroupCard.cjs").handleFetchReply(_0x5317f0, _0x23a583)) return;
+    if (await require("../lib/statusGroupCard.cjs").handleFetchReply(_0x5317f0, _0x23a583, { download: downloadContentFromMessage })) return;
   } catch (e) {
     console.warn("[statusGroupCard] fetch reply error:", e?.message || e);
   }

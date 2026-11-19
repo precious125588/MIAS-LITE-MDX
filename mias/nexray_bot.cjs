@@ -3031,15 +3031,24 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   cmd(['blurface', 'blur-face', 'blur'], { desc: 'Blur faces or image (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
+    if (!url && !buf) {
+      return sendReply(sock, msg, `📌 *Usage:* ${P}blur <reply to image or url>\n_Reply to an image or provide an image URL._`);
+    }
     await react(sock, msg, '😶');
     try {
-      const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
-      if (!url && !buf) return _noArgs(sock, msg, 'blurface <image-url>  — or reply to an image with .blurface');
+      let imageBuffer = buf;
+      if (!imageBuffer && url) {
+        try {
+          const dl = await axios.get(url, { responseType: 'arraybuffer', timeout: 15000 });
+          if (dl?.data) imageBuffer = Buffer.from(dl.data);
+        } catch {}
+      }
 
       let resultBuf = null;
 
       // 1. Try NexRay AI face blur endpoint if URL is available
-      if (url) {
+      if (url && nx?.tools?.blurface) {
         try {
           const r = await nx.tools.blurface({ url });
           const m = await _media(r, axios);
@@ -3053,14 +3062,13 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
         return;
       }
 
-      // 2. Fallback: if no face was found or NexRay was unable to blur faces,
-      // apply general image blur using sharp or Jimp so the blur ALWAYS works
-      if (buf) {
+      // 2. Fallback: apply general image blur so blur always succeeds
+      if (imageBuffer) {
         try {
           let sharp;
           try { sharp = require('sharp'); } catch {}
           if (sharp) {
-            resultBuf = await sharp(buf).blur(12).toBuffer();
+            resultBuf = await sharp(imageBuffer).blur(12).toBuffer();
           }
         } catch {}
 
@@ -3069,7 +3077,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
             let Jimp;
             try { Jimp = require('jimp'); } catch {}
             if (Jimp) {
-              const j = await Jimp.read(buf);
+              const j = await Jimp.read(imageBuffer);
               j.blur(10);
               resultBuf = await j.getBufferAsync(Jimp.MIME_JPEG);
             }
@@ -3084,6 +3092,44 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
       }
 
       throw new Error('Failed to blur image. Please ensure the image is accessible and try again.');
+    } catch (e) {
+      await sendReply(sock, msg, `❌ Error: ${e.message}`);
+      await react(sock, msg, '❌');
+    }
+  });
+
+  cmd(['kiss', 'kissme', 'kiss-photo'], { desc: 'Kiss photo effect on faces (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
+    if (!url && !buf) {
+      return sendReply(sock, msg, `📌 *Usage:* ${P}kiss <reply to image or url>\n_Reply to an image or provide an image URL._`);
+    }
+    await react(sock, msg, '💋');
+    try {
+      let targetUrl = url;
+      if (!targetUrl && buf) {
+        targetUrl = await _uploadImageBuf(buf, axios);
+      }
+      if (!targetUrl) {
+        throw new Error('Could not upload image for processing. Please try again.');
+      }
+
+      // Levanter photoEditor kiss effect
+      const editorUrl = `https://levanter.onrender.com/editor?method=kisses_on_face_photo_effect&url=${encodeURIComponent(targetUrl)}`;
+      const res = await axios.get(editorUrl, { timeout: 30000 });
+      const data = res?.data;
+
+      if (data?.status && data?.result) {
+        const imgRes = await axios.get(data.result, { responseType: 'arraybuffer', timeout: 20000 });
+        if (imgRes?.data) {
+          await _sendImg(sock, msg, Buffer.from(imgRes.data), '💋 *Kiss Photo Effect*');
+          await react(sock, msg, '✅');
+          return;
+        }
+      }
+
+      const errMsg = data?.result || 'Face not detected in image. Please use a clear portrait photo.';
+      await sendReply(sock, msg, `❌ ${errMsg}`);
+      await react(sock, msg, '❌');
     } catch (e) {
       await sendReply(sock, msg, `❌ Error: ${e.message}`);
       await react(sock, msg, '❌');

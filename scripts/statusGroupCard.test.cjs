@@ -141,6 +141,37 @@ const statusWithGroup = {
   assert.strictEqual(await mod.handleFetchReply(fetchSock, plainFetch), false);
   assert.strictEqual(fetchSock.sent.length, 1);
 
+  // Mentioned group JID in mentionedJid array is also recognized
+  const mentionJidStatus = {
+    message: {
+      imageMessage: {
+        contextInfo: { mentionedJid: ['120363999999999999@g.us', '2348000000000@s.whatsapp.net'] },
+      },
+    },
+  };
+  assert.deepStrictEqual(mod.extractGroupMentions(mentionJidStatus.message), [
+    { groupJid: '120363999999999999@g.us', groupSubject: '' },
+  ]);
+
+  // statusMentionMessageInfo with statusId pointer
+  const infoPointerFetch = {
+    key: { remoteJid: '120363000000000003@g.us', id: 'FETCH_INFO_1', participant: '2349000000000@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.fetch',
+        contextInfo: {
+          stanzaId: 'NATIVE_INFO',
+          quotedMessage: {
+            statusMentionMessageInfo: { statusId: 'STATUS1' },
+          },
+        },
+      },
+    },
+  };
+  const infoSock = fakeSock();
+  assert.strictEqual(await mod.handleFetchReply(infoSock, infoPointerFetch), true);
+  assert.ok(Buffer.isBuffer(infoSock.sent[0].content.image));
+
   // After 24 hours the card says the status expired and the media is removed
   const indexPath = path.join(dir, 'index.json');
   const idx = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
