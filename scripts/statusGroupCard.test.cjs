@@ -99,6 +99,43 @@ const statusWithGroup = {
   assert.ok(Buffer.isBuffer(nativeSock.sent[0].content.image));
   assert.strictEqual(nativeSock.sent[0].content.caption, 'from card');
 
+  // WhatsApp's groupStatusMentionMessage card only points at the status by id (protocol message).
+  // The bot's stored copy of that status is sent back.
+  const pointerFetch = (stanza, statusId, id) => ({
+    key: { remoteJid: '120363000000000003@g.us', id, participant: '2349000000000@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.fetch',
+        contextInfo: {
+          stanzaId: stanza,
+          quotedMessage: {
+            groupStatusMentionMessage: {
+              message: { protocolMessage: { type: 25, key: { remoteJid: 'status@broadcast', id: statusId, fromMe: false } } },
+            },
+          },
+        },
+      },
+    },
+  });
+  const pointerSock = fakeSock();
+  assert.strictEqual(await mod.handleFetchReply(pointerSock, pointerFetch('NATIVE2', 'STATUS1', 'FETCH5')), true);
+  assert.ok(Buffer.isBuffer(pointerSock.sent[0].content.image));
+  assert.strictEqual(pointerSock.sent[0].content.caption, 'hello');
+
+  // A pointer to a status the bot never stored says it is unavailable; it never shows usage
+  const goneSock = fakeSock();
+  assert.strictEqual(await mod.handleFetchReply(goneSock, pointerFetch('NATIVE3', 'GONE-STATUS', 'FETCH6')), true);
+  assert.strictEqual(goneSock.sent[0].content.text, '⌛ Status expired or unavailable.');
+
+  // The statusMentionMessage wrapper with a protocol pointer is also recognised
+  const legacyPointer = pointerFetch('NATIVE4', 'STATUS1', 'FETCH7');
+  legacyPointer.message.extendedTextMessage.contextInfo.quotedMessage = {
+    statusMentionMessage: { message: { protocolMessage: { type: 25, key: { remoteJid: 'status@broadcast', id: 'STATUS1' } } } },
+  };
+  const legacySock = fakeSock();
+  assert.strictEqual(await mod.handleFetchReply(legacySock, legacyPointer), true);
+  assert.ok(Buffer.isBuffer(legacySock.sent[0].content.image));
+
   // A .fetch that is not a card reply falls through to the normal flow
   const plainFetch = { key: { remoteJid: 'x@g.us', id: 'F2' }, message: { extendedTextMessage: { text: '.fetch https://a.b' } } };
   assert.strictEqual(await mod.handleFetchReply(fetchSock, plainFetch), false);
