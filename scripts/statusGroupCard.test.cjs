@@ -80,6 +80,25 @@ const statusWithGroup = {
   assert.strictEqual(await mod.handleFetchReply(statusReplySock, statusReply), true);
   assert.ok(Buffer.isBuffer(statusReplySock.sent[0].content.image));
 
+  // Replying .fetch to WhatsApp's native group-mention card sends the status media it carries
+  mod._setDownloader(async () => chunksOf(Buffer.from('CARD-STATUS-IMAGE')));
+  const nativeFetch = {
+    key: { remoteJid: '120363000000000003@g.us', id: 'FETCH4', participant: '2349000000000@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.fetch',
+        contextInfo: {
+          stanzaId: 'NATIVE1',
+          quotedMessage: { statusMentionMessage: { quotedStatus: { imageMessage: { mimetype: 'image/jpeg', caption: 'from card' } } } },
+        },
+      },
+    },
+  };
+  const nativeSock = fakeSock();
+  assert.strictEqual(await mod.handleFetchReply(nativeSock, nativeFetch), true);
+  assert.ok(Buffer.isBuffer(nativeSock.sent[0].content.image));
+  assert.strictEqual(nativeSock.sent[0].content.caption, 'from card');
+
   // A .fetch that is not a card reply falls through to the normal flow
   const plainFetch = { key: { remoteJid: 'x@g.us', id: 'F2' }, message: { extendedTextMessage: { text: '.fetch https://a.b' } } };
   assert.strictEqual(await mod.handleFetchReply(fetchSock, plainFetch), false);
