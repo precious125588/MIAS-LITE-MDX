@@ -71,6 +71,15 @@ const statusWithGroup = {
   assert.ok(Buffer.isBuffer(fetchSock.sent[0].content.image));
   assert.strictEqual(fetchSock.sent[0].content.caption, 'hello');
 
+  // Replying .fetch to the status itself (WhatsApp's native group-mention card) also works
+  const statusReply = {
+    key: { remoteJid: '120363000000000001@g.us', id: 'FETCH2', participant: '2349000000000@s.whatsapp.net' },
+    message: { extendedTextMessage: { text: '.fetch', contextInfo: { stanzaId: 'STATUS1' } } },
+  };
+  const statusReplySock = fakeSock();
+  assert.strictEqual(await mod.handleFetchReply(statusReplySock, statusReply), true);
+  assert.ok(Buffer.isBuffer(statusReplySock.sent[0].content.image));
+
   // A .fetch that is not a card reply falls through to the normal flow
   const plainFetch = { key: { remoteJid: 'x@g.us', id: 'F2' }, message: { extendedTextMessage: { text: '.fetch https://a.b' } } };
   assert.strictEqual(await mod.handleFetchReply(fetchSock, plainFetch), false);
