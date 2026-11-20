@@ -327,11 +327,11 @@ function readRecentCommitsCache() {
 /**
  * Save rollback state
  */
-function saveRollbackState(previousSha, nextSha, message = "") {
-  if (!previousSha || !/^[0-9a-f]{7,40}$/i.test(String(previousSha))) return false;
+export function saveRollbackState(previousSha, nextSha, message = "", inRollback = true) {
   const record = {
-    previousSha: String(previousSha).toLowerCase(),
-    updatedToSha: nextSha ? String(nextSha).toLowerCase() : null,
+    previousSha: previousSha ? String(previousSha).toLowerCase() : null,
+    targetSha: nextSha ? String(nextSha).toLowerCase() : null,
+    inRollback: Boolean(inRollback),
     previousMessage: message,
     savedAt: new Date().toISOString(),
   };
@@ -345,12 +345,12 @@ function saveRollbackState(previousSha, nextSha, message = "") {
   return false;
 }
 
-function readRollbackState() {
+export function readRollbackState() {
   for (const target of [ROLLBACK_FILE, ROLLBACK_FALLBACK]) {
     try {
       if (fs.existsSync(target)) {
         const record = JSON.parse(fs.readFileSync(target, "utf8"));
-        if (/^[0-9a-f]{7,40}$/i.test(String(record?.previousSha || ""))) return record;
+        if (record && typeof record === "object") return record;
       }
     } catch {}
   }
@@ -395,6 +395,8 @@ function writeBuildStamp(sha, message = "Rollback", author = "MIAS LITE MDX") {
  * Apply git pull / hard reset and update build stamp
  */
 export async function applyUpdateCode(remoteSha, commitMessage, author) {
+  // Clear rollback mode on manual update
+  saveRollbackState(null, remoteSha, commitMessage, false);
   let pulled = false;
   const hasGit = fs.existsSync(path.join(REPO_ROOT, ".git"));
 
@@ -450,11 +452,13 @@ export async function applyUpdateCode(remoteSha, commitMessage, author) {
 /**
  * Apply git rollback to target commit
  */
-export function applyRollbackCode(targetSha, commitMessage = "Rollback") {
+export async function applyRollbackCode(targetSha, commitMessage = "Rollback") {
   let success = false;
-  if (fs.existsSync(path.join(REPO_ROOT, ".git"))) {
+  const hasGit = fs.existsSync(path.join(REPO_ROOT, ".git"));
+
+  if (hasGit) {
     try {
-      execSync(`git fetch origin ${REPO_BRANCH} --quiet`, { cwd: REPO_ROOT, stdio: "ignore" });
+      execSync(`git fetch --depth=100 origin || git fetch origin ${REPO_BRANCH} --quiet`, { cwd: REPO_ROOT, stdio: "ignore" });
       execSync(`git reset --hard ${targetSha}`, { cwd: REPO_ROOT, stdio: "ignore" });
       const installedSha = execSync("git rev-parse HEAD", {
         cwd: REPO_ROOT,
@@ -464,15 +468,33 @@ export function applyRollbackCode(targetSha, commitMessage = "Rollback") {
 
       if (installedSha.startsWith(targetSha.slice(0, 7).toLowerCase())) {
         success = true;
-        writeBuildStamp(installedSha, commitMessage, "MIAS LITE MDX");
       }
     } catch (err) {
-      console.error("[UPDATER] Git rollback failed:", err?.message || err);
+      console.warn("[UPDATER] Git rollback attempt failed, will try archive sync:", err?.message || err);
     }
-  } else {
-    // If no .git, write build stamp
+  }
+
+  // If git wasn't present or git reset failed, download and extract exact archive of target commit
+  if (!success) {
+    try {
+      const { syncLatestCode } = require("../../lib/code-updater.cjs");
+      const local = readLocalCommit();
+      const result = await syncLatestCode({
+        root: REPO_ROOT,
+        local: { sha: local.sha },
+        remote: { sha: targetSha },
+        forceRollback: true,
+        log: (line) => console.log(line),
+      });
+      success = !!result?.updated || result?.reason === "current";
+    } catch (err) {
+      console.error("[UPDATER] Archive rollback failed:", err?.message || err);
+    }
+  }
+
+  if (success) {
     writeBuildStamp(targetSha, commitMessage, "MIAS LITE MDX");
-    success = true;
+    saveRollbackState(readLocalCommit().sha || targetSha, targetSha, commitMessage, true);
   }
   return success;
 }
@@ -747,15 +769,48 @@ function startAutoUpdatePoller(ctx) {
     try {
       const botSettings = typeof getSettings === "function" ? getSettings("bot") : null;
       // Auto-update is ON by default unless explicitly set to false
+      const rollbackState = readRollbackState();
+      const isRollback = Boolean(rollbackState?.inRollback);
+
+      const local = readLocalCommit();
+      const remote = await fetchRemoteCommit();
+      if (!remote.sha || !local.sha) return;
+
+      // When in rollback mode, do NOT auto-update even if auto-update is enabled.
+      // Instead, drop a 3-line notice for the user.
+      if (isRollback) {
+        if (remote.sha.toLowerCase() !== local.sha.toLowerCase()) {
+          const ownerNumber = String(CONFIG?.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
+          const sock = globalThis.__MIAS_SOCK__;
+          const NOTIFY_FILE = path.join(REPO_ROOT, "nexstore", "rollback-notified.json");
+          let seen = null;
+          try { seen = JSON.parse(fs.readFileSync(NOTIFY_FILE, "utf8")); } catch {}
+          if (seen?.sha && seen.sha.toLowerCase() === remote.sha.toLowerCase()) return;
+
+          const headline = String(remote.message || "New features and fixes").split("\n")[0].slice(0, 80);
+          const shortSha = remote.sha.slice(0, 7);
+
+          const noticeText =
+            `📢 *New update available:* \`${shortSha}\` — _${headline}_\n` +
+            `⏸️ *Auto-update is paused:* You are currently in rollback mode so your experience is not interrupted.\n` +
+            `💡 Use \`${P}update\` to experience new features.`;
+
+          if (sock && ownerNumber && typeof sock.sendMessage === "function") {
+            await sock.sendMessage(`${ownerNumber}@s.whatsapp.net`, { text: noticeText }).catch(() => {});
+            try {
+              fs.mkdirSync(path.dirname(NOTIFY_FILE), { recursive: true });
+              fs.writeFileSync(NOTIFY_FILE, JSON.stringify({ sha: remote.sha, notifiedAt: Date.now() }), "utf8");
+            } catch {}
+          }
+        }
+        return;
+      }
+
       const isEnabled = botSettings?.autoUpdate !== false && String(process.env.AUTO_UPDATE || "").toLowerCase() !== "off";
       if (!isEnabled) {
         await notifyOwnerOfManualUpdate(CONFIG);
         return;
       }
-
-      const local = readLocalCommit();
-      const remote = await fetchRemoteCommit();
-      if (!remote.sha || !local.sha) return;
 
       if (remote.sha.toLowerCase() !== local.sha.toLowerCase()) {
         if (remote.sha.toLowerCase() === _lastStampOnlySha) return;
@@ -1112,7 +1167,7 @@ export function installUpdateCommand(ctx) {
 
       // Apply rollback
       await sleep(1000);
-      const applied = applyRollbackCode(targetSha, targetMsg);
+      const applied = await applyRollbackCode(targetSha, targetMsg);
 
       if (!applied) {
         await sock.sendMessage(jid, { react: { text: "❌", key: msg.key } }).catch(() => {});

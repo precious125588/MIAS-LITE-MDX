@@ -11243,7 +11243,7 @@ const MENU_CATEGORIES = [{
 }, {
   'name': "GAMES",
   'emoji': '🎮',
-  'cmds': ["wcg", 'trivia', "guesssong", "ttt", "hangman", "math", "emojiquiz", "riddle", 'tod', "wyr", "spinbottle", "nhie", 'lb', "unscramble", "wordle", "whoami", "quizguess", "quizpuzzle", "quiztruefalse", "quizrandom", 'quizcat', "quizcategories", "quizlist", "randomquiz", "rquiz", "tfquiz", "truefalsequiz", "pquiz", "prexzyquiz", 'puzzlequiz']
+  'cmds': ["tictactoe", "wcg", "wrg"]
 }, {
   'name': "GROUP",
   'emoji': '👥',
@@ -11285,7 +11285,7 @@ const MENU_CATEGORIES = [{
 }, {
   'name': 'AI',
   'emoji': '🤖',
-  'cmds': ['gpt', "gemini", "explaincode", "detectbugs", 'convertcode', "summarize", 'imagine']
+  'cmds': ['gpt', "gemini", "explaincode", "detectbugs", 'convertcode', "summarize", 'imagine', 'dall', 'groq', 'or']
 }, {
   'name': "SEARCH",
   'emoji': '🔍',

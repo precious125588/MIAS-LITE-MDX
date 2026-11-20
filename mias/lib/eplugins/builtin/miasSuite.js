@@ -537,8 +537,13 @@ bot(
     for (const num of numbers.slice(0, 20)) {
       const jid = `${num}@s.whatsapp.net`
       try {
-        const [res] = await message.onWhatsapp(jid)
-        out += res?.exists ? `✅ +${num} — *Online/Active*\n` : `❌ +${num} — *Not Registered*\n`
+        const checkFn = typeof message.onWhatsapp === 'function'
+          ? message.onWhatsapp.bind(message)
+          : (typeof message.onWhatsApp === 'function' ? message.onWhatsApp.bind(message) : (message.client?.onWhatsApp ? message.client.onWhatsApp.bind(message.client) : null))
+        if (!checkFn) throw new Error('WhatsApp check not supported')
+        const res = await checkFn(jid)
+        const hit = Array.isArray(res) ? res[0] : res
+        out += hit?.exists ? `✅ +${num} — *Online/Active*\n` : `❌ +${num} — *Not Registered*\n`
       } catch {
         out += `⚠️ +${num} — *Check Error*\n`
       }

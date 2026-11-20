@@ -1,5 +1,5 @@
 // Node-hosted menu helpers. No sockets, sessions, timers or startup side effects.
-export const REMOVED_MENU_CATEGORIES = new Set(['GAMES', 'MAKER', 'PHOTO', 'TEXTMAKER', 'STALK', 'LOGO', 'FUN', 'INTELLIGENCE', 'ANIMATION', 'TTS', 'UTILITY']);
+export const REMOVED_MENU_CATEGORIES = new Set(['MAKER', 'PHOTO', 'TEXTMAKER', 'STALK', 'LOGO', 'FUN', 'INTELLIGENCE', 'ANIMATION', 'TTS', 'UTILITY']);
 
 // Menu-only selections. These never change registration, authorization or handlers.
 export const SEARCH_MENU_EXCLUSIONS = new Set(`
@@ -16,6 +16,13 @@ tiksearch trending ud trending2 wagroupsearch currency movie
 `.trim().split(/\s+/));
 // "apple music" is an existing display label for the registered applemusic name.
 export const MENU_DISPLAY_LABELS = Object.freeze({ 'apple music': 'applemusic' });
+export const GAMES_MENU_EXCLUSIONS = new Set(`
+asahotak siapakahaku susunkata tebak-bendera tebak-gambar tebak-islam tebak-kata
+tebak-lirik trivia hangman wordle riddle math ttt tod wyr nhie spinbottle
+emojiquiz unscramble whoami guesssong quizguess quizpuzzle quiztruefalse
+quizrandom quizcategories quizcat quizlist randomquiz rquiz tfquiz truefalsequiz
+pquiz prexzyquiz puzzlequiz lb
+`.trim().split(/\s+/));
 export const TOOLS_MENU_EXCLUSIONS = new Set(`
 acutetext alightmotion allstyles artoid brokenlink circlednegtext circledtext
 cjkthaitext codecompile currency curvy1text curvy2text curvy3text dbase decfile
@@ -41,7 +48,7 @@ export function menuExclusionReport(commands, aliases = new Map()) {
     return commands.has(canonical) ? canonical : null;
   };
   const report = {};
-  for (const [label, selection] of [['search', SEARCH_MENU_EXCLUSIONS], ['tools', TOOLS_MENU_EXCLUSIONS]]) {
+  for (const [label, selection] of [['search', SEARCH_MENU_EXCLUSIONS], ['tools', TOOLS_MENU_EXCLUSIONS], ['games', GAMES_MENU_EXCLUSIONS]]) {
     report[label] = { matched: [], unmatched: [], mappings: [] };
     for (const name of selection) {
       const canonical = resolve(name);
@@ -53,7 +60,7 @@ export function menuExclusionReport(commands, aliases = new Map()) {
 }
 function menuHiddenCanonicals(commands, aliases) {
   const report = menuExclusionReport(commands, aliases);
-  return new Set([...report.search.mappings, ...report.tools.mappings].map(item => item.canonical));
+  return new Set([...report.search.mappings, ...report.tools.mappings, ...report.games.mappings].map(item => item.canonical));
 }
 
 // Presentation-only labels; API/command metadata and handlers stay untouched.

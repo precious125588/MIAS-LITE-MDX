@@ -151,12 +151,19 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
   const quotedFlags = quoted ? replyFlagsOf(quotedContent, quotedType, quotedMimetype) : {};
 
   const call = async (name, ...args) => {
-    if (typeof sock?.[name] !== "function") {
+    let fn = sock?.[name];
+    if (typeof fn !== "function" && sock && typeof sock === "object") {
+      const alt = Object.keys(sock).find((k) => k.toLowerCase() === name.toLowerCase());
+      if (alt && typeof sock[alt] === "function") {
+        fn = sock[alt];
+      }
+    }
+    if (typeof fn !== "function") {
       note();
       throw new Error(`message.${name}() is not supported by this WhatsApp connection.`);
     }
     try {
-      return await sock[name](...args);
+      return await fn.call(sock, ...args);
     } catch (error) {
       note();
       throw error;
@@ -466,7 +473,18 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
     Demote: members("demote"),
     async Block(target) { return call("updateBlockStatus", target, "block"); },
     async Unblock(target) { return call("updateBlockStatus", target, "unblock"); },
-    async onWhatsapp(...numbers) { return call("onWhatsapp", ...numbers.flat()); },
+    async onWhatsapp(...numbers) {
+      const flat = numbers.flat();
+      const fn = sock?.onWhatsApp || sock?.onWhatsapp;
+      if (typeof fn === "function") return fn.call(sock, ...flat);
+      return call("onWhatsApp", ...flat);
+    },
+    async onWhatsApp(...numbers) {
+      const flat = numbers.flat();
+      const fn = sock?.onWhatsApp || sock?.onWhatsapp;
+      if (typeof fn === "function") return fn.call(sock, ...flat);
+      return call("onWhatsApp", ...flat);
+    },
     async fetchStatus(target) { return call("fetchStatus", target); },
     async profilePictureUrl(target, type = "image") { return call("profilePictureUrl", target, type); },
     async updateProfilePicture(target, buffer) { return call("updateProfilePicture", target, buffer); },
