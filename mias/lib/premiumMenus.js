@@ -1,5 +1,5 @@
 // Node-hosted menu helpers. No sockets, sessions, timers or startup side effects.
-export const REMOVED_MENU_CATEGORIES = new Set(['TEXTMAKER', 'STALK', 'LOGO', 'FUN', 'INTELLIGENCE', 'ANIMATION', 'TTS', 'UTILITY']);
+export const REMOVED_MENU_CATEGORIES = new Set(['GAMES', 'MAKER', 'PHOTO', 'TEXTMAKER', 'STALK', 'LOGO', 'FUN', 'INTELLIGENCE', 'ANIMATION', 'TTS', 'UTILITY']);
 
 // Menu-only selections. These never change registration, authorization or handlers.
 export const SEARCH_MENU_EXCLUSIONS = new Set(`

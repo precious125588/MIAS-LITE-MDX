@@ -29721,6 +29721,7 @@ cmd('listmessages', {
   await sendReply(_0x1a542f, _0x2b5601, _0x333864 + '', _0x4c6a26['slice'](0x0, 0x19)["map"](([_0x4a8c75]) => _0x4a8c75));
 });
 cmd("multipoll", {
+  'disabled': true,
   'desc': 'Create\x20multi-option\x20poll',
   'category': "GROUP"
 }, async (_0x45fc01, _0x40ff72, _0x44ee5f) => {

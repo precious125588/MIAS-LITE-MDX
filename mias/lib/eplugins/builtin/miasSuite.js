@@ -83,7 +83,6 @@ bot(
     pattern: 'unafk ?(.*)',
     desc: 'Remove AFK status',
     type: 'tools',
-    dontAddCommandList: true,
   },
   async (message) => {
     await setAfk(false, '', 0, message.participant, message.id)
@@ -212,7 +211,6 @@ bot(
     pattern: 'multipoll ?(.*)',
     desc: 'Create multi-choice poll',
     type: 'group',
-    dontAddCommandList: true,
   },
   async (message, match) => {
     const parts = (match || '').split(',')

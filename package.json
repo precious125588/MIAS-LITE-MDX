@@ -4,6 +4,7 @@
   "description": "MIAS LITE MDX — High-Performance WhatsApp Multi-Device Automation Bot & Web Pairing Dashboard",
   "main": "server.js",
   "scripts": {
+    "test": "node --test mias/test/*.test.mjs mias/test/*.test.js",
     "start": "node scripts/start-with-session-migration.cjs",
     "dev": "node scripts/start-with-session-migration.cjs",
     "setup": "cd mias && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund",

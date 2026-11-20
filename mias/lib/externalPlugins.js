@@ -212,7 +212,7 @@ export function createExternalPluginSystem(host) {
     return [];
   }
 
-  function conflicts(name, regs) {
+  function conflicts(name, regs, isBuiltin = false) {
     const problems = [];
     for (const reg of regs) {
       if (!reg.pattern) continue;
@@ -232,10 +232,16 @@ export function createExternalPluginSystem(host) {
       const existing = host.commands.get(n);
       if (existing && existing.eplugin !== name) {
         if (!existing.disabled && existing.enabled !== false) {
-          problems.push(`.${n} already exists${existing.eplugin ? ` (plugin ${existing.eplugin})` : " as a built-in command"}`);
+          if (isBuiltin) {
+            // Built-in plugin overrides existing host command; will disable legacy host entry
+          } else {
+            problems.push(`.${n} already exists${existing.eplugin ? ` (plugin ${existing.eplugin})` : " as a built-in command"}`);
+          }
         }
       } else if (!existing && host.aliases.has(n)) {
-        problems.push(`.${n} is already an alias of another command`);
+        if (!isBuiltin) {
+          problems.push(`.${n} is already an alias of another command`);
+        }
       }
     }
     return problems;
@@ -338,7 +344,7 @@ export function createExternalPluginSystem(host) {
     };
   }
 
-  function registerCommands(name, regs) {
+  function registerCommands(name, regs, isBuiltin = false) {
     const byName = new Map();
     for (const reg of regs) {
       if (!reg.pattern) continue;
@@ -348,10 +354,18 @@ export function createExternalPluginSystem(host) {
     }
     const commands = [];
     for (const [n, list] of byName) {
-      const category = categoryFor(list[0].type);
+      const category = isBuiltin ? categoryFor(list[0].type) : "PLUGINS";
       const ownerOnly = list.every((r) => r.fromMe);
       const hidden = list.every((r) => r.dontAddCommandList);
       const desc = list[0].desc || "External plugin command";
+      const existing = host.commands.get(n);
+      if (existing && existing.eplugin !== name) {
+        existing.disabled = true;
+        existing.enabled = false;
+      }
+      if (host.aliases.has(n)) {
+        host.aliases.delete(n);
+      }
       host.cmd([n], { desc, category, ownerOnly, eplugin: name, pluginCommand: true }, makeCommandRunner(n, list));
       const entry = host.commands.get(n);
       if (!entry || entry.eplugin !== name) throw new Error(`.${n} could not be registered`);
@@ -389,7 +403,7 @@ export function createExternalPluginSystem(host) {
   }
 
   /** Compiles, checks and registers one plugin. A failure leaves the previous version in place. */
-  function loadSource({ name, file, source, session, announce, url }) {
+  function loadSource({ name, file, source, session, announce, url, isBuiltin = false }) {
     if (!SAFE_NAME.test(name)) throw new Error(LANG.plugins.plugin.invalid);
     if (Buffer.byteLength(source, "utf8") > MAX_PLUGIN_BYTES) {
       throw new Error(`the plugin is larger than ${MAX_PLUGIN_BYTES / 1024} KB.`);
@@ -404,13 +418,13 @@ export function createExternalPluginSystem(host) {
     for (const { from, to } of renameDuplicates(name, regs)) {
       log(`[eplugin] ⚠️ .${from} already exists, so this plugin's command is installed as .${to}`);
     }
-    const problems = conflicts(name, regs);
+    const problems = conflicts(name, regs, isBuiltin);
     if (problems.length) throw new Error(problems.join("; "));
     unregister(name);
     let commands;
     let events;
     try {
-      commands = registerCommands(name, regs);
+      commands = registerCommands(name, regs, isBuiltin);
       events = registerEvents(name, regs);
     } catch (error) {
       unregister(name);
@@ -449,7 +463,7 @@ export function createExternalPluginSystem(host) {
   }
 
   /** Levanter's installPlugin(path, session): loads a plugin file. */
-  function installPlugin(filePath, session = SESSION) {
+  function installPlugin(filePath, session = SESSION, isBuiltin = false) {
     const file = path.resolve(String(filePath));
     let source;
     try {
@@ -457,7 +471,7 @@ export function createExternalPluginSystem(host) {
     } catch (error) {
       throw new Error(`cannot read the plugin file: ${error.message}`);
     }
-    return loadSource({ name: nameFromFile(file, session), file, source, session, announce: true });
+    return loadSource({ name: nameFromFile(file, session), file, source, session, announce: true, isBuiltin });
   }
 
   /** Levanter's removePlugin(name, session): unregisters the commands and deletes the file. */
@@ -490,7 +504,7 @@ export function createExternalPluginSystem(host) {
     const results = [];
     for (const f of files) {
       try {
-        results.push(installPlugin(path.join(builtinDir, f), SESSION));
+        results.push(installPlugin(path.join(builtinDir, f), SESSION, true));
       } catch (err) {
         warn(`[${SESSION}] Failed to load builtin plugin ${f}: ${err?.message || err}`);
       }
