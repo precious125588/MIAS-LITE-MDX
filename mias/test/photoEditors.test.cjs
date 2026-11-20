@@ -23,7 +23,7 @@ test('Levanter photo editor commands and background removal registration and usa
   const mockAxios = { get: async () => ({ data: {} }), post: async () => ({ data: {} }) };
   const mockNx = { tools: {} };
 
-  const initNexray = require('../nexray_bot.cjs');
+  const initNexray = require('../mias_bot.cjs');
   initNexray(mockCmd, mockConfig, mockSendReply, mockReact, mockDl, mockAxios, mockNx);
 
   const requiredPhotoEditors = [

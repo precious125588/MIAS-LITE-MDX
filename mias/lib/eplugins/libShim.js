@@ -17,18 +17,18 @@ import { CronTime } from "cron";
 import { fileURLToPath } from "node:url";
 import { normalizeBotOptions } from "./dispatchRules.js";
 import { getFfmpegBuffer, audioCut, videoHeightWidth } from "./ffmpegMedia.js";
-import { createLevanterMedia } from "./levanterMedia.js";
+import { createMiasMedia, createLevanterMedia } from "./miasMedia.js";
 import { yts as ytsSearch, song as songDownload } from "./youtubeEngine.js";
 import { createWordChecker } from "./wcgDictionary.js";
-import * as levanterState from "./levanterState.js";
-import * as levanterAi from "./levanterAi.js";
-import * as levanterGoogle from "./levanterGoogle.js";
-import * as levanterGames from "./levanterGames.js";
-import * as levanterApk from "./levanterApk.js";
-import * as levanterPdf from "./levanterPdf.js";
+import * as miasState from "./miasState.js";
+import * as miasAi from "./miasAi.js";
+import * as miasGoogle from "./miasGoogle.js";
+import * as miasGames from "./miasGames.js";
+import * as miasApk from "./miasApk.js";
+import * as miasPdf from "./miasPdf.js";
 
 export const LANG = JSON.parse(
-  fs.readFileSync(fileURLToPath(new URL("./levanter-en.json", import.meta.url)), "utf8"),
+  fs.readFileSync(fileURLToPath(new URL("./mias-en.json", import.meta.url)), "utf8"),
 );
 
 /** Levanter defines String.prototype.format for its lang strings ({0}, {1}, ...). */
@@ -484,7 +484,7 @@ function sharedWordChecker(file, httpGet) {
 }
 
 export function createLibShim({ bot, store, manager, httpGet, session, findJid, settings, plugins, groupSubject, pushName, wcgFile }) {
-  const media = createLevanterMedia({ tempDir: TEMP_DIR });
+  const media = createMiasMedia({ tempDir: TEMP_DIR });
   const wordChecker = wcgFile ? sharedWordChecker(wcgFile, httpGet) : null;
   const api = {
     bot(opts, handler) {
@@ -529,12 +529,12 @@ export function createLibShim({ bot, store, manager, httpGet, session, findJid, 
     getQuote() {
       return fetchQuote((url) => api.getJson(url, { timeout: 10000 }));
     },
-    ...levanterState,
-    ...levanterAi,
-    ...levanterGoogle,
-    ...levanterGames,
-    ...levanterApk,
-    ...levanterPdf,
+    ...miasState,
+    ...miasAi,
+    ...miasGoogle,
+    ...miasGames,
+    ...miasApk,
+    ...miasPdf,
     SPAM_LEVELS: {
       low: { scoreThreshold: 15, messageThreshold: 10, timeWindow: 20, repeatPenalty: 3, description: 'Relaxed - Good for active groups' },
       medium: { scoreThreshold: 10, messageThreshold: 6, timeWindow: 30, repeatPenalty: 4.5, description: 'Balanced - Default, recommended' },

@@ -106,8 +106,6 @@ const TYPED = [
   ['43.4', 'Anti Edit', 'DELIVER IN OWNER DM', s => s.antiEditDestination === 'private'],
   ['44.1', 'Vcard Status', 'ENABLE', s => !!s.vcardStatus],
   ['44.2', 'Vcard Status', 'DISABLE', s => !s.vcardStatus],
-  ['45.1', 'Nix Chatbot', 'ENABLE', s => !!s.nixEnabled],
-  ['45.2', 'Nix Chatbot', 'DISABLE', s => !s.nixEnabled],
 ];
 
 function unwrapMessage(msg) {

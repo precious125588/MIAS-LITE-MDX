@@ -1,7 +1,7 @@
 'use strict';
 const LYRICS = require('./lib/lyricsResolver.cjs');
 /**
- * nexray_bot.cjs — Complete NexRay-powered commands for MIAS MDX bot
+ * mias_bot.cjs — Complete NexRay-powered commands for MIAS MDX bot
  * API Source : https://api.nexray.eu.cc  (369 endpoints)
  * Prefixes   : /  and  ,  (set process.env.PREFIX=/ or PREFIX=, in .env)
  *
@@ -12,7 +12,7 @@ const LYRICS = require('./lib/lyricsResolver.cjs');
  *   Stalker(15)  Textpro(22)  Tools(57)  Uploader(1)
  *
  * Usage: loaded from mias/index.js as:
- *   require('./nexray_bot.cjs')(cmd, CONFIG, sendReply, react, downloadContentFromMessage, axios, nx)
+ *   require('./mias_bot.cjs')(cmd, CONFIG, sendReply, react, downloadContentFromMessage, axios, nx)
  */
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -342,7 +342,7 @@ async function _textAICore(sock, msg, query, nx_fn, label, emoji, _srFn) {
 
 module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, downloadContentFromMessage, axios, nx) {
   if (!nx) {
-    console.error('[nexray_bot] ❌ nx is null — NexRay wrapper not loaded. Commands skipped.');
+    console.error('[mias_bot] ❌ nx is null — NexRay wrapper not loaded. Commands skipped.');
     return;
   }
 
@@ -377,7 +377,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // ██████╗  AI  — 69 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['alisia'], { desc: 'Chat with Alisia AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['alisia'], { desc: 'Chat with Alisia AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'alisia <text>');
     await react(sock, msg, '🤖');
     try {
@@ -388,7 +388,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['andisearch', 'andi'], { desc: 'Andi AI web search', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['andisearch', 'andi'], { desc: 'Andi AI web search', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'andisearch <query>');
     await react(sock, msg, '🔍');
     try {
@@ -399,7 +399,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['bypass-ai', 'aibypass'], { desc: 'Bypass AI detection / humanize text', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['bypass-ai', 'aibypass'], { desc: 'Bypass AI detection / humanize text', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'bypass-ai <text>');
     await react(sock, msg, '🛡️');
     try {
@@ -410,7 +410,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['chatgpt', 'gpt'], { desc: 'Chat with ChatGPT', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['chatgpt', 'gpt'], { desc: 'Chat with ChatGPT', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'chatgpt <question>');
     await react(sock, msg, '🤖');
     try {
@@ -421,7 +421,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['claude'], { desc: 'Chat with Claude AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['claude'], { desc: 'Chat with Claude AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'claude <text>');
     await react(sock, msg, '🧠');
     try {
@@ -432,7 +432,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['copilot'], { desc: 'Chat with Microsoft Copilot', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['copilot'], { desc: 'Chat with Microsoft Copilot', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'copilot <text>');
     await react(sock, msg, '🤖');
     try {
@@ -443,7 +443,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['deepimg'], { desc: 'Generate image with DeepImg AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['deepimg'], { desc: 'Generate image with DeepImg AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'deepimg <prompt>');
     await react(sock, msg, '🎨');
     try {
@@ -454,7 +454,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['deepsearch'], { desc: 'Deep search with AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['deepsearch'], { desc: 'Deep search with AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'deepsearch <query>');
     await react(sock, msg, '🔎');
     try {
@@ -465,7 +465,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['deepseek'], { desc: 'Chat with DeepSeek AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['deepseek'], { desc: 'Chat with DeepSeek AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'deepseek <text>');
     await react(sock, msg, '🤖');
     try {
@@ -476,7 +476,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['dgaf'], { desc: 'Chat with Dgaf AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['dgaf'], { desc: 'Chat with Dgaf AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'dgaf <text>');
     await react(sock, msg, '🤖');
     try {
@@ -487,7 +487,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['dolphin'], { desc: 'Chat with Dolphin AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['dolphin'], { desc: 'Chat with Dolphin AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'dolphin <text>');
     await react(sock, msg, '🐬');
     try {
@@ -498,7 +498,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['dracintts', 'dracin-tts'], { desc: 'Dracin Text-to-Speech', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['dracintts', 'dracin-tts'], { desc: 'Dracin Text-to-Speech', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'dracintts <text>');
     await react(sock, msg, '🎙️');
     try {
@@ -509,7 +509,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['dreamanalyze', 'dream'], { desc: 'Analyze dream with AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['dreamanalyze', 'dream'], { desc: 'Analyze dream with AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'dreamanalyze <describe your dream>');
     await react(sock, msg, '🌙');
     try {
@@ -520,7 +520,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['duck', 'duckai'], { desc: 'Chat with Duck AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['duck', 'duckai'], { desc: 'Chat with Duck AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'duck <text>');
     await react(sock, msg, '🦆');
     try {
@@ -531,7 +531,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['epsilon'], { desc: 'Academic search with Epsilon AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['epsilon'], { desc: 'Academic search with Epsilon AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'epsilon <query>');
     await react(sock, msg, '📚');
     try {
@@ -542,7 +542,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['felo'], { desc: 'Chat with Felo AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['felo'], { desc: 'Chat with Felo AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'felo <text>');
     await react(sock, msg, '🤖');
     try {
@@ -553,7 +553,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['flux', 'fluxai'], { desc: 'Generate image with Flux AI v1', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['flux', 'fluxai'], { desc: 'Generate image with Flux AI v1', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'flux <prompt>');
     await react(sock, msg, '🎨');
     try {
@@ -564,7 +564,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['geminitts', 'gemini-tts'], { desc: 'Gemini Text-to-Speech', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['geminitts', 'gemini-tts'], { desc: 'Gemini Text-to-Speech', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'geminitts <text>');
     await react(sock, msg, '🎙️');
     try {
@@ -575,7 +575,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['gemini'], { desc: 'Chat with Google Gemini', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['gemini'], { desc: 'Chat with Google Gemini', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'gemini <text>');
     await react(sock, msg, '💎');
     try {
@@ -586,7 +586,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['gitagpt', 'gita'], { desc: 'Bhagavad Gita AI Q&A', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['gitagpt', 'gita'], { desc: 'Bhagavad Gita AI Q&A', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'gitagpt <question>');
     await react(sock, msg, '📖');
     try {
@@ -597,7 +597,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['glm'], { desc: 'Chat with GLM AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['glm'], { desc: 'Chat with GLM AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'glm <text>');
     await react(sock, msg, '🤖');
     try {
@@ -608,7 +608,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['gpt35', 'gpt3'], { desc: 'Chat with GPT-3.5 Turbo', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['gpt35', 'gpt3'], { desc: 'Chat with GPT-3.5 Turbo', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'gpt35 <text>');
     await react(sock, msg, '🤖');
     try {
@@ -619,7 +619,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['gptimage', 'editimg'], { desc: 'Edit image with GPT Vision (reply to an image)', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['gptimage', 'editimg'], { desc: 'Edit image with GPT Vision (reply to an image)', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'gptimage <prompt> (reply to an image)');
     await react(sock, msg, '🎨');
     try {
@@ -632,7 +632,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['grammarcheck', 'grammar'], { desc: 'Check and fix grammar', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['grammarcheck', 'grammar'], { desc: 'Check and fix grammar', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'grammarcheck <text>');
     await react(sock, msg, '✏️');
     try {
@@ -643,7 +643,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['hammer', 'hammerai'], { desc: 'Chat with Hammer AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['hammer', 'hammerai'], { desc: 'Chat with Hammer AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'hammer <text>');
     await react(sock, msg, '🔨');
     try {
@@ -654,7 +654,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['heck'], { desc: 'Chat with Heck AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['heck'], { desc: 'Chat with Heck AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'heck <text>');
     await react(sock, msg, '🤖');
     try {
@@ -665,7 +665,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ideogram'], { desc: 'Generate image with Ideogram AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['ideogram'], { desc: 'Generate image with Ideogram AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ideogram <prompt>');
     await react(sock, msg, '🎨');
     try {
@@ -676,7 +676,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['image2prompt', 'img2prompt'], { desc: 'Generate prompt from image URL', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['image2prompt', 'img2prompt'], { desc: 'Generate prompt from image URL', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'image2prompt <image-url>');
     await react(sock, msg, '🔍');
     try {
@@ -687,7 +687,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['islamcity'], { desc: 'Islamic Q&A with IslamCity AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['islamcity'], { desc: 'Islamic Q&A with IslamCity AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'islamcity <question>');
     await react(sock, msg, '☪️');
     try {
@@ -698,7 +698,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['islamicai', 'islamic-ai'], { desc: 'Islamic AI chat', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['islamicai', 'islamic-ai'], { desc: 'Islamic AI chat', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'islamicai <question>');
     await react(sock, msg, '☪️');
     try {
@@ -709,7 +709,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['jadve'], { desc: 'Chat with Jadve AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['jadve'], { desc: 'Chat with Jadve AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'jadve <text>');
     await react(sock, msg, '🤖');
     try {
@@ -720,7 +720,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['jeeves'], { desc: 'Chat with Jeeves AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['jeeves'], { desc: 'Chat with Jeeves AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'jeeves <text>');
     await react(sock, msg, '🧐');
     try {
@@ -731,7 +731,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['kimi'], { desc: 'Chat with Kimi AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['kimi'], { desc: 'Chat with Kimi AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'kimi <text>');
     await react(sock, msg, '🤖');
     try {
@@ -742,7 +742,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['llamacoder', 'llama'], { desc: 'Chat with LlamaCoder AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['llamacoder', 'llama'], { desc: 'Chat with LlamaCoder AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'llamacoder <text>');
     await react(sock, msg, '🦙');
     try {
@@ -753,7 +753,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['lumin'], { desc: 'Chat with Lumin AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['lumin'], { desc: 'Chat with Lumin AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'lumin <text>');
     await react(sock, msg, '💡');
     try {
@@ -764,7 +764,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['magicstudio'], { desc: 'Generate image with MagicStudio AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['magicstudio'], { desc: 'Generate image with MagicStudio AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'magicstudio <prompt>');
     await react(sock, msg, '🪄');
     try {
@@ -775,7 +775,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['mathgpt', 'math'], { desc: 'Solve math with MathGPT AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['mathgpt', 'math'], { desc: 'Solve math with MathGPT AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'mathgpt <math problem>');
     await react(sock, msg, '🧮');
     try {
@@ -786,7 +786,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['monica'], { desc: 'Chat with Monica AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['monica'], { desc: 'Chat with Monica AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'monica <text>');
     await react(sock, msg, '🤖');
     try {
@@ -797,7 +797,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['morphic'], { desc: 'Chat with Morphic AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['morphic'], { desc: 'Chat with Morphic AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'morphic <text>');
     await react(sock, msg, '🔮');
     try {
@@ -808,7 +808,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['muslim', 'muslimbot'], { desc: 'Islamic AI chat (Muslim)', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['muslim', 'muslimbot'], { desc: 'Islamic AI chat (Muslim)', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'muslim <question>');
     await react(sock, msg, '☪️');
     try {
@@ -819,7 +819,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['nanobanana', 'imgprompt'], { desc: 'Modify image with prompt (reply to image)', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['nanobanana', 'imgprompt'], { desc: 'Modify image with prompt (reply to image)', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'nanobanana <prompt> (reply to an image)');
     await react(sock, msg, '🎨');
     try {
@@ -832,7 +832,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['natalie', 'natalieai'], { desc: 'Chat with Natalie AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['natalie', 'natalieai'], { desc: 'Chat with Natalie AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'natalie <text>');
     await react(sock, msg, '🤖');
     try {
@@ -843,18 +843,18 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['nexrayai', 'nx-ai'], { desc: 'Chat with NexRay AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['nexrayai', 'nx-ai'], { desc: 'Chat with MIAS AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'nexrayai <text>');
     await react(sock, msg, '⚡');
     try {
       const r = await nx.ai.nexray({ text: args.join(' ') });
       const t = _jsonFmt(r); if (!t) throw new Error('No response');
-      await sendReply(sock, msg, `⚡ *NexRay AI*\n\n${t}`);
+      await sendReply(sock, msg, `⚡ *MIAS AI*\n\n${t}`);
       await react(sock, msg, '✅');
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['nowtech'], { desc: 'Chat with Nowtech AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['nowtech'], { desc: 'Chat with Nowtech AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'nowtech <text>');
     await react(sock, msg, '🤖');
     try {
@@ -865,7 +865,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['openai', 'openaibot'], { desc: 'Chat with OpenAI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['openai', 'openaibot'], { desc: 'Chat with OpenAI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'openai <text>');
     await react(sock, msg, '🤖');
     try {
@@ -876,7 +876,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['overchat'], { desc: 'Chat with Overchat AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['overchat'], { desc: 'Chat with Overchat AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'overchat <text>');
     await react(sock, msg, '🤖');
     try {
@@ -887,7 +887,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['perplexity'], { desc: 'Chat with Perplexity AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['perplexity'], { desc: 'Chat with Perplexity AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'perplexity <query>');
     await react(sock, msg, '🔮');
     try {
@@ -898,7 +898,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['powerbrain'], { desc: 'Chat with PowerBrain AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['powerbrain'], { desc: 'Chat with PowerBrain AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'powerbrain <text>');
     await react(sock, msg, '🧠');
     try {
@@ -909,7 +909,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['publicai', 'pub-ai'], { desc: 'Chat with Public AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['publicai', 'pub-ai'], { desc: 'Chat with Public AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'publicai <text>');
     await react(sock, msg, '🌐');
     try {
@@ -920,7 +920,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['quillbot', 'paraphrase'], { desc: 'Paraphrase text with QuillBot AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['quillbot', 'paraphrase'], { desc: 'Paraphrase text with QuillBot AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'quillbot <text>');
     await react(sock, msg, '✏️');
     try {
@@ -931,7 +931,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['riple'], { desc: 'Chat with Riple AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['riple'], { desc: 'Chat with Riple AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'riple <text>');
     await react(sock, msg, '🤖');
     try {
@@ -942,7 +942,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['schoolhub', 'school'], { desc: 'Chat with SchoolHub AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['schoolhub', 'school'], { desc: 'Chat with SchoolHub AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'schoolhub <question>');
     await react(sock, msg, '🏫');
     try {
@@ -953,7 +953,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['screnapp'], { desc: 'Chat with Screnapp AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['screnapp'], { desc: 'Chat with Screnapp AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'screnapp <text>');
     await react(sock, msg, '🤖');
     try {
@@ -964,7 +964,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['simisimi', 'simi'], { desc: 'Chat with Simi Simi', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['simisimi', 'simi'], { desc: 'Chat with Simi Simi', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'simisimi <text>');
     await react(sock, msg, '💬');
     try {
@@ -975,7 +975,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['skole'], { desc: 'Chat with Skole AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['skole'], { desc: 'Chat with Skole AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'skole <text>');
     await react(sock, msg, '🤖');
     try {
@@ -986,7 +986,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['sologo'], { desc: 'Generate logo with AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['sologo'], { desc: 'Generate logo with AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'sologo <prompt>');
     await react(sock, msg, '🎨');
     try {
@@ -997,7 +997,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['story-ai', 'aistory'], { desc: 'Generate a story with AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['story-ai', 'aistory'], { desc: 'Generate a story with AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'story-ai <topic>');
     await react(sock, msg, '📖');
     try {
@@ -1008,7 +1008,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['suno', 'aimusic'], { desc: 'Generate music with Suno AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['suno', 'aimusic'], { desc: 'Generate music with Suno AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'suno <prompt>');
     await react(sock, msg, '🎵');
     try {
@@ -1022,7 +1022,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['text2image', 'txt2img'], { desc: 'Generate image from text', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['text2image', 'txt2img'], { desc: 'Generate image from text', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'text2image <prompt>');
     await react(sock, msg, '🎨');
     try {
@@ -1033,7 +1033,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['turbochat', 'turbo'], { desc: 'Chat with TurboChat AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['turbochat', 'turbo'], { desc: 'Chat with TurboChat AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'turbochat <text>');
     await react(sock, msg, '⚡');
     try {
@@ -1044,7 +1044,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['turboseek'], { desc: 'Chat with TurboSeek AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['turboseek'], { desc: 'Chat with TurboSeek AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'turboseek <query>');
     await react(sock, msg, '🔎');
     try {
@@ -1055,7 +1055,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['venice'], { desc: 'Chat with Venice AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['venice'], { desc: 'Chat with Venice AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'venice <text>');
     await react(sock, msg, '🤖');
     try {
@@ -1066,7 +1066,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['veo2'], { desc: 'Generate video with Veo2 AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['veo2'], { desc: 'Generate video with Veo2 AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'veo2 <prompt>');
     await react(sock, msg, '🎬');
     try {
@@ -1078,7 +1078,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['veo3'], { desc: 'Generate video with Veo3 AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['veo3'], { desc: 'Generate video with Veo3 AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'veo3 <prompt>');
     await react(sock, msg, '🎬');
     try {
@@ -1090,7 +1090,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['vider'], { desc: 'Chat with Vider AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['vider'], { desc: 'Chat with Vider AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'vider <text>');
     await react(sock, msg, '🤖');
     try {
@@ -1101,7 +1101,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['webpilot'], { desc: 'Browse web with WebPilot AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['webpilot'], { desc: 'Browse web with WebPilot AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'webpilot <url or question>');
     await react(sock, msg, '🌐');
     try {
@@ -1112,7 +1112,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['whiterabbitneo', 'wrn'], { desc: 'Chat with WhiteRabbitNeo AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['whiterabbitneo', 'wrn'], { desc: 'Chat with WhiteRabbitNeo AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'whiterabbitneo <text>');
     await react(sock, msg, '🐇');
     try {
@@ -1123,7 +1123,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['writesonic'], { desc: 'Chat with Writesonic AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['writesonic'], { desc: 'Chat with Writesonic AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'writesonic <text>');
     await react(sock, msg, '✍️');
     try {
@@ -1134,7 +1134,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['youchat', 'you'], { desc: 'Chat with You.com AI', category: 'Nexray-AI' }, async (sock, msg, args) => {
+  cmd(['youchat', 'you'], { desc: 'Chat with You.com AI', category: 'AI' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'youchat <text>');
     await react(sock, msg, '🤖');
     try {
@@ -1149,7 +1149,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // 📺  ANIME  — 19 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['anichin', 'anichin-search'], { desc: 'Search anime on Anichin', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['anichin', 'anichin-search'], { desc: 'Search anime on Anichin', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'anichin <anime name>');
     await react(sock, msg, '🎌');
     try {
@@ -1160,7 +1160,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['anichin-detail'], { desc: 'Get anime detail from Anichin', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['anichin-detail'], { desc: 'Get anime detail from Anichin', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'anichin-detail <url>');
     await react(sock, msg, '🎌');
     try {
@@ -1171,7 +1171,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['anichin-genre'], { desc: 'Browse anime by genre on Anichin', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['anichin-genre'], { desc: 'Browse anime by genre on Anichin', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'anichin-genre <genre>');
     await react(sock, msg, '🎌');
     try {
@@ -1182,7 +1182,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['anichin-genres'], { desc: 'List all Anichin genres', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['anichin-genres'], { desc: 'List all Anichin genres', category: 'ANIME' }, async (sock, msg, args) => {
     await react(sock, msg, '🎌');
     try {
       const r = await nx.anime.anichinGenreList();
@@ -1192,7 +1192,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['anichin-latest'], { desc: 'Latest anime on Anichin', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['anichin-latest'], { desc: 'Latest anime on Anichin', category: 'ANIME' }, async (sock, msg, args) => {
     await react(sock, msg, '🎌');
     try {
       const r = await nx.anime.anichinLatest();
@@ -1202,7 +1202,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['anichin-episode'], { desc: 'Get episode from Anichin', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['anichin-episode'], { desc: 'Get episode from Anichin', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'anichin-episode <url>');
     await react(sock, msg, '🎌');
     try {
@@ -1213,7 +1213,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['otakudesu', 'otaku-search'], { desc: 'Search anime on Otakudesu', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['otakudesu', 'otaku-search'], { desc: 'Search anime on Otakudesu', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'otakudesu <anime name>');
     await react(sock, msg, '🎌');
     try {
@@ -1224,7 +1224,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['otakudesu-detail'], { desc: 'Get anime detail from Otakudesu', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['otakudesu-detail'], { desc: 'Get anime detail from Otakudesu', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'otakudesu-detail <url>');
     await react(sock, msg, '🎌');
     try {
@@ -1235,7 +1235,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['otakudesu-ongoing'], { desc: 'Ongoing anime on Otakudesu', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['otakudesu-ongoing'], { desc: 'Ongoing anime on Otakudesu', category: 'ANIME' }, async (sock, msg, args) => {
     await react(sock, msg, '🎌');
     try {
       const r = await nx.anime.otakudesuOngoing();
@@ -1245,7 +1245,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['otakudesu-complete'], { desc: 'Completed anime on Otakudesu', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['otakudesu-complete'], { desc: 'Completed anime on Otakudesu', category: 'ANIME' }, async (sock, msg, args) => {
     await react(sock, msg, '🎌');
     try {
       const r = await nx.anime.otakudesuComplete();
@@ -1255,7 +1255,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['otakudesu-episode'], { desc: 'Get episode from Otakudesu', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['otakudesu-episode'], { desc: 'Get episode from Otakudesu', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'otakudesu-episode <url>');
     await react(sock, msg, '🎌');
     try {
@@ -1266,7 +1266,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['samehadaku', 'same-search'], { desc: 'Search anime on Samehadaku', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['samehadaku', 'same-search'], { desc: 'Search anime on Samehadaku', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'samehadaku <anime name>');
     await react(sock, msg, '🎌');
     try {
@@ -1277,7 +1277,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['samehadaku-detail'], { desc: 'Get anime detail from Samehadaku', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['samehadaku-detail'], { desc: 'Get anime detail from Samehadaku', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'samehadaku-detail <url>');
     await react(sock, msg, '🎌');
     try {
@@ -1288,7 +1288,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['samehadaku-episode'], { desc: 'Get episode from Samehadaku', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['samehadaku-episode'], { desc: 'Get episode from Samehadaku', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'samehadaku-episode <url>');
     await react(sock, msg, '🎌');
     try {
@@ -1299,7 +1299,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['samehadaku-latest'], { desc: 'Latest anime on Samehadaku', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['samehadaku-latest'], { desc: 'Latest anime on Samehadaku', category: 'ANIME' }, async (sock, msg, args) => {
     await react(sock, msg, '🎌');
     try {
       const r = await nx.anime.samehadakuLatest();
@@ -1309,7 +1309,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['kusonime', 'kuso-search'], { desc: 'Search anime on Kusonime', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['kusonime', 'kuso-search'], { desc: 'Search anime on Kusonime', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'kusonime <anime name>');
     await react(sock, msg, '🎌');
     try {
@@ -1320,7 +1320,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['kusonime-detail'], { desc: 'Get anime detail from Kusonime', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['kusonime-detail'], { desc: 'Get anime detail from Kusonime', category: 'ANIME' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'kusonime-detail <url>');
     await react(sock, msg, '🎌');
     try {
@@ -1331,7 +1331,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['kusonime-latest'], { desc: 'Latest anime on Kusonime', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['kusonime-latest'], { desc: 'Latest anime on Kusonime', category: 'ANIME' }, async (sock, msg, args) => {
     await react(sock, msg, '🎌');
     try {
       const r = await nx.anime.kusonimeLatest();
@@ -1341,7 +1341,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['animequote', 'anime-quote'], { desc: 'Get random anime quote', category: 'Nexray-Anime' }, async (sock, msg, args) => {
+  cmd(['animequote', 'anime-quote'], { desc: 'Get random anime quote', category: 'ANIME' }, async (sock, msg, args) => {
     await react(sock, msg, '💬');
     try {
       const r = await nx.anime.quote();
@@ -1355,7 +1355,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // 📰  BERITA / NEWS  — 10 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['berita-antara', 'antara'], { desc: 'Latest news from Antara', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-antara', 'antara'], { desc: 'Latest news from Antara', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.antara();
@@ -1365,7 +1365,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-cnbc', 'cnbcindonesia'], { desc: 'Latest news from CNBC Indonesia', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-cnbc', 'cnbcindonesia'], { desc: 'Latest news from CNBC Indonesia', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.cnbcindonesia();
@@ -1375,7 +1375,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-cnn', 'cnn-news'], { desc: 'Latest news from CNN Indonesia', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-cnn', 'cnn-news'], { desc: 'Latest news from CNN Indonesia', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.cnn();
@@ -1385,7 +1385,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-detik', 'detik'], { desc: 'Latest news from Detik', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-detik', 'detik'], { desc: 'Latest news from Detik', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.detik();
@@ -1395,7 +1395,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-kompas', 'kompas'], { desc: 'Latest news from Kompas', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-kompas', 'kompas'], { desc: 'Latest news from Kompas', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.kompas();
@@ -1405,7 +1405,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-liputan6', 'liputan6'], { desc: 'Latest news from Liputan6', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-liputan6', 'liputan6'], { desc: 'Latest news from Liputan6', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.liputan6();
@@ -1415,7 +1415,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-republika', 'republika'], { desc: 'Latest news from Republika', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-republika', 'republika'], { desc: 'Latest news from Republika', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.republika();
@@ -1425,7 +1425,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-tempo', 'tempo'], { desc: 'Latest news from Tempo', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-tempo', 'tempo'], { desc: 'Latest news from Tempo', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.tempo();
@@ -1435,7 +1435,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-tribun', 'tribun'], { desc: 'Latest news from Tribun', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-tribun', 'tribun'], { desc: 'Latest news from Tribun', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.tribun();
@@ -1445,7 +1445,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['berita-viva', 'viva'], { desc: 'Latest news from Viva', category: 'Nexray-News' }, async (sock, msg, args) => {
+  cmd(['berita-viva', 'viva'], { desc: 'Latest news from Viva', category: 'NEWS' }, async (sock, msg, args) => {
     await react(sock, msg, '📰');
     try {
       const r = await nx.berita.viva();
@@ -1459,7 +1459,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // 🖼️  CANVAS  — 10 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['canvas-gura', 'gura'], { desc: 'Gura template canvas (reply/send image URL)', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-gura', 'gura'], { desc: 'Gura template canvas (reply/send image URL)', category: 'CANVAS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'canvas-gura <image-url>');
     await react(sock, msg, '🖼️');
     try {
@@ -1469,7 +1469,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-jmk', 'jmk48'], { desc: 'JMK48 Tribun twibbon canvas', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-jmk', 'jmk48'], { desc: 'JMK48 Tribun twibbon canvas', category: 'CANVAS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'canvas-jmk <image-url>');
     await react(sock, msg, '🖼️');
     try {
@@ -1479,7 +1479,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-lirik', 'lirik-canvas'], { desc: 'Music lyrics canvas', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-lirik', 'lirik-canvas'], { desc: 'Music lyrics canvas', category: 'CANVAS' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'canvas-lirik <image-url> <lyrics text>');
     const url = args[0]; const text = args.slice(1).join(' ');
     await react(sock, msg, '🎵');
@@ -1490,7 +1490,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-ship', 'ship'], { desc: 'Ship/couple canvas (2 image URLs)', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-ship', 'ship'], { desc: 'Ship/couple canvas (2 image URLs)', category: 'CANVAS' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'canvas-ship <url1> <url2>');
     await react(sock, msg, '❤️');
     try {
@@ -1500,7 +1500,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-wanted', 'wanted'], { desc: 'Wanted poster canvas', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-wanted', 'wanted'], { desc: 'Wanted poster canvas', category: 'CANVAS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'canvas-wanted <image-url>');
     await react(sock, msg, '🤠');
     try {
@@ -1510,7 +1510,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-wasted', 'wasted'], { desc: 'Wasted overlay canvas — reply to an image or pass URL', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-wasted', 'wasted'], { desc: 'Wasted overlay canvas — reply to an image or pass URL', category: 'CANVAS' }, async (sock, msg, args) => {
     await react(sock, msg, '💀');
     try {
       // Resolve image URL: arg URL → replied image (download+CDN) → quoted text URL
@@ -1546,7 +1546,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['musiccard', 'music-card'], { desc: 'Generate music card — .musiccard <song> <artist> [image-url]', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['musiccard', 'music-card'], { desc: 'Generate music card — .musiccard <song> <artist> [image-url]', category: 'CANVAS' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'musiccard <song name> <artist>');
     // 🌀 processing — react only, no text output
     await react(sock, msg, '🌀');
@@ -1614,7 +1614,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch { await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-pixelate', 'pixelate'], { desc: 'Pixelate image canvas', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-pixelate', 'pixelate'], { desc: 'Pixelate image canvas', category: 'CANVAS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'canvas-pixelate <image-url>');
     await react(sock, msg, '🔲');
     try {
@@ -1624,7 +1624,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-glass', 'glass-fx'], { desc: 'Glass effect canvas', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-glass', 'glass-fx'], { desc: 'Glass effect canvas', category: 'CANVAS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'canvas-glass <image-url>');
     await react(sock, msg, '🪟');
     try {
@@ -1634,7 +1634,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['canvas-rainbow', 'rainbow-fx'], { desc: 'Rainbow effect canvas', category: 'Nexray-Canvas' }, async (sock, msg, args) => {
+  cmd(['canvas-rainbow', 'rainbow-fx'], { desc: 'Rainbow effect canvas', category: 'CANVAS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'canvas-rainbow <image-url>');
     await react(sock, msg, '🌈');
     try {
@@ -1654,7 +1654,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     return t ? `⬇️ *${name} Downloader*\n\n${t}` : `⬇️ *${name}:* Could not retrieve link`;
   }
 
-  cmd(['dl', 'aio-dl'], { desc: 'All-in-one downloader (any URL)', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['dl', 'aio-dl'], { desc: 'All-in-one downloader (any URL)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'dl <url>');
     await react(sock, msg, '⬇️');
     try {
@@ -1663,7 +1663,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['applemusic-dl', 'amdl'], { desc: 'Download Apple Music', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['applemusic-dl', 'amdl'], { desc: 'Download Apple Music', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'applemusic-dl <url>');
     await react(sock, msg, '🍎');
     try {
@@ -1672,7 +1672,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['capcut-dl', 'capcutdl'], { desc: 'Download CapCut video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['capcut-dl', 'capcutdl'], { desc: 'Download CapCut video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'capcut-dl <url>');
     await react(sock, msg, '🎬');
     try {
@@ -1681,7 +1681,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['douyin-dl', 'douyindl'], { desc: 'Download Douyin video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['douyin-dl', 'douyindl'], { desc: 'Download Douyin video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'douyin-dl <url>');
     await react(sock, msg, '⬇️');
     try {
@@ -1690,7 +1690,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['fb-dl', 'fbdl', 'facebook-dl'], { desc: 'Download Facebook video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['fb-dl', 'fbdl', 'facebook-dl'], { desc: 'Download Facebook video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'fb-dl <url>');
     await react(sock, msg, '📘');
     try {
@@ -1699,7 +1699,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['gdrive-dl', 'gdrived'], { desc: 'Download Google Drive file', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['gdrive-dl', 'gdrived'], { desc: 'Download Google Drive file', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'gdrive-dl <url>');
     await react(sock, msg, '📂');
     try {
@@ -1708,7 +1708,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['github-dl', 'gitdl'], { desc: 'Download GitHub repository', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['github-dl', 'gitdl'], { desc: 'Download GitHub repository', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'github-dl <url>');
     await react(sock, msg, '💾');
     try {
@@ -1717,7 +1717,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['gofile-dl', 'gofile'], { desc: 'Download from GoFile', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['gofile-dl', 'gofile'], { desc: 'Download from GoFile', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'gofile-dl <url>');
     await react(sock, msg, '📥');
     try {
@@ -1726,7 +1726,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['googledrive-dl', 'gdl'], { desc: 'Download from Google Drive (alt)', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['googledrive-dl', 'gdl'], { desc: 'Download from Google Drive (alt)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'googledrive-dl <url>');
     await react(sock, msg, '📂');
     try {
@@ -1735,7 +1735,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ig-dl', 'igdl', 'instagram-dl'], { desc: 'Download Instagram post/reel', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['ig-dl', 'igdl', 'instagram-dl'], { desc: 'Download Instagram post/reel', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ig-dl <url>');
     await react(sock, msg, '📸');
     try {
@@ -1744,7 +1744,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['igstory-dl', 'igstory'], { desc: 'Download Instagram Story', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['igstory-dl', 'igstory'], { desc: 'Download Instagram Story', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'igstory-dl <url>');
     await react(sock, msg, '📸');
     try {
@@ -1753,7 +1753,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['likee-dl', 'likeedl'], { desc: 'Download Likee video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['likee-dl', 'likeedl'], { desc: 'Download Likee video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'likee-dl <url>');
     await react(sock, msg, '⬇️');
     try {
@@ -1762,7 +1762,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['mediafire-dl', 'mfdl'], { desc: 'Download from MediaFire', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['mediafire-dl', 'mfdl'], { desc: 'Download from MediaFire', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'mediafire-dl <url>');
     await react(sock, msg, '🔥');
     try {
@@ -1771,7 +1771,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['mega-dl', 'megadl'], { desc: 'Download from MEGA', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['mega-dl', 'megadl'], { desc: 'Download from MEGA', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'mega-dl <url>');
     await react(sock, msg, '📦');
     try {
@@ -1780,7 +1780,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['mlskin-dl', 'mlskindl'], { desc: 'Download MLBB skin', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['mlskin-dl', 'mlskindl'], { desc: 'Download MLBB skin', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'mlskin-dl <url>');
     await react(sock, msg, '🎮');
     try {
@@ -1789,7 +1789,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['pinterest-dl', 'pindl'], { desc: 'Download Pinterest image/video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['pinterest-dl', 'pindl'], { desc: 'Download Pinterest image/video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'pinterest-dl <url>');
     await react(sock, msg, '📌');
     try {
@@ -1800,7 +1800,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['pinterest-search-dl', 'pinsdl'], { desc: 'Download Pinterest image from search', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['pinterest-search-dl', 'pinsdl'], { desc: 'Download Pinterest image from search', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'pinterest-search-dl <query>');
     await react(sock, msg, '📌');
     try {
@@ -1809,7 +1809,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['pixiv-dl', 'pixivdl'], { desc: 'Download Pixiv artwork', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['pixiv-dl', 'pixivdl'], { desc: 'Download Pixiv artwork', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'pixiv-dl <url>');
     await react(sock, msg, '🎨');
     try {
@@ -1818,7 +1818,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['playstore-dl', 'apkdl'], { desc: 'Download APK from Play Store', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['playstore-dl', 'apkdl'], { desc: 'Download APK from Play Store', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'playstore-dl <url>');
     await react(sock, msg, '📱');
     try {
@@ -1827,7 +1827,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['reddit-dl', 'redditdl'], { desc: 'Download Reddit video/image', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['reddit-dl', 'redditdl'], { desc: 'Download Reddit video/image', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'reddit-dl <url>');
     await react(sock, msg, '🤖');
     try {
@@ -1836,7 +1836,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['reels-dl', 'reelsdl'], { desc: 'Download Instagram Reels', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['reels-dl', 'reelsdl'], { desc: 'Download Instagram Reels', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'reels-dl <url>');
     await react(sock, msg, '📱');
     try {
@@ -1845,7 +1845,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['saavn-dl', 'saavndl'], { desc: 'Download Saavn music', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['saavn-dl', 'saavndl'], { desc: 'Download Saavn music', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'saavn-dl <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1854,7 +1854,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['savefrom-dl', 'sfrom'], { desc: 'Download via SaveFrom', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['savefrom-dl', 'sfrom'], { desc: 'Download via SaveFrom', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'savefrom-dl <url>');
     await react(sock, msg, '⬇️');
     try {
@@ -1863,7 +1863,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['soundcloud-dl', 'scdl'], { desc: 'Download SoundCloud track', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['soundcloud-dl', 'scdl'], { desc: 'Download SoundCloud track', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'soundcloud-dl <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1872,7 +1872,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['spotify-dl', 'spotifydl'], { desc: 'Download Spotify track', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['spotify-dl', 'spotifydl'], { desc: 'Download Spotify track', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'spotify-dl <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1881,7 +1881,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stickerwa-dl', 'stickerwadl'], { desc: 'Download WhatsApp sticker', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['stickerwa-dl', 'stickerwadl'], { desc: 'Download WhatsApp sticker', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stickerwa-dl <url>');
     await react(sock, msg, '🎭');
     try {
@@ -1890,7 +1890,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['threads-dl', 'threadsdl'], { desc: 'Download Threads post', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['threads-dl', 'threadsdl'], { desc: 'Download Threads post', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'threads-dl <url>');
     await react(sock, msg, '🧵');
     try {
@@ -1900,7 +1900,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   });
 
   // v19: the 'ttdl' alias was removed — it shadowed the image-card .tt/.tiktok handler
-  cmd(['tt-dl', 'tiktok-dl'], { desc: 'Download TikTok video (no watermark)', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['tt-dl', 'tiktok-dl'], { desc: 'Download TikTok video (no watermark)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'tt-dl <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1909,7 +1909,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tt-dl2', 'ttdlv1'], { desc: 'Download TikTok video v1', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['tt-dl2', 'ttdlv1'], { desc: 'Download TikTok video v1', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'tt-dl2 <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1918,7 +1918,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tt-dl3', 'ttdlv2'], { desc: 'Download TikTok video v2', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['tt-dl3', 'ttdlv2'], { desc: 'Download TikTok video v2', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'tt-dl3 <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1927,7 +1927,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['twit-dl', 'xdl', 'twitter-dl'], { desc: 'Download Twitter/X video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['twit-dl', 'xdl', 'twitter-dl'], { desc: 'Download Twitter/X video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'twit-dl <url>');
     await react(sock, msg, '🐦');
     try {
@@ -1936,7 +1936,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['twit-dl2', 'xdlv1'], { desc: 'Download Twitter/X video v1', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['twit-dl2', 'xdlv1'], { desc: 'Download Twitter/X video v1', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'twit-dl2 <url>');
     await react(sock, msg, '🐦');
     try {
@@ -1945,7 +1945,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['video-dl', 'videodl'], { desc: 'Download online video (generic)', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['video-dl', 'videodl'], { desc: 'Download online video (generic)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'video-dl <url>');
     await react(sock, msg, '🎬');
     try {
@@ -1954,7 +1954,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['vimeo-dl', 'vimeodl'], { desc: 'Download Vimeo video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['vimeo-dl', 'vimeodl'], { desc: 'Download Vimeo video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'vimeo-dl <url>');
     await react(sock, msg, '🎬');
     try {
@@ -1963,7 +1963,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['wetv-dl', 'wetvdl'], { desc: 'Download WeTV video', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['wetv-dl', 'wetvdl'], { desc: 'Download WeTV video', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'wetv-dl <url>');
     await react(sock, msg, '📺');
     try {
@@ -1972,7 +1972,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['yt-audio', 'ytaudio'], { desc: 'Download YouTube audio (MP3)', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['yt-audio', 'ytaudio'], { desc: 'Download YouTube audio (MP3)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'yt-audio <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1981,7 +1981,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['yt-video', 'ytvideo'], { desc: 'Download YouTube video (MP4)', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['yt-video', 'ytvideo'], { desc: 'Download YouTube video (MP4)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'yt-video <url>');
     await react(sock, msg, '🎬');
     try {
@@ -1990,7 +1990,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ytmp3'], { desc: 'Download YouTube as MP3', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['ytmp3'], { desc: 'Download YouTube as MP3', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ytmp3 <url>');
     await react(sock, msg, '🎵');
     try {
@@ -1999,7 +1999,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['nxytmp4'], { desc: 'Download YouTube as MP4 (NexRay)', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['nxytmp4'], { desc: 'Download YouTube as MP4 (MIAS)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ytmp4 <url>');
     await react(sock, msg, '🎬');
     try {
@@ -2008,7 +2008,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ytv1', 'ytdl1'], { desc: 'Download YouTube video v1', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['ytv1', 'ytdl1'], { desc: 'Download YouTube video v1', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ytv1 <url>');
     await react(sock, msg, '🎬');
     try {
@@ -2017,7 +2017,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ytv2', 'ytdl2'], { desc: 'Download YouTube video v2', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['ytv2', 'ytdl2'], { desc: 'Download YouTube video v2', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ytv2 <url>');
     await react(sock, msg, '🎬');
     try {
@@ -2026,7 +2026,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['zoho-dl', 'zohodl'], { desc: 'Download from Zoho WorkDrive', category: 'Nexray-Downloader' }, async (sock, msg, args) => {
+  cmd(['zoho-dl', 'zohodl'], { desc: 'Download from Zoho WorkDrive', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'zoho-dl <url>');
     await react(sock, msg, '📥');
     try {
@@ -2039,7 +2039,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // 🎭  EDITOR  — 2 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['editor-wanted', 'ewanted'], { desc: 'Wanted poster editor effect', category: 'Nexray-Editor' }, async (sock, msg, args) => {
+  cmd(['editor-wanted', 'ewanted'], { desc: 'Wanted poster editor effect', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'editor-wanted <image-url>');
     await react(sock, msg, '🤠');
     try {
@@ -2049,7 +2049,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['editor-wasted', 'ewasted'], { desc: 'Wasted overlay editor effect', category: 'Nexray-Editor' }, async (sock, msg, args) => {
+  cmd(['editor-wasted', 'ewasted'], { desc: 'Wasted overlay editor effect', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'editor-wasted <image-url>');
     await react(sock, msg, '💀');
     try {
@@ -2073,39 +2073,39 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   };
 
-  cmd(['ephoto-real', 'phreal'], { desc: 'Ephoto real effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.real(o), 'Real', '📷'));
-  cmd(['ephoto-anime', 'phanime'], { desc: 'Ephoto anime effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.anime(o), 'Anime', '🎌'));
-  cmd(['ephoto-art', 'phart'], { desc: 'Ephoto art effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.art(o), 'Art', '🎨'));
-  cmd(['ephoto-blood', 'phblood'], { desc: 'Ephoto blood effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.blood(o), 'Blood', '🩸'));
-  cmd(['ephoto-blur', 'phblur'], { desc: 'Ephoto blur effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.blur(o), 'Blur', '🌫️'));
-  cmd(['ephoto-bokeh', 'phbokeh'], { desc: 'Ephoto bokeh effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.bokeh(o), 'Bokeh', '✨'));
-  cmd(['ephoto-broken', 'phbroken'], { desc: 'Ephoto broken glass effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.brokenglass(o), 'Broken Glass', '🪟'));
-  cmd(['ephoto-cartoon', 'phcartoon'], { desc: 'Ephoto cartoon effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.cartoon(o), 'Cartoon', '🎭'));
-  cmd(['ephoto-fire', 'phfire'], { desc: 'Ephoto fire effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.fire(o), 'Fire', '🔥'));
-  cmd(['ephoto-galaxy', 'phgalaxy'], { desc: 'Ephoto galaxy effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.galaxy(o), 'Galaxy', '🌌'));
-  cmd(['ephoto-glitch', 'phglitch'], { desc: 'Ephoto glitch effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.glitch(o), 'Glitch', '📺'));
-  cmd(['ephoto-gold', 'phgold'], { desc: 'Ephoto gold effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.gold(o), 'Gold', '✨'));
-  cmd(['ephoto-graffiti', 'phgraffiti'], { desc: 'Ephoto graffiti effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.graffiti(o), 'Graffiti', '🎨'));
-  cmd(['ephoto-hacker', 'phhacker'], { desc: 'Ephoto hacker effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.hacker(o), 'Hacker', '💻'));
-  cmd(['ephoto-ice', 'phice'], { desc: 'Ephoto ice effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.ice(o), 'Ice', '❄️'));
-  cmd(['ephoto-lava', 'phlava'], { desc: 'Ephoto lava effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.lava(o), 'Lava', '🌋'));
-  cmd(['ephoto-lightning', 'phlightning'], { desc: 'Ephoto lightning effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.lightning(o), 'Lightning', '⚡'));
-  cmd(['ephoto-matrix', 'phmatrix'], { desc: 'Ephoto matrix effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.matrix(o), 'Matrix', '💊'));
-  cmd(['ephoto-metal', 'phmetal'], { desc: 'Ephoto metal effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.metal(o), 'Metal', '🔩'));
-  cmd(['ephoto-neon', 'phneon'], { desc: 'Ephoto neon effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.neon(o), 'Neon', '💡'));
-  cmd(['ephoto-ocean', 'phocean'], { desc: 'Ephoto ocean effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.ocean(o), 'Ocean', '🌊'));
-  cmd(['ephoto-pixel', 'phpixel'], { desc: 'Ephoto pixel effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.pixel(o), 'Pixel', '🔲'));
-  cmd(['ephoto-rainbow', 'phrainbow'], { desc: 'Ephoto rainbow effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.rainbow(o), 'Rainbow', '🌈'));
-  cmd(['ephoto-retro', 'phretro'], { desc: 'Ephoto retro effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.retro(o), 'Retro', '📺'));
-  cmd(['ephoto-smoke', 'phsmoke'], { desc: 'Ephoto smoke effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.smoke(o), 'Smoke', '💨'));
-  cmd(['ephoto-space', 'phspace'], { desc: 'Ephoto space effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.space(o), 'Space', '🚀'));
-  cmd(['ephoto-wood', 'phwood'], { desc: 'Ephoto wood effect', category: 'Nexray-Ephoto' }, _ephoto(o => nx.ephoto.wood(o), 'Wood', '🪵'));
+  cmd(['ephoto-real', 'phreal'], { desc: 'Ephoto real effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.real(o), 'Real', '📷'));
+  cmd(['ephoto-anime', 'phanime'], { desc: 'Ephoto anime effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.anime(o), 'Anime', '🎌'));
+  cmd(['ephoto-art', 'phart'], { desc: 'Ephoto art effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.art(o), 'Art', '🎨'));
+  cmd(['ephoto-blood', 'phblood'], { desc: 'Ephoto blood effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.blood(o), 'Blood', '🩸'));
+  cmd(['ephoto-blur', 'phblur'], { desc: 'Ephoto blur effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.blur(o), 'Blur', '🌫️'));
+  cmd(['ephoto-bokeh', 'phbokeh'], { desc: 'Ephoto bokeh effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.bokeh(o), 'Bokeh', '✨'));
+  cmd(['ephoto-broken', 'phbroken'], { desc: 'Ephoto broken glass effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.brokenglass(o), 'Broken Glass', '🪟'));
+  cmd(['ephoto-cartoon', 'phcartoon'], { desc: 'Ephoto cartoon effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.cartoon(o), 'Cartoon', '🎭'));
+  cmd(['ephoto-fire', 'phfire'], { desc: 'Ephoto fire effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.fire(o), 'Fire', '🔥'));
+  cmd(['ephoto-galaxy', 'phgalaxy'], { desc: 'Ephoto galaxy effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.galaxy(o), 'Galaxy', '🌌'));
+  cmd(['ephoto-glitch', 'phglitch'], { desc: 'Ephoto glitch effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.glitch(o), 'Glitch', '📺'));
+  cmd(['ephoto-gold', 'phgold'], { desc: 'Ephoto gold effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.gold(o), 'Gold', '✨'));
+  cmd(['ephoto-graffiti', 'phgraffiti'], { desc: 'Ephoto graffiti effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.graffiti(o), 'Graffiti', '🎨'));
+  cmd(['ephoto-hacker', 'phhacker'], { desc: 'Ephoto hacker effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.hacker(o), 'Hacker', '💻'));
+  cmd(['ephoto-ice', 'phice'], { desc: 'Ephoto ice effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.ice(o), 'Ice', '❄️'));
+  cmd(['ephoto-lava', 'phlava'], { desc: 'Ephoto lava effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.lava(o), 'Lava', '🌋'));
+  cmd(['ephoto-lightning', 'phlightning'], { desc: 'Ephoto lightning effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.lightning(o), 'Lightning', '⚡'));
+  cmd(['ephoto-matrix', 'phmatrix'], { desc: 'Ephoto matrix effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.matrix(o), 'Matrix', '💊'));
+  cmd(['ephoto-metal', 'phmetal'], { desc: 'Ephoto metal effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.metal(o), 'Metal', '🔩'));
+  cmd(['ephoto-neon', 'phneon'], { desc: 'Ephoto neon effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.neon(o), 'Neon', '💡'));
+  cmd(['ephoto-ocean', 'phocean'], { desc: 'Ephoto ocean effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.ocean(o), 'Ocean', '🌊'));
+  cmd(['ephoto-pixel', 'phpixel'], { desc: 'Ephoto pixel effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.pixel(o), 'Pixel', '🔲'));
+  cmd(['ephoto-rainbow', 'phrainbow'], { desc: 'Ephoto rainbow effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.rainbow(o), 'Rainbow', '🌈'));
+  cmd(['ephoto-retro', 'phretro'], { desc: 'Ephoto retro effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.retro(o), 'Retro', '📺'));
+  cmd(['ephoto-smoke', 'phsmoke'], { desc: 'Ephoto smoke effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.smoke(o), 'Smoke', '💨'));
+  cmd(['ephoto-space', 'phspace'], { desc: 'Ephoto space effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.space(o), 'Space', '🚀'));
+  cmd(['ephoto-wood', 'phwood'], { desc: 'Ephoto wood effect', category: 'PHOTO' }, _ephoto(o => nx.ephoto.wood(o), 'Wood', '🪵'));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 😄  FUN  — 2 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['alay', 'alaytext'], { desc: 'Convert text to alay style', category: 'Nexray-Fun' }, async (sock, msg, args) => {
+  cmd(['alay', 'alaytext'], { desc: 'Convert text to alay style', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'alay <text>');
     await react(sock, msg, '😂');
     try {
@@ -2116,7 +2116,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['funfact', 'livefunfact'], { desc: 'Get a live fun fact', category: 'Nexray-Fun' }, async (sock, msg, args) => {
+  cmd(['funfact', 'livefunfact'], { desc: 'Get a live fun fact', category: 'FUN' }, async (sock, msg, args) => {
     await react(sock, msg, '💡');
     try {
       const r = await nx.fun.livefunfact();
@@ -2130,7 +2130,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // 🎮  GAMES  — 8 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['asahotak', 'soal-otak'], { desc: 'Brain teaser quiz game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['asahotak', 'soal-otak'], { desc: 'Brain teaser quiz game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '🧠');
     try {
       const r = await nx.games.asahotak();
@@ -2140,7 +2140,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tebak-islam', 'islamgame'], { desc: 'Islamic quiz game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['tebak-islam', 'islamgame'], { desc: 'Islamic quiz game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '☪️');
     try {
       const r = await nx.games.islamic();
@@ -2150,7 +2150,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['siapakahaku', 'tebak-tokoh'], { desc: 'Who am I? character guessing game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['siapakahaku', 'tebak-tokoh'], { desc: 'Who am I? character guessing game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '🕵️');
     try {
       const r = await nx.games.siapakahaku();
@@ -2160,7 +2160,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['susunkata', 'susun-kata'], { desc: 'Word arrangement game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['susunkata', 'susun-kata'], { desc: 'Word arrangement game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '🔤');
     try {
       const r = await nx.games.susunkata();
@@ -2170,7 +2170,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tebak-bendera', 'tebabendera'], { desc: 'Guess the flag game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['tebak-bendera', 'tebabendera'], { desc: 'Guess the flag game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '🚩');
     try {
       const r = await nx.games.tebakbendera();
@@ -2180,7 +2180,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tebak-gambar', 'tebagambar'], { desc: 'Guess the picture game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['tebak-gambar', 'tebagambar'], { desc: 'Guess the picture game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '🖼️');
     try {
       const r = await nx.games.tebakgambar();
@@ -2193,7 +2193,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tebak-kata', 'tebakata'], { desc: 'Word guessing game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['tebak-kata', 'tebakata'], { desc: 'Word guessing game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '🔤');
     try {
       const r = await nx.games.tebakkata();
@@ -2203,7 +2203,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tebak-lirik', 'tebalirik'], { desc: 'Guess the song lyrics game', category: 'Nexray-Games' }, async (sock, msg, args) => {
+  cmd(['tebak-lirik', 'tebalirik'], { desc: 'Guess the song lyrics game', category: 'GAMES' }, async (sock, msg, args) => {
     await react(sock, msg, '🎵');
     try {
       const r = await nx.games.tebaklirik();
@@ -2217,7 +2217,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // ℹ️  INFORMATION  — 10 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['tagihan-pln', 'plncek'], { desc: 'Cek tagihan PLN listrik', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['tagihan-pln', 'plncek'], { desc: 'Cek tagihan PLN listrik', category: 'INFO' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'tagihan-pln <nomor-pelanggan>');
     await react(sock, msg, '💡');
     try {
@@ -2228,7 +2228,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['cek-rekening', 'rekening'], { desc: 'Cek info rekening bank', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['cek-rekening', 'rekening'], { desc: 'Cek info rekening bank', category: 'INFO' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'cek-rekening <bank> <nomor>');
     await react(sock, msg, '🏦');
     try {
@@ -2239,7 +2239,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['cuaca', 'weather-id'], { desc: 'Cek cuaca kota (Indonesia)', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['cuaca', 'weather-id'], { desc: 'Cek cuaca kota (Indonesia)', category: 'INFO' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'cuaca <kota>');
     await react(sock, msg, '🌤️');
     try {
@@ -2250,7 +2250,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['weather', 'cuaca-en'], { desc: 'Get weather info (English)', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['weather', 'cuaca-en'], { desc: 'Get weather info (English)', category: 'INFO' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'weather <city>');
     await react(sock, msg, '🌤️');
     try {
@@ -2261,7 +2261,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['kodepos', 'postal-code'], { desc: 'Cek kode pos Indonesia', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['kodepos', 'postal-code'], { desc: 'Cek kode pos Indonesia', category: 'INFO' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'kodepos <kelurahan/desa>');
     await react(sock, msg, '📮');
     try {
@@ -2272,7 +2272,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['gempa', 'earthquake'], { desc: 'Info gempa bumi terkini (BMKG)', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['gempa', 'earthquake'], { desc: 'Info gempa bumi terkini (BMKG)', category: 'INFO' }, async (sock, msg, args) => {
     await react(sock, msg, '🌍');
     try {
       const r = await nx.information.gempa();
@@ -2282,7 +2282,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['hari-libur', 'libur'], { desc: 'Jadwal hari libur nasional', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['hari-libur', 'libur'], { desc: 'Jadwal hari libur nasional', category: 'INFO' }, async (sock, msg, args) => {
     await react(sock, msg, '📅');
     try {
       const r = await nx.information.hariLibur();
@@ -2292,7 +2292,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['kurs', 'exchange-rate'], { desc: 'Info kurs mata uang hari ini', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['kurs', 'exchange-rate'], { desc: 'Info kurs mata uang hari ini', category: 'INFO' }, async (sock, msg, args) => {
     await react(sock, msg, '💱');
     try {
       const r = await nx.information.kurs();
@@ -2302,7 +2302,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['prakiraan', 'forecast'], { desc: 'Prakiraan cuaca Indonesia', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['prakiraan', 'forecast'], { desc: 'Prakiraan cuaca Indonesia', category: 'INFO' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'prakiraan <kota>');
     await react(sock, msg, '🌥️');
     try {
@@ -2313,7 +2313,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['sholat', 'jadwal-sholat'], { desc: 'Jadwal sholat berdasarkan kota', category: 'Nexray-Info' }, async (sock, msg, args) => {
+  cmd(['sholat', 'jadwal-sholat'], { desc: 'Jadwal sholat berdasarkan kota', category: 'INFO' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'sholat <kota>');
     await react(sock, msg, '🕌');
     try {
@@ -2338,22 +2338,22 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   };
 
-  cmd(['attp', 'attp-sticker'], { desc: 'Buat sticker animasi teks', category: 'Nexray-Maker' },
+  cmd(['attp', 'attp-sticker'], { desc: 'Buat sticker animasi teks', category: 'MAKER' },
     _makerImg(args => nx.maker.attp({ text: args.join(' ') }), 'ATTP Sticker', '✨', '<text>'));
 
-  cmd(['balogo', 'ba-logo'], { desc: 'Buat logo style BA', category: 'Nexray-Maker' },
+  cmd(['balogo', 'ba-logo'], { desc: 'Buat logo style BA', category: 'MAKER' },
     _makerImg(args => nx.maker.balogo({ text: args.join(' ') }), 'BA Logo', '🎨', '<text>'));
 
-  cmd(['banner-blur', 'bannerblur'], { desc: 'Buat banner blur keren', category: 'Nexray-Maker' },
+  cmd(['banner-blur', 'bannerblur'], { desc: 'Buat banner blur keren', category: 'MAKER' },
     _makerImg(args => nx.maker.bannerBlur({ text: args.join(' ') }), 'Banner Blur', '🖼️', '<text>'));
 
-  cmd(['maker-card', 'mcard'], { desc: 'Buat kartu ucapan', category: 'Nexray-Maker' },
+  cmd(['maker-card', 'mcard'], { desc: 'Buat kartu ucapan', category: 'MAKER' },
     _makerImg(args => nx.maker.card({ text: args.join(' ') }), 'Maker Card', '🃏', '<text>'));
 
-  cmd(['fakechat', 'fake-chat'], { desc: 'Buat fake chat WhatsApp', category: 'Nexray-Maker' },
+  cmd(['fakechat', 'fake-chat'], { desc: 'Buat fake chat WhatsApp', category: 'MAKER' },
     _makerImg(args => nx.maker.fakechat({ text: args.join(' ') }), 'Fake Chat WA', '💬', '<text>'));
 
-  cmd(['fakegram', 'fake-gram'], { desc: 'Buat fake Instagram post (username + text)', category: 'Nexray-Maker' }, async (sock, msg, args) => {
+  cmd(['fakegram', 'fake-gram'], { desc: 'Buat fake Instagram post (username + text)', category: 'MAKER' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'fakegram <username> <text>');
     await react(sock, msg, '📸');
     try {
@@ -2364,7 +2364,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['faketweet', 'fake-tweet'], { desc: 'Buat fake tweet (username + text)', category: 'Nexray-Maker' }, async (sock, msg, args) => {
+  cmd(['faketweet', 'fake-tweet'], { desc: 'Buat fake tweet (username + text)', category: 'MAKER' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'faketweet <username> <text>');
     await react(sock, msg, '🐦');
     try {
@@ -2375,19 +2375,19 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['kaligrafi'], { desc: 'Buat kaligrafi dari teks Arab', category: 'Nexray-Maker' },
+  cmd(['kaligrafi'], { desc: 'Buat kaligrafi dari teks Arab', category: 'MAKER' },
     _makerImg(args => nx.maker.kaligrafi({ text: args.join(' ') }), 'Kaligrafi', '🕌', '<text-arab>'));
 
-  cmd(['kartunama', 'name-card'], { desc: 'Buat kartu nama', category: 'Nexray-Maker' },
+  cmd(['kartunama', 'name-card'], { desc: 'Buat kartu nama', category: 'MAKER' },
     _makerImg(args => nx.maker.kartunama({ text: args.join(' ') }), 'Kartu Nama', '💼', '<text>'));
 
-  cmd(['maker-meme', 'mmeme'], { desc: 'Buat meme dari teks', category: 'Nexray-Maker' },
+  cmd(['maker-meme', 'mmeme'], { desc: 'Buat meme dari teks', category: 'MAKER' },
     _makerImg(args => nx.maker.meme({ text: args.join(' ') }), 'Meme Maker', '😂', '<top|bottom>'));
 
-  cmd(['nulis', 'handwriting'], { desc: 'Konversi teks ke tulisan tangan', category: 'Nexray-Maker' },
+  cmd(['nulis', 'handwriting'], { desc: 'Konversi teks ke tulisan tangan', category: 'MAKER' },
     _makerImg(args => nx.maker.nulis({ text: args.join(' ') }), 'Nulis (Handwriting)', '✍️', '<text>'));
 
-  cmd(['maker-profil', 'mprofil'], { desc: 'Buat profil keren (url + text)', category: 'Nexray-Maker' }, async (sock, msg, args) => {
+  cmd(['maker-profil', 'mprofil'], { desc: 'Buat profil keren (url + text)', category: 'MAKER' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'maker-profil <image-url> <text>');
     await react(sock, msg, '👤');
     try {
@@ -2398,25 +2398,25 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['qrcode', 'make-qr'], { desc: 'Buat QR code dari teks/link', category: 'Nexray-Maker' },
+  cmd(['qrcode', 'make-qr'], { desc: 'Buat QR code dari teks/link', category: 'MAKER' },
     _makerImg(args => nx.maker.qrcode({ text: args.join(' ') }), 'QR Code', '📱', '<text/url>'));
 
-  cmd(['maker-quote', 'mquote'], { desc: 'Buat gambar quote keren', category: 'Nexray-Maker' },
+  cmd(['maker-quote', 'mquote'], { desc: 'Buat gambar quote keren', category: 'MAKER' },
     _makerImg(args => nx.maker.quote({ text: args.join(' ') }), 'Quote Maker', '💬', '<text>'));
 
-  cmd(['sertifikat', 'certificate'], { desc: 'Buat sertifikat', category: 'Nexray-Maker' },
+  cmd(['sertifikat', 'certificate'], { desc: 'Buat sertifikat', category: 'MAKER' },
     _makerImg(args => nx.maker.sertifikat({ text: args.join(' ') }), 'Sertifikat', '🏆', '<name>'));
 
-  cmd(['maker-sticker', 'msticker'], { desc: 'Buat sticker dari teks', category: 'Nexray-Maker' },
+  cmd(['maker-sticker', 'msticker'], { desc: 'Buat sticker dari teks', category: 'MAKER' },
     _makerImg(args => nx.maker.sticker({ text: args.join(' ') }), 'Sticker Maker', '🎭', '<text>'));
 
-  cmd(['storify', 'story-maker'], { desc: 'Buat gambar story dari teks', category: 'Nexray-Maker' },
+  cmd(['storify', 'story-maker'], { desc: 'Buat gambar story dari teks', category: 'MAKER' },
     _makerImg(args => nx.maker.storify({ text: args.join(' ') }), 'Storify', '📱', '<text>'));
 
-  cmd(['tiktokcrd', 'tt-card'], { desc: 'Buat TikTok card', category: 'Nexray-Maker' },
+  cmd(['tiktokcrd', 'tt-card'], { desc: 'Buat TikTok card', category: 'MAKER' },
     _makerImg(args => nx.maker.tiktokcrd({ text: args.join(' ') }), 'TikTok Card', '🎵', '<text>'));
 
-  cmd(['watermark', 'add-watermark'], { desc: 'Tambah watermark ke gambar', category: 'Nexray-Maker' }, async (sock, msg, args) => {
+  cmd(['watermark', 'add-watermark'], { desc: 'Tambah watermark ke gambar', category: 'MAKER' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'watermark <image-url> <text>');
     await react(sock, msg, '💧');
     try {
@@ -2427,20 +2427,20 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['welcome-card', 'welcomecard'], { desc: 'Buat kartu welcome grup', category: 'Nexray-Maker' },
+  cmd(['welcome-card', 'welcomecard'], { desc: 'Buat kartu welcome grup', category: 'MAKER' },
     _makerImg(args => nx.maker.welcome({ text: args.join(' ') }), 'Welcome Card', '👋', '<text>'));
 
-  cmd(['ytthumb', 'yt-thumbnail'], { desc: 'Buat YouTube thumbnail', category: 'Nexray-Maker' },
+  cmd(['ytthumb', 'yt-thumbnail'], { desc: 'Buat YouTube thumbnail', category: 'MAKER' },
     _makerImg(args => nx.maker.ytthumb({ text: args.join(' ') }), 'YouTube Thumbnail', '🎬', '<text>'));
 
-  cmd(['ytcard', 'yt-card'], { desc: 'Buat YouTube card', category: 'Nexray-Maker' },
+  cmd(['ytcard', 'yt-card'], { desc: 'Buat YouTube card', category: 'MAKER' },
     _makerImg(args => nx.maker.ytcard({ text: args.join(' ') }), 'YouTube Card', '▶️', '<text>'));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 💳  PAYMENT  — 3 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['qris', 'make-qris'], { desc: 'Buat QRIS dari gambar/url', category: 'Nexray-Payment' }, async (sock, msg, args) => {
+  cmd(['qris', 'make-qris'], { desc: 'Buat QRIS dari gambar/url', category: 'TOOLS' }, async (sock, msg, args) => {
     await react(sock, msg, '💳');
     try {
       let r;
@@ -2457,7 +2457,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['saweria-cek', 'saweria-check'], { desc: 'Cek donasi Saweria', category: 'Nexray-Payment' }, async (sock, msg, args) => {
+  cmd(['saweria-cek', 'saweria-check'], { desc: 'Cek donasi Saweria', category: 'TOOLS' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'saweria-cek <username>');
     await react(sock, msg, '💰');
     try {
@@ -2468,7 +2468,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['saweria-donate', 'saweria-dl'], { desc: 'Donasi via Saweria', category: 'Nexray-Payment' }, async (sock, msg, args) => {
+  cmd(['saweria-donate', 'saweria-dl'], { desc: 'Donasi via Saweria', category: 'TOOLS' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'saweria-donate <username> <amount>');
     await react(sock, msg, '💸');
     try {
@@ -2483,7 +2483,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
   // 🔮  PRIMBON  — 10 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['arti-nama', 'artinama'], { desc: 'Arti nama berdasarkan primbon Jawa', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['arti-nama', 'artinama'], { desc: 'Arti nama berdasarkan primbon Jawa', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'arti-nama <nama>');
     await react(sock, msg, '🔮');
     try {
@@ -2494,7 +2494,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['nomer-hoki', 'nomerhoki'], { desc: 'Nomer hoki berdasarkan nama', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['nomer-hoki', 'nomerhoki'], { desc: 'Nomer hoki berdasarkan nama', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'nomer-hoki <nama>');
     await react(sock, msg, '🎰');
     try {
@@ -2505,7 +2505,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ramalan-bintang', 'zodiak'], { desc: 'Ramalan bintang/zodiak', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['ramalan-bintang', 'zodiak'], { desc: 'Ramalan bintang/zodiak', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ramalan-bintang <zodiak>');
     await react(sock, msg, '⭐');
     try {
@@ -2516,7 +2516,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ramalan-jodoh', 'jodoh'], { desc: 'Ramalan jodoh dua nama', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['ramalan-jodoh', 'jodoh'], { desc: 'Ramalan jodoh dua nama', category: 'FUN' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'ramalan-jodoh <nama1> <nama2>');
     await react(sock, msg, '❤️');
     try {
@@ -2527,7 +2527,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ramalan-mimpi', 'tafsirmimpi'], { desc: 'Tafsir ramalan mimpi', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['ramalan-mimpi', 'tafsirmimpi'], { desc: 'Tafsir ramalan mimpi', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ramalan-mimpi <mimpi>');
     await react(sock, msg, '😴');
     try {
@@ -2538,7 +2538,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ramalan-nama', 'ramalannama'], { desc: 'Ramalan berdasarkan nama', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['ramalan-nama', 'ramalannama'], { desc: 'Ramalan berdasarkan nama', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ramalan-nama <nama>');
     await react(sock, msg, '🔮');
     try {
@@ -2549,7 +2549,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ramalan-rezeki', 'rezeki'], { desc: 'Ramalan rezeki berdasarkan nama', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['ramalan-rezeki', 'rezeki'], { desc: 'Ramalan rezeki berdasarkan nama', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ramalan-rezeki <nama>');
     await react(sock, msg, '💰');
     try {
@@ -2560,7 +2560,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ramalan-shio', 'shio'], { desc: 'Ramalan shio berdasarkan tahun', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['ramalan-shio', 'shio'], { desc: 'Ramalan shio berdasarkan tahun', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ramalan-shio <tahun>');
     await react(sock, msg, '🐉');
     try {
@@ -2571,7 +2571,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['weton', 'ramalan-weton'], { desc: 'Ramalan weton Jawa', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['weton', 'ramalan-weton'], { desc: 'Ramalan weton Jawa', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'weton <tanggal-lahir>');
     await react(sock, msg, '🗓️');
     try {
@@ -2582,7 +2582,7 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ramalan-zodiak', 'zodiak2'], { desc: 'Ramalan zodiak berdasarkan tanggal lahir', category: 'Nexray-Primbon' }, async (sock, msg, args) => {
+  cmd(['ramalan-zodiak', 'zodiak2'], { desc: 'Ramalan zodiak berdasarkan tanggal lahir', category: 'FUN' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'ramalan-zodiak <tanggal-lahir>');
     await react(sock, msg, '♈');
     try {
@@ -2613,16 +2613,16 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   };
 
-  cmd(['random-anime', 'ranime'], { desc: 'Random anime image', category: 'Nexray-Random' }, _random(() => nx.random.anime(), 'Random Anime', '🎌', true));
-  cmd(['random-ba', 'rba'], { desc: 'Random Blue Archive image', category: 'Nexray-Random' }, _random(() => nx.random.ba(), 'Random BA', '🎮', true));
-  cmd(['random-cat', 'rcat'], { desc: 'Random cat image', category: 'Nexray-Random' }, _random(() => nx.random.cat(), 'Random Cat', '🐱', true));
-  cmd(['random-dog', 'rdog'], { desc: 'Random dog image', category: 'Nexray-Random' }, _random(() => nx.random.dog(), 'Random Dog', '🐶', true));
-  cmd(['random-fact', 'rfact'], { desc: 'Random fact', category: 'Nexray-Random' }, _random(() => nx.random.fact(), 'Random Fact', '💡'));
-  cmd(['random-fox', 'rfox'], { desc: 'Random fox image', category: 'Nexray-Random' }, _random(() => nx.random.fox(), 'Random Fox', '🦊', true));
-  cmd(['random-meme', 'rmeme'], { desc: 'Random meme image', category: 'Nexray-Random' }, _random(() => nx.random.meme(), 'Random Meme', '😂', true));
-  cmd(['random-quote', 'rquote'], { desc: 'Random quote', category: 'Nexray-Random' }, _random(() => nx.random.quote(), 'Random Quote', '💬'));
-  cmd(['random-waifu', 'rwaifu'], { desc: 'Random waifu image', category: 'Nexray-Random' }, _random(() => nx.random.waifu(), 'Random Waifu', '🎌', true));
-  cmd(['random-word', 'rword'], { desc: 'Random word of the day', category: 'Nexray-Random' }, _random(() => nx.random.word(), 'Random Word', '📖'));
+  cmd(['random-anime', 'ranime'], { desc: 'Random anime image', category: 'FUN' }, _random(() => nx.random.anime(), 'Random Anime', '🎌', true));
+  cmd(['random-ba', 'rba'], { desc: 'Random Blue Archive image', category: 'FUN' }, _random(() => nx.random.ba(), 'Random BA', '🎮', true));
+  cmd(['random-cat', 'rcat'], { desc: 'Random cat image', category: 'FUN' }, _random(() => nx.random.cat(), 'Random Cat', '🐱', true));
+  cmd(['random-dog', 'rdog'], { desc: 'Random dog image', category: 'FUN' }, _random(() => nx.random.dog(), 'Random Dog', '🐶', true));
+  cmd(['random-fact', 'rfact'], { desc: 'Random fact', category: 'FUN' }, _random(() => nx.random.fact(), 'Random Fact', '💡'));
+  cmd(['random-fox', 'rfox'], { desc: 'Random fox image', category: 'FUN' }, _random(() => nx.random.fox(), 'Random Fox', '🦊', true));
+  cmd(['random-meme', 'rmeme'], { desc: 'Random meme image', category: 'FUN' }, _random(() => nx.random.meme(), 'Random Meme', '😂', true));
+  cmd(['random-quote', 'rquote'], { desc: 'Random quote', category: 'FUN' }, _random(() => nx.random.quote(), 'Random Quote', '💬'));
+  cmd(['random-waifu', 'rwaifu'], { desc: 'Random waifu image', category: 'FUN' }, _random(() => nx.random.waifu(), 'Random Waifu', '🎌', true));
+  cmd(['random-word', 'rword'], { desc: 'Random word of the day', category: 'FUN' }, _random(() => nx.random.word(), 'Random Word', '📖'));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔍  SEARCH  — 34 endpoints
@@ -2642,21 +2642,21 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   };
 
-  cmd(['search-font8', 'font8'], { desc: 'Search fonts on 8font', category: 'Nexray-Search' }, _search(o => nx.search.font8(o), '8Font Search', '🔤'));
-  cmd(['search-applemusic', 'srch-amusic'], { desc: 'Search Apple Music', category: 'Nexray-Search' }, _search(o => nx.search.applemusic(o), 'Apple Music Search', '🍎', 'query'));
-  cmd(['search-apkpure', 'srch-apk'], { desc: 'Search APK on APKPure', category: 'Nexray-Search' }, _search(o => nx.search.apkpure(o), 'APKPure Search', '📱'));
-  cmd(['search-canva', 'srch-canva'], { desc: 'Search templates on Canva', category: 'Nexray-Search' }, _search(o => nx.search.canva(o), 'Canva Search', '🎨'));
-  cmd(['search-capcut', 'srch-capcut'], { desc: 'Search CapCut templates', category: 'Nexray-Search' }, _search(o => nx.search.capcut(o), 'CapCut Search', '🎬'));
-  cmd(['search-deezer', 'srch-deezer'], { desc: 'Search music on Deezer', category: 'Nexray-Search' }, _search(o => nx.search.deezer(o), 'Deezer Search', '🎵'));
-  cmd(['search-font', 'srch-font'], { desc: 'Search fonts', category: 'Nexray-Search' }, _search(o => nx.search.font(o), 'Font Search', '🔤'));
-  cmd(['search-github', 'srch-github'], { desc: 'Search GitHub repositories', category: 'Nexray-Search' }, _search(o => nx.search.github(o), 'GitHub Search', '💻'));
-  cmd(['search-google', 'srch-google'], { desc: 'Search on Google', category: 'Nexray-Search' }, _search(o => nx.search.google(o), 'Google Search', '🔍', 'query'));
-  cmd(['search-gimage', 'srch-gimg'], { desc: 'Search Google Images', category: 'Nexray-Search' }, _search(o => nx.search.googleImages(o), 'Google Images', '🖼️', 'query'));
-  cmd(['search-scholar', 'srch-scholar'], { desc: 'Search Google Scholar papers', category: 'Nexray-Search' }, _search(o => nx.search.googleScholar(o), 'Google Scholar', '📚', 'query'));
-  cmd(['search-gnews', 'srch-gnews'], { desc: 'Search Google News', category: 'Nexray-Search' }, _search(o => nx.search.googlenews(o), 'Google News', '📰', 'query'));
-  cmd(['search-instagram', 'srch-ig'], { desc: 'Search Instagram users', category: 'Nexray-Search' }, _search(o => nx.search.instagram(o), 'Instagram Search', '📸'));
-  cmd(['search-islamqa', 'islamqa'], { desc: 'Search Islamic Q&A', category: 'Nexray-Search' }, _search(o => nx.search.islamqa(o), 'IslamQA Search', '☪️'));
-  cmd(['search-jkt48', 'jkt48'], { desc: 'Search JKT48 info', category: 'Nexray-Search' }, _search(o => nx.search.jkt48(o), 'JKT48 Search', '🎤'));
+  cmd(['search-font8', 'font8'], { desc: 'Search fonts on 8font', category: 'SEARCH' }, _search(o => nx.search.font8(o), '8Font Search', '🔤'));
+  cmd(['search-applemusic', 'srch-amusic'], { desc: 'Search Apple Music', category: 'SEARCH' }, _search(o => nx.search.applemusic(o), 'Apple Music Search', '🍎', 'query'));
+  cmd(['search-apkpure', 'srch-apk'], { desc: 'Search APK on APKPure', category: 'SEARCH' }, _search(o => nx.search.apkpure(o), 'APKPure Search', '📱'));
+  cmd(['search-canva', 'srch-canva'], { desc: 'Search templates on Canva', category: 'SEARCH' }, _search(o => nx.search.canva(o), 'Canva Search', '🎨'));
+  cmd(['search-capcut', 'srch-capcut'], { desc: 'Search CapCut templates', category: 'SEARCH' }, _search(o => nx.search.capcut(o), 'CapCut Search', '🎬'));
+  cmd(['search-deezer', 'srch-deezer'], { desc: 'Search music on Deezer', category: 'SEARCH' }, _search(o => nx.search.deezer(o), 'Deezer Search', '🎵'));
+  cmd(['search-font', 'srch-font'], { desc: 'Search fonts', category: 'SEARCH' }, _search(o => nx.search.font(o), 'Font Search', '🔤'));
+  cmd(['search-github', 'srch-github'], { desc: 'Search GitHub repositories', category: 'SEARCH' }, _search(o => nx.search.github(o), 'GitHub Search', '💻'));
+  cmd(['search-google', 'srch-google'], { desc: 'Search on Google', category: 'SEARCH' }, _search(o => nx.search.google(o), 'Google Search', '🔍', 'query'));
+  cmd(['search-gimage', 'srch-gimg'], { desc: 'Search Google Images', category: 'SEARCH' }, _search(o => nx.search.googleImages(o), 'Google Images', '🖼️', 'query'));
+  cmd(['search-scholar', 'srch-scholar'], { desc: 'Search Google Scholar papers', category: 'SEARCH' }, _search(o => nx.search.googleScholar(o), 'Google Scholar', '📚', 'query'));
+  cmd(['search-gnews', 'srch-gnews'], { desc: 'Search Google News', category: 'SEARCH' }, _search(o => nx.search.googlenews(o), 'Google News', '📰', 'query'));
+  cmd(['search-instagram', 'srch-ig'], { desc: 'Search Instagram users', category: 'SEARCH' }, _search(o => nx.search.instagram(o), 'Instagram Search', '📸'));
+  cmd(['search-islamqa', 'islamqa'], { desc: 'Search Islamic Q&A', category: 'SEARCH' }, _search(o => nx.search.islamqa(o), 'IslamQA Search', '☪️'));
+  cmd(['search-jkt48', 'jkt48'], { desc: 'Search JKT48 info', category: 'SEARCH' }, _search(o => nx.search.jkt48(o), 'JKT48 Search', '🎤'));
   // Lyrics: NexRay /search/lyrics?q= with LRCLIB fallback. The old nexray lirik route now returns 404 "Endpoint not found".
   const _lyricsCmd = (usage, emoji) => async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, `${usage} <song title>`);
@@ -2681,31 +2681,31 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
       await react(sock, msg, '✅');
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   };
-  cmd(['search-lirik', 'srch-lirik'], { desc: 'Search song lyrics', category: 'Nexray-Search' }, _lyricsCmd('search-lirik', '🎵'));
+  cmd(['search-lirik', 'srch-lirik'], { desc: 'Search song lyrics', category: 'SEARCH' }, _lyricsCmd('search-lirik', '🎵'));
   cmd(['lyrics', 'srch-lyrics'], { desc: 'Search song lyrics (English)', category: 'Nexray-Search' }, _lyricsCmd('lyrics', '🎶'));
-  cmd(['search-npm', 'srch-npm'], { desc: 'Search NPM packages', category: 'Nexray-Search' }, _search(o => nx.search.npm(o), 'NPM Search', '📦'));
-  cmd(['search-pinterest', 'srch-pin'], { desc: 'Search Pinterest images', category: 'Nexray-Search' }, _search(o => nx.search.pinterest(o), 'Pinterest Search', '📌'));
-  cmd(['search-playstore', 'srch-play'], { desc: 'Search Google Play Store apps', category: 'Nexray-Search' }, _search(o => nx.search.playstore(o), 'Play Store Search', '📱'));
-  cmd(['search-reddit', 'srch-reddit'], { desc: 'Search Reddit posts', category: 'Nexray-Search' }, _search(o => nx.search.reddit(o), 'Reddit Search', '🤖'));
-  cmd(['search-shopee', 'srch-shopee'], { desc: 'Search products on Shopee', category: 'Nexray-Search' }, _search(o => nx.search.shopee(o), 'Shopee Search', '🛒'));
-  cmd(['search-soundcloud', 'srch-sc'], { desc: 'Search SoundCloud tracks', category: 'Nexray-Search' }, _search(o => nx.search.soundcloud(o), 'SoundCloud Search', '🎵'));
-  cmd(['search-spotify', 'srch-spotify'], { desc: 'Search Spotify tracks', category: 'Nexray-Search' }, _search(o => nx.search.spotify(o), 'Spotify Search', '🎵'));
-  cmd(['search-stickerwa', 'srch-sticker'], { desc: 'Search WhatsApp stickers', category: 'Nexray-Search' }, _search(o => nx.search.stickerwa(o), 'Sticker WA Search', '🎭'));
-  cmd(['search-tiktok', 'srch-tt'], { desc: 'Search TikTok videos', category: 'Nexray-Search' }, _search(o => nx.search.tiktok(o), 'TikTok Search', '🎵'));
-  cmd(['search-twitter', 'srch-x'], { desc: 'Search Twitter/X posts', category: 'Nexray-Search' }, _search(o => nx.search.twitter(o), 'Twitter/X Search', '🐦'));
-  cmd(['search-wikipedia', 'wiki'], { desc: 'Search Wikipedia', category: 'Nexray-Search' }, _search(o => nx.search.wikipedia(o), 'Wikipedia', '📖'));
-  cmd(['search-wiktionary', 'wiktionary'], { desc: 'Search Wiktionary dictionary', category: 'Nexray-Search' }, _search(o => nx.search.wiktionary(o), 'Wiktionary', '📖'));
-  cmd(['search-youtube', 'srch-yt'], { desc: 'Search YouTube videos', category: 'Nexray-Search' }, _search(o => nx.search.youtube(o), 'YouTube Search', '▶️'));
-  cmd(['search-ytmusic', 'srch-ytm'], { desc: 'Search YouTube Music', category: 'Nexray-Search' }, _search(o => nx.search.youtubeMusic(o), 'YouTube Music Search', '🎵'));
-  cmd(['search-bukalapak', 'srch-buka'], { desc: 'Search products on Bukalapak', category: 'Nexray-Search' }, _search(o => nx.search.bukalapak(o), 'Bukalapak Search', '🛒'));
-  cmd(['search-tokopedia', 'srch-toped'], { desc: 'Search products on Tokopedia', category: 'Nexray-Search' }, _search(o => nx.search.tokopedia(o), 'Tokopedia Search', '🛒'));
-  cmd(['search-wallpaper', 'wallpaper'], { desc: 'Search wallpapers', category: 'Nexray-Search' }, _search(o => nx.search.wallpaper(o), 'Wallpaper Search', '🖼️'));
+  cmd(['search-npm', 'srch-npm'], { desc: 'Search NPM packages', category: 'SEARCH' }, _search(o => nx.search.npm(o), 'NPM Search', '📦'));
+  cmd(['search-pinterest', 'srch-pin'], { desc: 'Search Pinterest images', category: 'SEARCH' }, _search(o => nx.search.pinterest(o), 'Pinterest Search', '📌'));
+  cmd(['search-playstore', 'srch-play'], { desc: 'Search Google Play Store apps', category: 'SEARCH' }, _search(o => nx.search.playstore(o), 'Play Store Search', '📱'));
+  cmd(['search-reddit', 'srch-reddit'], { desc: 'Search Reddit posts', category: 'SEARCH' }, _search(o => nx.search.reddit(o), 'Reddit Search', '🤖'));
+  cmd(['search-shopee', 'srch-shopee'], { desc: 'Search products on Shopee', category: 'SEARCH' }, _search(o => nx.search.shopee(o), 'Shopee Search', '🛒'));
+  cmd(['search-soundcloud', 'srch-sc'], { desc: 'Search SoundCloud tracks', category: 'SEARCH' }, _search(o => nx.search.soundcloud(o), 'SoundCloud Search', '🎵'));
+  cmd(['search-spotify', 'srch-spotify'], { desc: 'Search Spotify tracks', category: 'SEARCH' }, _search(o => nx.search.spotify(o), 'Spotify Search', '🎵'));
+  cmd(['search-stickerwa', 'srch-sticker'], { desc: 'Search WhatsApp stickers', category: 'SEARCH' }, _search(o => nx.search.stickerwa(o), 'Sticker WA Search', '🎭'));
+  cmd(['search-tiktok', 'srch-tt'], { desc: 'Search TikTok videos', category: 'SEARCH' }, _search(o => nx.search.tiktok(o), 'TikTok Search', '🎵'));
+  cmd(['search-twitter', 'srch-x'], { desc: 'Search Twitter/X posts', category: 'SEARCH' }, _search(o => nx.search.twitter(o), 'Twitter/X Search', '🐦'));
+  cmd(['search-wikipedia', 'wiki'], { desc: 'Search Wikipedia', category: 'SEARCH' }, _search(o => nx.search.wikipedia(o), 'Wikipedia', '📖'));
+  cmd(['search-wiktionary', 'wiktionary'], { desc: 'Search Wiktionary dictionary', category: 'SEARCH' }, _search(o => nx.search.wiktionary(o), 'Wiktionary', '📖'));
+  cmd(['search-youtube', 'srch-yt'], { desc: 'Search YouTube videos', category: 'SEARCH' }, _search(o => nx.search.youtube(o), 'YouTube Search', '▶️'));
+  cmd(['search-ytmusic', 'srch-ytm'], { desc: 'Search YouTube Music', category: 'SEARCH' }, _search(o => nx.search.youtubeMusic(o), 'YouTube Music Search', '🎵'));
+  cmd(['search-bukalapak', 'srch-buka'], { desc: 'Search products on Bukalapak', category: 'SEARCH' }, _search(o => nx.search.bukalapak(o), 'Bukalapak Search', '🛒'));
+  cmd(['search-tokopedia', 'srch-toped'], { desc: 'Search products on Tokopedia', category: 'SEARCH' }, _search(o => nx.search.tokopedia(o), 'Tokopedia Search', '🛒'));
+  cmd(['search-wallpaper', 'wallpaper'], { desc: 'Search wallpapers', category: 'SEARCH' }, _search(o => nx.search.wallpaper(o), 'Wallpaper Search', '🖼️'));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 👁️  STALKER  — 15 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['stalk-ff', 'ffstalk', 'freefireid'], { desc: 'Stalk Free Fire player by UID — .stalk-ff <uid> [region]', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-ff', 'ffstalk', 'freefireid'], { desc: 'Stalk Free Fire player by UID — .stalk-ff <uid> [region]', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-ff <uid> [region]  e.g. stalk-ff 123456789 IND');
     await react(sock, msg, '🎮');
     const uid    = String(args[0]).replace(/[^0-9]/g, '');
@@ -2824,7 +2824,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     }
   });
 
-    cmd(['stalk-genshin', 'genshinstalk'], { desc: 'Stalk Genshin Impact player by UID', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+    cmd(['stalk-genshin', 'genshinstalk'], { desc: 'Stalk Genshin Impact player by UID', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-genshin <uid>');
     await react(sock, msg, '⚔️');
     try {
@@ -2835,7 +2835,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-github', 'githubstalk'], { desc: 'Stalk GitHub user profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-github', 'githubstalk'], { desc: 'Stalk GitHub user profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-github <username>');
     await react(sock, msg, '💻');
     try {
@@ -2846,7 +2846,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-ig', 'igstalk', 'instagramstalk'], { desc: 'Stalk Instagram user profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-ig', 'igstalk', 'instagramstalk'], { desc: 'Stalk Instagram user profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-ig <username>');
     await react(sock, msg, '📸');
     try {
@@ -2857,7 +2857,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-ml', 'mlstalk', 'mobilelegendsstalk'], { desc: 'Stalk Mobile Legends player by ID+ZoneID', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-ml', 'mlstalk', 'mobilelegendsstalk'], { desc: 'Stalk Mobile Legends player by ID+ZoneID', category: 'STALKER' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'stalk-ml <id> <zone-id>');
     await react(sock, msg, '🎮');
     try {
@@ -2868,7 +2868,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-npm', 'npmstalk'], { desc: 'Stalk NPM package details', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-npm', 'npmstalk'], { desc: 'Stalk NPM package details', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-npm <package-name>');
     await react(sock, msg, '📦');
     try {
@@ -2879,7 +2879,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-pinterest', 'pinstalk'], { desc: 'Stalk Pinterest user profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-pinterest', 'pinstalk'], { desc: 'Stalk Pinterest user profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-pinterest <username>');
     await react(sock, msg, '📌');
     try {
@@ -2890,7 +2890,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-pubg', 'pubgstalk'], { desc: 'Stalk PUBG player profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-pubg', 'pubgstalk'], { desc: 'Stalk PUBG player profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-pubg <username>');
     await react(sock, msg, '🎮');
     try {
@@ -2901,7 +2901,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-reddit', 'redditstalk'], { desc: 'Stalk Reddit user profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-reddit', 'redditstalk'], { desc: 'Stalk Reddit user profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-reddit <username>');
     await react(sock, msg, '🤖');
     try {
@@ -2912,7 +2912,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-snackvideo', 'snackvideostalk'], { desc: 'Stalk Snack Video user', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-snackvideo', 'snackvideostalk'], { desc: 'Stalk Snack Video user', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-snackvideo <username>');
     await react(sock, msg, '📱');
     try {
@@ -2923,7 +2923,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-spotify', 'spotifystalk'], { desc: 'Stalk Spotify user profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-spotify', 'spotifystalk'], { desc: 'Stalk Spotify user profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-spotify <username>');
     await react(sock, msg, '🎵');
     try {
@@ -2934,7 +2934,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-tiktok', 'tiktokstalk'], { desc: 'Stalk TikTok user profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-tiktok', 'tiktokstalk'], { desc: 'Stalk TikTok user profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-tiktok <username>');
     await react(sock, msg, '🎵');
     try {
@@ -2945,7 +2945,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-twitter', 'xstalk', 'twitterstalk'], { desc: 'Stalk Twitter/X user profile', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-twitter', 'xstalk', 'twitterstalk'], { desc: 'Stalk Twitter/X user profile', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-twitter <username>');
     await react(sock, msg, '🐦');
     try {
@@ -2956,7 +2956,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-youtube', 'ytstalk'], { desc: 'Stalk YouTube channel', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-youtube', 'ytstalk'], { desc: 'Stalk YouTube channel', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-youtube <username>');
     await react(sock, msg, '▶️');
     try {
@@ -2967,7 +2967,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['stalk-wa', 'wastalk', 'whatsappstalk'], { desc: 'Stalk WhatsApp number info', category: 'Nexray-Stalker' }, async (sock, msg, args) => {
+  cmd(['stalk-wa', 'wastalk', 'whatsappstalk'], { desc: 'Stalk WhatsApp number info', category: 'STALKER' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'stalk-wa <phone-number>');
     await react(sock, msg, '📱');
     try {
@@ -2992,34 +2992,34 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   };
 
-  cmd(['tp-avengers', 'textpro-avengers'], { desc: 'Avengers text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.avengers(o), 'Avengers', '🦸'));
-  cmd(['tp-bear', 'textpro-bear'], { desc: 'Bear text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.bear(o), 'Bear', '🐻'));
-  cmd(['tp-candy', 'textpro-candy'], { desc: 'Candy text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.candy(o), 'Candy', '🍬'));
-  cmd(['tp-chrome', 'textpro-chrome'], { desc: 'Chrome text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.chrome(o), 'Chrome', '⚪'));
-  cmd(['tp-diamond', 'textpro-diamond'], { desc: 'Diamond text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.diamond(o), 'Diamond', '💎'));
-  cmd(['tp-fire', 'textpro-fire'], { desc: 'Fire text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.fire(o), 'Fire', '🔥'));
-  cmd(['tp-glitch', 'textpro-glitch'], { desc: 'Glitch text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.glitch(o), 'Glitch', '📺'));
-  cmd(['tp-gold', 'textpro-gold'], { desc: 'Gold text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.gold(o), 'Gold', '✨'));
-  cmd(['tp-gradient', 'textpro-gradient'], { desc: 'Gradient text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.gradient(o), 'Gradient', '🌈'));
-  cmd(['tp-ice', 'textpro-ice'], { desc: 'Ice text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.ice(o), 'Ice', '❄️'));
-  cmd(['tp-lava', 'textpro-lava'], { desc: 'Lava text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.lava(o), 'Lava', '🌋'));
-  cmd(['tp-lightning', 'textpro-lightning'], { desc: 'Lightning text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.lightning(o), 'Lightning', '⚡'));
-  cmd(['tp-minecraft', 'textpro-minecraft'], { desc: 'Minecraft text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.minecraft(o), 'Minecraft', '⛏️'));
-  cmd(['tp-neon', 'textpro-neon'], { desc: 'Neon text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.neon(o), 'Neon', '💡'));
-  cmd(['tp-ocean', 'textpro-ocean'], { desc: 'Ocean text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.ocean(o), 'Ocean', '🌊'));
-  cmd(['tp-phantom', 'textpro-phantom'], { desc: 'Phantom text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.phantom(o), 'Phantom', '👻'));
-  cmd(['tp-retro', 'textpro-retro'], { desc: 'Retro text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.retro(o), 'Retro', '📺'));
-  cmd(['tp-shadow', 'textpro-shadow'], { desc: 'Shadow text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.shadow(o), 'Shadow', '🌑'));
-  cmd(['tp-smoke', 'textpro-smoke'], { desc: 'Smoke text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.smoke(o), 'Smoke', '💨'));
-  cmd(['tp-space', 'textpro-space'], { desc: 'Space text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.space(o), 'Space', '🚀'));
-  cmd(['tp-superstar', 'textpro-superstar'], { desc: 'Superstar text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.superstar(o), 'Superstar', '⭐'));
-  cmd(['tp-unicorn', 'textpro-unicorn'], { desc: 'Unicorn text effect', category: 'Nexray-TextPro' }, _textpro(o => nx.textpro.unicorn(o), 'Unicorn', '🦄'));
+  cmd(['tp-avengers', 'textpro-avengers'], { desc: 'Avengers text effect', category: 'MAKER' }, _textpro(o => nx.textpro.avengers(o), 'Avengers', '🦸'));
+  cmd(['tp-bear', 'textpro-bear'], { desc: 'Bear text effect', category: 'MAKER' }, _textpro(o => nx.textpro.bear(o), 'Bear', '🐻'));
+  cmd(['tp-candy', 'textpro-candy'], { desc: 'Candy text effect', category: 'MAKER' }, _textpro(o => nx.textpro.candy(o), 'Candy', '🍬'));
+  cmd(['tp-chrome', 'textpro-chrome'], { desc: 'Chrome text effect', category: 'MAKER' }, _textpro(o => nx.textpro.chrome(o), 'Chrome', '⚪'));
+  cmd(['tp-diamond', 'textpro-diamond'], { desc: 'Diamond text effect', category: 'MAKER' }, _textpro(o => nx.textpro.diamond(o), 'Diamond', '💎'));
+  cmd(['tp-fire', 'textpro-fire'], { desc: 'Fire text effect', category: 'MAKER' }, _textpro(o => nx.textpro.fire(o), 'Fire', '🔥'));
+  cmd(['tp-glitch', 'textpro-glitch'], { desc: 'Glitch text effect', category: 'MAKER' }, _textpro(o => nx.textpro.glitch(o), 'Glitch', '📺'));
+  cmd(['tp-gold', 'textpro-gold'], { desc: 'Gold text effect', category: 'MAKER' }, _textpro(o => nx.textpro.gold(o), 'Gold', '✨'));
+  cmd(['tp-gradient', 'textpro-gradient'], { desc: 'Gradient text effect', category: 'MAKER' }, _textpro(o => nx.textpro.gradient(o), 'Gradient', '🌈'));
+  cmd(['tp-ice', 'textpro-ice'], { desc: 'Ice text effect', category: 'MAKER' }, _textpro(o => nx.textpro.ice(o), 'Ice', '❄️'));
+  cmd(['tp-lava', 'textpro-lava'], { desc: 'Lava text effect', category: 'MAKER' }, _textpro(o => nx.textpro.lava(o), 'Lava', '🌋'));
+  cmd(['tp-lightning', 'textpro-lightning'], { desc: 'Lightning text effect', category: 'MAKER' }, _textpro(o => nx.textpro.lightning(o), 'Lightning', '⚡'));
+  cmd(['tp-minecraft', 'textpro-minecraft'], { desc: 'Minecraft text effect', category: 'MAKER' }, _textpro(o => nx.textpro.minecraft(o), 'Minecraft', '⛏️'));
+  cmd(['tp-neon', 'textpro-neon'], { desc: 'Neon text effect', category: 'MAKER' }, _textpro(o => nx.textpro.neon(o), 'Neon', '💡'));
+  cmd(['tp-ocean', 'textpro-ocean'], { desc: 'Ocean text effect', category: 'MAKER' }, _textpro(o => nx.textpro.ocean(o), 'Ocean', '🌊'));
+  cmd(['tp-phantom', 'textpro-phantom'], { desc: 'Phantom text effect', category: 'MAKER' }, _textpro(o => nx.textpro.phantom(o), 'Phantom', '👻'));
+  cmd(['tp-retro', 'textpro-retro'], { desc: 'Retro text effect', category: 'MAKER' }, _textpro(o => nx.textpro.retro(o), 'Retro', '📺'));
+  cmd(['tp-shadow', 'textpro-shadow'], { desc: 'Shadow text effect', category: 'MAKER' }, _textpro(o => nx.textpro.shadow(o), 'Shadow', '🌑'));
+  cmd(['tp-smoke', 'textpro-smoke'], { desc: 'Smoke text effect', category: 'MAKER' }, _textpro(o => nx.textpro.smoke(o), 'Smoke', '💨'));
+  cmd(['tp-space', 'textpro-space'], { desc: 'Space text effect', category: 'MAKER' }, _textpro(o => nx.textpro.space(o), 'Space', '🚀'));
+  cmd(['tp-superstar', 'textpro-superstar'], { desc: 'Superstar text effect', category: 'MAKER' }, _textpro(o => nx.textpro.superstar(o), 'Superstar', '⭐'));
+  cmd(['tp-unicorn', 'textpro-unicorn'], { desc: 'Unicorn text effect', category: 'MAKER' }, _textpro(o => nx.textpro.unicorn(o), 'Unicorn', '🦄'));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🛠️  TOOLS  — 57 endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['alightmotion', 'alight-motion'], { desc: 'Generate Alight Motion preset', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['alightmotion', 'alight-motion'], { desc: 'Generate Alight Motion preset', category: 'TOOLS' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'alightmotion <text>');
     await react(sock, msg, '🎬');
     try {
@@ -3030,7 +3030,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['blurface', 'blur-face', 'blur'], { desc: 'Blur faces or image (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['blurface', 'blur-face', 'blur'], { desc: 'Blur faces or image (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
     if (!url && !buf) {
       return sendReply(sock, msg, `📌 *Usage:* ${P}blur <reply to image or url>\n_Reply to an image or provide an image URL._`);
@@ -3047,7 +3047,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
 
       let resultBuf = null;
 
-      // 1. Try NexRay AI face blur endpoint if URL is available
+      // 1. Try MIAS AI face blur endpoint if URL is available
       if (url && nx?.tools?.blurface) {
         try {
           const r = await nx.tools.blurface({ url });
@@ -3137,7 +3137,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   };
 
   // 1. Enhance
-  cmd(['enhance', 'enhancer'], { desc: 'Enhance image quality like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['enhance', 'enhancer'], { desc: 'Enhance image quality (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'enhance',
       emoji: '✨',
@@ -3148,7 +3148,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 2. Kiss
-  cmd(['kiss', 'kissme', 'kiss-photo'], { desc: 'Kiss photo effect on faces like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['kiss', 'kissme', 'kiss-photo'], { desc: 'Kiss photo effect on faces (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'kisses_on_face_photo_effect',
       emoji: '💋',
@@ -3159,7 +3159,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 3. Sketch
-  cmd(['sketch', 'sketch-photo'], { desc: 'Convert photo to sketch drawing like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['sketch', 'sketch-photo'], { desc: 'Convert photo to sketch drawing (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'sketch',
       emoji: '🎨',
@@ -3170,7 +3170,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 4. Pencil
-  cmd(['pencil', 'pencil-sketch'], { desc: 'Graphite pencil sketch effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['pencil', 'pencil-sketch'], { desc: 'Graphite pencil sketch effect (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'graphite_pencil_sketch',
       emoji: '✏️',
@@ -3181,7 +3181,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 5. Color
-  cmd(['color', 'color-sketch'], { desc: 'Color pencil sketch effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['color', 'color-sketch'], { desc: 'Color pencil sketch effect (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'color_pencil_sketch',
       emoji: '🖍️',
@@ -3192,7 +3192,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 6. Bokeh
-  cmd(['bokeh', 'bokeh-effect'], { desc: 'Bokeh blur photo effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['bokeh', 'bokeh-effect'], { desc: 'Bokeh blur photo effect (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'christmas_bokeh',
       emoji: '✨',
@@ -3203,7 +3203,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 7. Wanted
-  cmd(['wanted', 'wanted-poster'], { desc: 'Put photo in a Wanted poster like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['wanted', 'wanted-poster'], { desc: 'Put photo in a Wanted poster (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'wanted',
       emoji: '📜',
@@ -3214,7 +3214,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 8. Look
-  cmd(['look', 'dramatic-look'], { desc: 'Dramatic cinematic photo look like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['look', 'dramatic-look'], { desc: 'Dramatic cinematic photo look (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'dramatic_look',
       emoji: '🎭',
@@ -3225,7 +3225,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 9. Gandm (Glasses & Mustache)
-  cmd(['gandm', 'mustache', 'glasses-mustache'], { desc: 'Hipster glasses and mustache overlay like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['gandm', 'mustache', 'glasses-mustache'], { desc: 'Hipster glasses and mustache overlay (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'hipster_glasses_and_mustache',
       emoji: '🥸',
@@ -3236,7 +3236,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 10. Dark
-  cmd(['dark', 'dark-knight'], { desc: 'The Dark Knight photo effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['dark', 'dark-knight'], { desc: 'The Dark Knight photo effect (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'the_dark_knight',
       emoji: '🦇',
@@ -3247,7 +3247,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 11. Makeup
-  cmd(['makeup', 'beauty-makeup'], { desc: 'Beauty and makeup portrait filter like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['makeup', 'beauty-makeup'], { desc: 'Beauty and makeup portrait filter (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'makeup',
       emoji: '💄',
@@ -3258,7 +3258,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 12. Cartoon
-  cmd(['cartoon', 'cartoon-photo'], { desc: 'Cartoon style portrait transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['cartoon', 'cartoon-photo'], { desc: 'Cartoon style portrait transformation (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'cartoon',
       emoji: '🖼️',
@@ -3269,7 +3269,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 13. Demon
-  cmd(['demon', 'demon-eyes'], { desc: 'Demon eyes photo transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['demon', 'demon-eyes'], { desc: 'Demon eyes photo transformation (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'demon_eyes_effect',
       emoji: '😈',
@@ -3280,7 +3280,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 14. Bloody
-  cmd(['bloody', 'halloween-mask'], { desc: 'Halloween bloody mask photo effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['bloody', 'halloween-mask'], { desc: 'Halloween bloody mask photo effect (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'halloween_mask',
       emoji: '🩸',
@@ -3291,7 +3291,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 15. Zombie
-  cmd(['zombie', 'zombie-face'], { desc: 'Zombie horror transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['zombie', 'zombie-face'], { desc: 'Zombie horror transformation (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'zombie',
       emoji: '🧟',
@@ -3302,7 +3302,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 16. Horned
-  cmd(['horned', 'horned-goblin'], { desc: 'Horned goblin face transformation like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['horned', 'horned-goblin'], { desc: 'Horned goblin face transformation (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'horned_goblin',
       emoji: '👺',
@@ -3313,7 +3313,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   });
 
   // 17. Skull
-  cmd(['skull', 'skull-makeup'], { desc: 'Skull face makeup effect like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['skull', 'skull-makeup'], { desc: 'Skull face makeup effect (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     return _runLevanterPhotoEditor(sock, msg, args, {
       method: 'skull_makeup',
       emoji: '💀',
@@ -3323,7 +3323,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     });
   });
 
-  cmd(['brokenlink', 'check-link'], { desc: 'Check for broken links on a website', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['brokenlink', 'check-link'], { desc: 'Check for broken links on a website', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'brokenlink <url>');
     await react(sock, msg, '🔗');
     try {
@@ -3334,7 +3334,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['currency', 'convert-currency'], { desc: 'Convert currency', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['currency', 'convert-currency'], { desc: 'Convert currency', category: 'TOOLS' }, async (sock, msg, args) => {
     if (args.length < 3) return _noArgs(sock, msg, 'currency <amount> <from> <to>  e.g. currency 100 USD IDR');
     await react(sock, msg, '💱');
     try {
@@ -3345,7 +3345,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['dnslookup', 'dns-lookup'], { desc: 'DNS lookup for a domain', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['dnslookup', 'dns-lookup'], { desc: 'DNS lookup for a domain', category: 'TOOLS' }, async (sock, msg, args) => {
     const domain = args[0]; if (!domain) return _noArgs(sock, msg, 'dnslookup <domain>');
     await react(sock, msg, '🌐');
     try {
@@ -3356,7 +3356,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['emojigif', 'emoji-gif'], { desc: 'Convert emoji to GIF', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['emojigif', 'emoji-gif'], { desc: 'Convert emoji to GIF', category: 'TOOLS' }, async (sock, msg, args) => {
     const emoji = args[0]; if (!emoji) return _noArgs(sock, msg, 'emojigif <emoji>');
     await react(sock, msg, '😀');
     try {
@@ -3366,7 +3366,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['emojimix', 'emoji-mix'], { desc: 'Mix two emojis together', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['emojimix', 'emoji-mix'], { desc: 'Mix two emojis together', category: 'TOOLS' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'emojimix <emoji1> <emoji2>');
     await react(sock, msg, '🎨');
     try {
@@ -3376,7 +3376,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['enhance2', 'enhancerv1'], { desc: 'Enhance image quality v1', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['enhance2', 'enhancerv1'], { desc: 'Enhance image quality v1', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'enhance2 <image-url>');
     await react(sock, msg, '✨');
     try {
@@ -3386,7 +3386,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['enhance3', 'enhancerv2'], { desc: 'Enhance image quality v2', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['enhance3', 'enhancerv2'], { desc: 'Enhance image quality v2', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'enhance3 <image-url>');
     await react(sock, msg, '✨');
     try {
@@ -3396,7 +3396,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['faceswap', 'face-swap'], { desc: 'Swap faces between two image URLs', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['faceswap', 'face-swap'], { desc: 'Swap faces between two image URLs', category: 'TOOLS' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'faceswap <url1> <url2>');
     await react(sock, msg, '🔄');
     try {
@@ -3406,7 +3406,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['hd', 'hdvideo', 'hd-video'], { desc: 'Enhance video to HD quality', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['hd', 'hdvideo', 'hd-video'], { desc: 'Enhance video to HD quality', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'hdvideo <video-url>');
     await react(sock, msg, '📹');
     try {
@@ -3417,7 +3417,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['hdvideo2', 'hd-video2'], { desc: 'Enhance video to HD quality v1', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['hdvideo2', 'hd-video2'], { desc: 'Enhance video to HD quality v1', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'hdvideo2 <video-url>');
     await react(sock, msg, '📹');
     try {
@@ -3428,7 +3428,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['html2img', 'html-to-image'], { desc: 'Convert HTML to image', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['html2img', 'html-to-image'], { desc: 'Convert HTML to image', category: 'TOOLS' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'html2img <html-code>');
     await react(sock, msg, '🌐');
     try {
@@ -3438,7 +3438,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['img2qr', 'image-to-qr'], { desc: 'Convert image to QR code', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['img2qr', 'image-to-qr'], { desc: 'Convert image to QR code', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'img2qr <image-url>');
     await react(sock, msg, '📱');
     try {
@@ -3448,7 +3448,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['nikparse', 'cek-nik'], { desc: 'Parse Indonesian NIK ID number', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['nikparse', 'cek-nik'], { desc: 'Parse Indonesian NIK ID number', category: 'TOOLS' }, async (sock, msg, args) => {
     const nik = args[0]; if (!nik) return _noArgs(sock, msg, 'nikparse <nik>');
     await react(sock, msg, '🪪');
     try {
@@ -3459,7 +3459,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['nsfw-check', 'nsfwcheck', 'cek-nsfw'], { desc: 'Check if image contains NSFW content', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['nsfw-check', 'nsfwcheck', 'cek-nsfw'], { desc: 'Check if image contains NSFW content', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'nsfw-check <image-url>');
     await react(sock, msg, '🔞');
     try {
@@ -3470,7 +3470,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ocr', 'image-to-text'], { desc: 'Extract text from image (OCR)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['ocr', 'image-to-text'], { desc: 'Extract text from image (OCR)', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'ocr <image-url>');
     await react(sock, msg, '📝');
     try {
@@ -3481,7 +3481,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['remini'], { desc: 'Enhance image with Remini AI', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['remini'], { desc: 'Enhance image with Remini AI', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'remini <image-url>');
     await react(sock, msg, '✨');
     try {
@@ -3491,7 +3491,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['rmbg', 'removebg', 'rmwbg', 'remove-bg', 'bgremove'], { desc: 'Remove background from image like Levanter (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['rmbg', 'removebg', 'rmwbg', 'remove-bg', 'bgremove'], { desc: 'Remove background from image (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
     if (!url && !buf) {
       return sendReply(sock, msg, `📌 *Usage:* ${P}rmbg <reply to image or url>\n_Reply to an image or provide an image URL._`);
@@ -3595,7 +3595,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     }
   });
 
-  cmd(['removebg2', 'remove-bgv1'], { desc: 'Remove background from image v1', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['removebg2', 'remove-bgv1'], { desc: 'Remove background from image v1', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'removebg2 <image-url>');
     await react(sock, msg, '✂️');
     try {
@@ -3605,7 +3605,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['removebg3', 'remove-bgv2'], { desc: 'Remove background from image v2', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['removebg3', 'remove-bgv2'], { desc: 'Remove background from image v2', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'removebg3 <image-url>');
     await react(sock, msg, '✂️');
     try {
@@ -3615,7 +3615,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['removevocal', 'remove-vocal'], { desc: 'Remove vocal track from audio/video', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['removevocal', 'remove-vocal'], { desc: 'Remove vocal track from audio/video', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'removevocal <audio-url>');
     await react(sock, msg, '🎵');
     try {
@@ -3628,7 +3628,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['skip-adlinksumo', 'skipadlink'], { desc: 'Skip Adlinksumo shortened link', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['skip-adlinksumo', 'skipadlink'], { desc: 'Skip Adlinksumo shortened link', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'skip-adlinksumo <adlinksumo-url>');
     await react(sock, msg, '⏭️');
     try {
@@ -3639,7 +3639,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['spamngl', 'spam-ngl'], { desc: 'Spam NGL link', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['spamngl', 'spam-ngl'], { desc: 'Spam NGL link', category: 'TOOLS' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'spamngl <ngl-text>');
     await react(sock, msg, '📨');
     try {
@@ -3650,7 +3650,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['ssweb', 'screenshot-web'], { desc: 'Take screenshot of a website', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['ssweb', 'screenshot-web'], { desc: 'Take screenshot of a website', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'ssweb <url>');
     await react(sock, msg, '📸');
     try {
@@ -3660,7 +3660,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['subdomain-finder', 'subdomainfinder'], { desc: 'Find subdomains of a domain', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['subdomain-finder', 'subdomainfinder'], { desc: 'Find subdomains of a domain', category: 'TOOLS' }, async (sock, msg, args) => {
     const domain = args[0]; if (!domain) return _noArgs(sock, msg, 'subdomain-finder <domain>');
     await react(sock, msg, '🌐');
     try {
@@ -3676,7 +3676,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   const _setTokenHandler = require('../lib/telegramTokenCommand.cjs').createSetTokenHandler({ sendReply, react, axios });
   cmd(['settoken', 'settgtoken'], { desc: 'Save the Telegram bot token used by .tgs (owner only, kept across restarts and updates)', category: 'OWNER', ownerOnly: true }, _setTokenHandler);
 
-  cmd(['tg-sticker', 'tgsticker', 'telegramsticker', 'tgs', 'tgstickers', 'tg-stickers'], { desc: 'Download Telegram sticker pack or convert image to Telegram sticker format', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['tg-sticker', 'tgsticker', 'telegramsticker', 'tgs', 'tgstickers', 'tg-stickers'], { desc: 'Download Telegram sticker pack or convert image to Telegram sticker format', category: 'TOOLS' }, async (sock, msg, args) => {
     // 0. Load the saved token (.settoken) into the environment before resolving it
     try { require('../lib/telegramTokenStore.cjs').loadIntoEnv(); } catch (_) {}
     // 1. Resolve Telegram Bot Token from env, config, config.json, or direct .env file scan
@@ -3887,7 +3887,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     }
   });
 
-    cmd(['tiktok-earnings', 'ttearnings'], { desc: 'Estimate TikTok creator earnings', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+    cmd(['tiktok-earnings', 'ttearnings'], { desc: 'Estimate TikTok creator earnings', category: 'TOOLS' }, async (sock, msg, args) => {
     const username = args[0]; if (!username) return _noArgs(sock, msg, 'tiktok-earnings <username>');
     await react(sock, msg, '💰');
     try {
@@ -3898,7 +3898,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tiktok-hashtags', 'tthashtags'], { desc: 'Search TikTok trending hashtags', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['tiktok-hashtags', 'tthashtags'], { desc: 'Search TikTok trending hashtags', category: 'TOOLS' }, async (sock, msg, args) => {
     const hashtag = args[0]; if (!hashtag) return _noArgs(sock, msg, 'tiktok-hashtags <hashtag>');
     await react(sock, msg, '#️⃣');
     try {
@@ -3909,7 +3909,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['trackip', 'track-ip'], { desc: 'Track IP address location', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['trackip', 'track-ip'], { desc: 'Track IP address location', category: 'TOOLS' }, async (sock, msg, args) => {
     const ip = args[0]; if (!ip) return _noArgs(sock, msg, 'trackip <ip-address>');
     await react(sock, msg, '📍');
     try {
@@ -3920,7 +3920,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['translate', 'trans'], { desc: 'Translate text', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['translate', 'trans'], { desc: 'Translate text', category: 'TOOLS' }, async (sock, msg, args) => {
     if (args.length < 2) return _noArgs(sock, msg, 'translate <lang> <text>  e.g. translate en Halo dunia');
     await react(sock, msg, '🌐');
     try {
@@ -3932,7 +3932,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['tts', 'google-tts'], { desc: 'Text to speech (Google TTS)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['tts', 'google-tts'], { desc: 'Text to speech (Google TTS)', category: 'TOOLS' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'tts <text>  (or: tts en <text>)');
     await react(sock, msg, '🔊');
     try {
@@ -3945,7 +3945,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['unblur', 'deblur', 'un-blur'], { desc: 'Unblur and enhance a blurry image (reply to image or pass URL)', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['unblur', 'deblur', 'un-blur'], { desc: 'Unblur and enhance a blurry image (reply to image or pass URL)', category: 'TOOLS' }, async (sock, msg, args) => {
     await react(sock, msg, '🔍');
     try {
       const { url, buf } = await _resolveImgMedia(sock, msg, args, downloadContentFromMessage, axios, nx);
@@ -3993,7 +3993,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     }
   });
 
-  cmd(['upscale', 'upscale-img'], { desc: 'Upscale image resolution', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['upscale', 'upscale-img'], { desc: 'Upscale image resolution', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'upscale <image-url>');
     await react(sock, msg, '📐');
     try {
@@ -4003,7 +4003,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['upscale2', 'upscalev1'], { desc: 'Upscale image resolution v1', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['upscale2', 'upscalev1'], { desc: 'Upscale image resolution v1', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'upscale2 <image-url>');
     await react(sock, msg, '📐');
     try {
@@ -4013,7 +4013,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['upscale3', 'upscalev2'], { desc: 'Upscale image resolution v2', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['upscale3', 'upscalev2'], { desc: 'Upscale image resolution v2', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'upscale3 <image-url>');
     await react(sock, msg, '📐');
     try {
@@ -4023,7 +4023,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['upscale4', 'upscalev3'], { desc: 'Upscale image resolution v3', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['upscale4', 'upscalev3'], { desc: 'Upscale image resolution v3', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'upscale4 <image-url>');
     await react(sock, msg, '📐');
     try {
@@ -4033,7 +4033,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['upscale5', 'upscalev4'], { desc: 'Upscale image resolution v4', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['upscale5', 'upscalev4'], { desc: 'Upscale image resolution v4', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'upscale5 <image-url>');
     await react(sock, msg, '📐');
     try {
@@ -4043,7 +4043,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['upscale6', 'upscalev5'], { desc: 'Upscale image resolution v5', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['upscale6', 'upscalev5'], { desc: 'Upscale image resolution v5', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'upscale6 <image-url>');
     await react(sock, msg, '📐');
     try {
@@ -4053,7 +4053,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['usernamegen', 'username-gen'], { desc: 'Generate username ideas', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['usernamegen', 'username-gen'], { desc: 'Generate username ideas', category: 'TOOLS' }, async (sock, msg, args) => {
     if (!args.length) return _noArgs(sock, msg, 'usernamegen <name>');
     await react(sock, msg, '👤');
     try {
@@ -4064,7 +4064,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['vcc', 'virtual-cc'], { desc: 'Generate virtual credit card info', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['vcc', 'virtual-cc'], { desc: 'Generate virtual credit card info', category: 'TOOLS' }, async (sock, msg, args) => {
     await react(sock, msg, '💳');
     try {
       const r = await nx.tools.vcc();
@@ -4074,7 +4074,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['virtual-number', 'virtualnumber'], { desc: 'Get virtual number for OTP', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['virtual-number', 'virtualnumber'], { desc: 'Get virtual number for OTP', category: 'TOOLS' }, async (sock, msg, args) => {
     await react(sock, msg, '📲');
     try {
       const r = await nx.tools.virtualNumber({ number: args[0] });
@@ -4084,7 +4084,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['virtual-number2', 'virtualnum2'], { desc: 'Get virtual number for OTP v1', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['virtual-number2', 'virtualnum2'], { desc: 'Get virtual number for OTP v1', category: 'TOOLS' }, async (sock, msg, args) => {
     await react(sock, msg, '📲');
     try {
       const r = await nx.tools.virtualNumberV1();
@@ -4094,7 +4094,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['webphishing', 'phishing-check'], { desc: 'Check if a website is phishing', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['webphishing', 'phishing-check'], { desc: 'Check if a website is phishing', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'webphishing <url>');
     await react(sock, msg, '🛡️');
     try {
@@ -4105,7 +4105,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['webtozip', 'website-to-zip'], { desc: 'Download a website as a ZIP file', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['webtozip', 'website-to-zip'], { desc: 'Download a website as a ZIP file', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'webtozip <url>');
     await react(sock, msg, '📦');
     try {
@@ -4116,7 +4116,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['whatsmusic', 'identify-music'], { desc: 'Identify music from audio/video URL', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['whatsmusic', 'identify-music'], { desc: 'Identify music from audio/video URL', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'whatsmusic <audio-url>');
     await react(sock, msg, '🎵');
     try {
@@ -4127,7 +4127,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['wink', 'wink-effect'], { desc: 'Wink enhance image or video', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['wink', 'wink-effect'], { desc: 'Wink enhance image or video', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'wink <image/video-url>');
     await react(sock, msg, '✨');
     try {
@@ -4137,7 +4137,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['winrate-mlbb', 'winrateml'], { desc: 'MLBB win-rate calculator', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['winrate-mlbb', 'winrateml'], { desc: 'MLBB win-rate calculator', category: 'TOOLS' }, async (sock, msg, args) => {
     await react(sock, msg, '🎮');
     try {
       const r = await nx.tools.winrateMLBB();
@@ -4147,7 +4147,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['yt-summarize', 'ytsummarize'], { desc: 'Summarize a YouTube video', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['yt-summarize', 'ytsummarize'], { desc: 'Summarize a YouTube video', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'yt-summarize <youtube-url>');
     await react(sock, msg, '📝');
     try {
@@ -4158,7 +4158,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['yt-summarize2', 'ytsummarize2'], { desc: 'Summarize a YouTube video v2', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['yt-summarize2', 'ytsummarize2'], { desc: 'Summarize a YouTube video v2', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'yt-summarize2 <youtube-url>');
     await react(sock, msg, '📝');
     try {
@@ -4169,7 +4169,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
-  cmd(['yt-transcribe', 'yttranscribe'], { desc: 'Transcribe YouTube video to text', category: 'Nexray-Tools' }, async (sock, msg, args) => {
+  cmd(['yt-transcribe', 'yttranscribe'], { desc: 'Transcribe YouTube video to text', category: 'TOOLS' }, async (sock, msg, args) => {
     const url = args[0]; if (!url) return _noArgs(sock, msg, 'yt-transcribe <youtube-url>');
     await react(sock, msg, '📝');
     try {
@@ -4184,7 +4184,7 @@ ${ffSig !== 'N/A' ? '💬 *Bio:* ' + ffSig : ''}`.trim();
   // ☁️  UPLOADER  — 1 endpoint
   // ═══════════════════════════════════════════════════════════════════════════
 
-  cmd(['upload-nx', 'nxupload'], { desc: 'Upload file to Nexray CDN (reply to a file/image)', category: 'Nexray-Uploader' }, async (sock, msg, args) => {
+  cmd(['upload-nx', 'nxupload'], { desc: 'Upload file to MIAS CDN (reply to a file/image)', category: 'DOWNLOAD' }, async (sock, msg, args) => {
     await react(sock, msg, '☁️');
     try {
       let fileBuf = await _getImgFromMsg(msg, downloadContentFromMessage);

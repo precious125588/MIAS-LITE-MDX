@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const { buildFfmpegArgs } = require("../lib/tt4kVideo.cjs");
 
 test("nexray lyrics passes query param to lyrics search endpoint", () => {
-  const content = fs.readFileSync("mias/nexray_bot.cjs", "utf8");
+  const content = fs.readFileSync("mias/mias_bot.cjs", "utf8");
   assert.ok(content.includes("cmd(['lyrics', 'srch-lyrics'], { desc: 'Search song lyrics (English)', category: 'Nexray-Search' }, _lyricsCmd('lyrics', '🎶'));"));
   assert.ok(content.includes("LYRICS.resolveLyrics(args.join(' '))"));
   assert.ok(!content.includes('nx.search.lyrics(o)'));

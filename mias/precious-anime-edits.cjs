@@ -34,7 +34,7 @@
 const fs    = require('fs');
 const path  = require('path');
 const EM = require('./lib/editMatch.cjs');
-const NX = require('./lib/nexrayGate.cjs');
+const NX = require('./lib/miasGate.cjs');
 let axios = (typeof globalThis !== 'undefined' && globalThis.axios) ? globalThis.axios : null;
 try { if (!axios) axios = require('axios'); } catch {}
 

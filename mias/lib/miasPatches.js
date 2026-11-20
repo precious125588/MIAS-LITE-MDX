@@ -3,7 +3,7 @@ import { wrapOutbound } from "./botBusy.mjs";
 import { throttleGroupFetch } from "./groupFetchThrottle.mjs";
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║        KEVDRA PATCHES — MAIS MDX Integration Layer             ║
+ * ║        MIAS PATCHES — MAIS MDX Integration Layer             ║
  * ║  Import this file from mias/index.js to activate all systems:  ║
  * ║    • Session health monitoring (file-level, 2h)                 ║
  * ║    • Session watchdog (runtime, 60s — Healthy/Warning/          ║
@@ -19,7 +19,7 @@ import { throttleGroupFetch } from "./groupFetchThrottle.mjs";
  * ╚══════════════════════════════════════════════════════════════════╝
  *
  * Usage in mias/index.js (add near the top imports):
- *   import { initKevdraPatches, applyKevdraToSock, kevdraMessageHook } from './lib/kevdraPatches.js';
+ *   import { initKevdraPatches, applyKevdraToSock, kevdraMessageHook } from './lib/miasPatches.js';
  *   // After creating sock:
  *   await applyKevdraToSock(sock, sessionPath);
  *   // In messages.upsert, early return if kevdraMessageHook returns true:
@@ -241,39 +241,39 @@ export async function initKevdraPatches(sessionPath, dbDir) {
   _initialized = true;
   _sessionPath = sessionPath;
 
-  console.log("[KevdraPatches] Initializing stability systems...");
+  console.log("[MiasPatches] Initializing stability systems...");
 
   // 1. Startup self-test
   try {
     await runStartupSelfTest(sessionPath, dbDir);
   } catch (e) {
-    console.error("[KevdraPatches] Startup self-test error:", e.message);
+    console.error("[MiasPatches] Startup self-test error:", e.message);
   }
 
   // 2. Resource manager (cache cleanup + listener audit)
   try {
     startResourceManager();
   } catch (e) {
-    console.error("[KevdraPatches] Resource manager error:", e.message);
+    console.error("[MiasPatches] Resource manager error:", e.message);
   }
 
   // 3. Metrics tracker (long-term RAM/CPU/reconnect trends)
   try {
     startMetricsTracker();
   } catch (e) {
-    console.error("[KevdraPatches] Metrics tracker error:", e.message);
+    console.error("[MiasPatches] Metrics tracker error:", e.message);
   }
 
   // 4. Expose globalThis hooks
   _exposeGlobals();
 
-  console.log("[KevdraPatches] ✅ All stability systems initialized");
+  console.log("[MiasPatches] ✅ All stability systems initialized");
 }
 
 // ── Attach to a Baileys socket (call after makeWASocket) ──────────────────────
 export async function applyKevdraToSock(sock, sessionPath, saveCreds) {
   // One group-list download per TTL instead of one per caller (see groupFetchThrottle.mjs)
-  try { throttleGroupFetch(sock); } catch (e) { console.warn("[KevdraPatches] group fetch throttle skipped:", e.message); }
+  try { throttleGroupFetch(sock); } catch (e) { console.warn("[MiasPatches] group fetch throttle skipped:", e.message); }
   resumeAutoDownloads(sock);
   _sock = sock;
   try { wrapOutbound(sock); } catch {}
@@ -285,17 +285,17 @@ export async function applyKevdraToSock(sock, sessionPath, saveCreds) {
   // 6. Start session health monitor (file-level checks every 2h)
   try {
     startSessionHealthMonitor(sessionPath, async (result) => {
-      console.warn("[KevdraPatches] Session health issue detected:", result.warnings.join(", "));
+      console.warn("[MiasPatches] Session health issue detected:", result.warnings.join(", "));
     });
   } catch (e) {
-    console.error("[KevdraPatches] Health monitor error:", e.message);
+    console.error("[MiasPatches] Health monitor error:", e.message);
   }
 
   // 7. Start runtime session watchdog (health score + self-heal every 60s)
   try {
     startWatchdog(sock, sessionPath, (reason) => {
       // Watchdog requests reconnect on BROKEN session
-      console.warn(`[KevdraPatches] Watchdog reconnect requested: ${reason}`);
+      console.warn(`[MiasPatches] Watchdog reconnect requested: ${reason}`);
       try {
         if (typeof globalThis.__SCHEDULE_RECONNECT__ === "function") {
           globalThis.__SCHEDULE_RECONNECT__(reason, 3000);
@@ -305,7 +305,7 @@ export async function applyKevdraToSock(sock, sessionPath, saveCreds) {
       } catch {}
     });
   } catch (e) {
-    console.error("[KevdraPatches] Watchdog start error:", e.message);
+    console.error("[MiasPatches] Watchdog start error:", e.message);
   }
 
   // 8. Audit listener counts only. Event order does not reveal ownership, so

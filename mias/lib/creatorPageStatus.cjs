@@ -8,7 +8,7 @@
 // =========================================================================
 'use strict';
 
-const NX = require('./nexrayGate.cjs');
+const NX = require('./miasGate.cjs');
 
 const fs = require('fs');
 const path = require('path');

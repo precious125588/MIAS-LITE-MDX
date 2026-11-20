@@ -80,7 +80,7 @@ function removeFile(file) {
 }
 
 /** Builds the Levanter media helpers. `http` needs get/post in axios' shape. */
-export function createLevanterMedia({ tempDir = DEFAULT_TEMP_DIR, http = defaultHttp, env = process.env } = {}) {
+export function createMiasMedia({ tempDir = DEFAULT_TEMP_DIR, http = defaultHttp, env = process.env } = {}) {
   const tempPath = (name) => {
     fs.mkdirSync(tempDir, { recursive: true });
     return path.join(tempDir, name);
@@ -379,3 +379,5 @@ export function createLevanterMedia({ tempDir = DEFAULT_TEMP_DIR, http = default
     uploadToCatbox,
   };
 }
+
+export const createLevanterMedia = createMiasMedia;

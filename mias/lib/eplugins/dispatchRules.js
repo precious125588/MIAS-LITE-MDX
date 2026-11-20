@@ -69,9 +69,52 @@ export function pickMatchArg(m) {
 /** Maps a Levanter `type` to a MIAS menu category. */
 export function categoryFor(type) {
   const t = String(type || "").trim().toLowerCase();
-  if (t === "group") return "GROUP";
-  if (t === "plugin") return "CREATOR";
-  return "PLUGINS";
+  switch (t) {
+    case "group":
+    case "groups":
+      return "GROUP";
+    case "ai":
+    case "intelligence":
+      return "AI";
+    case "tool":
+    case "tools":
+    case "utility":
+      return "TOOLS";
+    case "game":
+    case "games":
+      return "GAMES";
+    case "download":
+    case "downloader":
+    case "downloads":
+      return "DOWNLOAD";
+    case "media":
+      return "MEDIA";
+    case "whatsapp":
+      return "WHATSAPP";
+    case "status":
+      return "STATUS";
+    case "convert":
+      return "CONVERT";
+    case "search":
+      return "SEARCH";
+    case "info":
+      return "INFO";
+    case "settings":
+    case "setting":
+    case "config":
+      return "SETTINGS";
+    case "owner":
+    case "bot":
+    case "admin":
+      return "OWNER";
+    case "plugin":
+    case "creator":
+      return "CREATOR";
+    case "misc":
+      return "MISC";
+    default:
+      return "PLUGINS";
+  }
 }
 
 /** Does an `on:` handler fire for this message content? */

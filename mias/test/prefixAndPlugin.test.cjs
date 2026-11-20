@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { searchLevanterPlugins, formatPluginCard, cleanQuery } = require('../lib/levanterPluginSearch.cjs');
+const { searchLevanterPlugins, formatPluginCard, cleanQuery } = require('../lib/miasPluginSearch.cjs');
 const { buildAliasReport } = require('../lib/aliasCheck.cjs');
 
 test('cleanQuery trims and lowercases inputs', () => {

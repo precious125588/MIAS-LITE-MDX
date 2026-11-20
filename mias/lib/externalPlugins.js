@@ -208,37 +208,8 @@ export function createExternalPluginSystem(host) {
    * Reinstalling the same plugin keeps its names. Returns the renames made.
    */
   function renameDuplicates(name, regs) {
-    const taken = (n) => {
-      if (host.isDisabled?.(n)) return true;
-      const existing = host.commands.get(n);
-      if (existing) return existing.eplugin !== name;
-      return host.aliases.has(n);
-    };
-    const claimed = new Set(regs.filter((r) => r.pattern).map((r) => r.name.split(/\s+/)[0].toLowerCase()));
-    const mapping = new Map();
-    const renamed = [];
-    for (const reg of regs) {
-      if (!reg.pattern) continue;
-      const first = reg.name.split(/\s+/)[0];
-      const n = first.toLowerCase();
-      if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(n) || reservedName(n)) continue; // conflicts() reports these
-      if (!mapping.has(n)) {
-        if (!taken(n)) continue;
-        let i = 1;
-        let cand = `${n}${i}`;
-        while ((taken(cand) || claimed.has(cand) || reservedName(cand)) && i < 1000) {
-          i += 1;
-          cand = `${n}${i}`;
-        }
-        claimed.add(cand);
-        mapping.set(n, cand);
-        renamed.push({ from: n, to: cand });
-      }
-      const cand = mapping.get(n);
-      reg.pattern = renamePattern(reg.pattern, n, cand);
-      reg.name = cand + reg.name.slice(first.length);
-    }
-    return renamed;
+    // Never append numeric suffixes like ping1 or afk1. All commands keep their clean canonical names.
+    return [];
   }
 
   function conflicts(name, regs) {
@@ -260,7 +231,9 @@ export function createExternalPluginSystem(host) {
       }
       const existing = host.commands.get(n);
       if (existing && existing.eplugin !== name) {
-        problems.push(`.${n} already exists${existing.eplugin ? ` (plugin ${existing.eplugin})` : " as a built-in command"}`);
+        if (!existing.disabled && existing.enabled !== false) {
+          problems.push(`.${n} already exists${existing.eplugin ? ` (plugin ${existing.eplugin})` : " as a built-in command"}`);
+        }
       } else if (!existing && host.aliases.has(n)) {
         problems.push(`.${n} is already an alias of another command`);
       }

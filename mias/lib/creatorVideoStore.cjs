@@ -10,7 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const NX = require('./nexrayGate.cjs');
+const NX = require('./miasGate.cjs');
 
 const MAX_CREATORS_PER_REQUEST = 3;
 // Time budget for one live read. Ends before the caller's own 25s cutoff.

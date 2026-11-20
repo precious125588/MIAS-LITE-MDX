@@ -15,9 +15,7 @@ const {
   fontType,
   initiateUserToken,
   validateUserCode,
-  setGAuthCredentials,
-  clearGAuth,
-  refreshUserToken,
+    refreshUserToken,
   addCalendarEvent,
   listCalendarEvents,
   deleteCalendarEvent,
@@ -61,42 +59,12 @@ const {
   apkMirror,
 } = require('../lib/')
 
-// 1. Nix (Lydia logic renamed to Nix, Levanter APIs & bot question logic)
-bot(
-  {
-    pattern: 'nix ?(.*)',
-    desc: 'Chat with Nix AI or toggle Nix chatbot for this chat/user',
-    type: 'ai',
-  },
-  async (message, match) => {
-    const raw = (match || '').trim()
-    const [action, ...rest] = raw.split(' ')
-    const targetUser = message.mention?.[0] || message.reply_message?.jid || rest[0]
-
-    if (action === 'on') {
-      await setLydia(message.jid, true, targetUser, message.id)
-      const userTag = targetUser ? ` for @${targetUser.split('@')[0]}` : ''
-      return await message.send(`_Nix activated${userTag}._`, { mentions: targetUser ? [targetUser] : [] })
-    }
-    if (action === 'off') {
-      await setLydia(message.jid, false, targetUser, message.id)
-      return await message.send('_Nix deactivated._')
-    }
-
-    const query = match || (message.reply_message ? message.reply_message.text : '')
-    if (!query) return await message.send('Usage:\n.nix on | .nix off\n.nix <your question>')
-
-    const reply = await nixResponse(query, message.id)
-    return await message.send(reply)
-  }
-)
-
 // 2. AFK
 bot(
   {
     pattern: 'afk ?(.*)',
     desc: lang?.plugins?.afk?.desc || 'Set AFK status',
-    type: 'misc',
+    type: 'tools',
   },
   async (message, match) => {
     const current = getAfk(message.id, message.participant)
@@ -110,12 +78,25 @@ bot(
   }
 )
 
+bot(
+  {
+    pattern: 'unafk ?(.*)',
+    desc: 'Remove AFK status',
+    type: 'tools',
+    dontAddCommandList: true,
+  },
+  async (message) => {
+    await setAfk(false, '', 0, message.participant, message.id)
+    return await message.send('_AFK mode disabled._')
+  }
+)
+
 // 3. Fancy
 bot(
   {
     pattern: 'fancy ?(.*)',
     desc: lang?.plugins?.fancy?.desc || 'Create fancy styled text',
-    type: 'misc',
+    type: 'tools',
   },
   async (message, match) => {
     if (!match && !message.reply_message) return await message.send(lang?.plugins?.fancy?.example || 'Usage: .fancy <text> or reply with .fancy <1-47>')
@@ -130,96 +111,11 @@ bot(
   }
 )
 
-// 4. GAuth
-bot(
-  {
-    pattern: 'gauth ?(.*)',
-    desc: lang?.plugins?.gauth?.desc || 'Google Account Authentication',
-    type: 'bot',
-  },
-  async (message, match) => {
-    const [cmd, ...args] = (match || '').split(' ')
-    if (!match || cmd === 'help') {
-      return await message.send(lang?.plugins?.gauth?.usage || 'Usage: .gauth auth | code <code> | status | logout')
-    }
-    if (cmd === 'auth') {
-      try {
-        const authUrl = await initiateUserToken(message.id)
-        return await message.send(`Please visit this URL to authorize Google access:\n${authUrl}\n\nThen send: .gauth code <verification_code>`)
-      } catch (error) {
-        return await message.send(`Auth error: ${error.message}`)
-      }
-    }
-    if (cmd === 'code') {
-      const codeArg = args.join(' ')
-      if (!codeArg) return await message.send('Please provide the code or URL.')
-      try {
-        await validateUserCode(codeArg, message.id)
-        return await message.send('✅ Successfully authenticated with Google!')
-      } catch (error) {
-        return await message.send(`Auth failed: ${error.message}`)
-      }
-    }
-    if (cmd === 'status') {
-      const auth = await refreshUserToken(message.id)
-      return await message.send(auth ? '✅ Google account is connected.' : '❌ Not connected. Use .gauth auth')
-    }
-    if (cmd === 'logout') {
-      await clearGAuth(message.id)
-      return await message.send('Logged out of Google account.')
-    }
-  }
-)
-
-// 5. Reminder
-bot(
-  {
-    pattern: 'reminder ?(.*)',
-    desc: lang?.plugins?.reminder?.desc || 'Set calendar reminders',
-    type: 'bot',
-  },
-  async (message, match) => {
-    if (!match) return await message.send('Usage:\n.reminder <event details>\n.reminder list\n.reminder del <id>')
-    const [cmd, ...args] = match.split(' ')
-    if (cmd === 'list') {
-      const events = await listCalendarEvents(new Date().toISOString(), message.id)
-      if (!events || events.length === 0) return await message.send('No upcoming reminders.')
-      let res = '*Upcoming Reminders:*\n\n'
-      events.forEach((ev, i) => {
-        res += `${i + 1}. *${ev.summary}*\n   Time: ${ev.start}\n   ID: \`${ev.id.substring(0, 10)}\`\n\n`
-      })
-      return await message.send(res.trim())
-    }
-    if (cmd === 'del' || cmd === 'delete') {
-      const id = args.join(' ')
-      if (!id) return await message.send('Provide reminder ID to delete.')
-      await deleteCalendarEvent(id, message.id)
-      return await message.send('Reminder deleted.')
-    }
-    const ev = await addCalendarEvent(match, message.id)
-    return await message.send(`✅ Reminder set: *${ev.summary}* for ${ev.start}`)
-  }
-)
-
-// 6. Upload & Gupload
+// 6. Upload
 bot(
   {
     pattern: 'upload ?(.*)',
     desc: 'Send media from a direct link',
-    type: 'download',
-  },
-  async (message, match) => {
-    let url = isUrl(match || message.reply_message?.text)
-    if (!url) return await message.send('Please provide a valid media URL or reply to one.')
-    if (url.startsWith('https://images.app.goo.gl')) url = await getImgUrl(url)
-    await message.sendFromUrl(url)
-  }
-)
-
-bot(
-  {
-    pattern: 'gupload ?(.*)',
-    desc: 'Send media from URL (gupload alias)',
     type: 'download',
   },
   async (message, match) => {
@@ -300,7 +196,7 @@ bot(
   {
     pattern: 'poll ?(.*)',
     desc: 'Create a poll: .poll Question,Option1,Option2,...',
-    type: 'whatsapp',
+    type: 'group',
   },
   async (message, match) => {
     const parts = (match || '').split(',')
@@ -308,6 +204,22 @@ bot(
     const question = parts[0].trim()
     const options = parts.slice(1).map(p => ({ optionName: p.trim() }))
     await message.send({ name: question, options, selectableOptionsCount: 1 }, {}, 'poll')
+  }
+)
+
+bot(
+  {
+    pattern: 'multipoll ?(.*)',
+    desc: 'Create multi-choice poll',
+    type: 'group',
+    dontAddCommandList: true,
+  },
+  async (message, match) => {
+    const parts = (match || '').split(',')
+    if (parts.length < 3) return await message.send('Usage: .multipoll Question,Option 1,Option 2,...')
+    const question = parts[0].trim()
+    const options = parts.slice(1).map(p => ({ optionName: p.trim() }))
+    await message.send({ name: question, options, selectableOptionsCount: options.length }, {}, 'poll')
   }
 )
 
@@ -536,7 +448,7 @@ bot(
   {
     pattern: 'page ?(.*)',
     desc: 'Save replied image as a page for PDF compilation',
-    type: 'media',
+    type: 'tools',
   },
   async (message, match) => {
     if (!message.reply_message) return await message.send('Please reply to an image with: .page <number>')
@@ -642,7 +554,7 @@ bot(
   {
     pattern: 'weather ?(.*)',
     desc: 'Get live weather for any city',
-    type: 'misc',
+    type: 'tools',
   },
   async (message, match) => {
     if (!match) return await message.send('Usage: .weather <city name>')

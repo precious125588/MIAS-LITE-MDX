@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isMenuEntryVisible, canonicalMenuEntries } from '../lib/premiumMenus.js';
-import { formatPluginCard } from '../lib/levanterPluginSearch.cjs';
+import { formatPluginCard } from '../lib/miasPluginSearch.cjs';
 
 test('formatPluginCard renders tight 3-line format without excess text', () => {
   const card = formatPluginCard({

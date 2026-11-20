@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const NX = require('../lib/nexrayGate.cjs');
+const NX = require('../lib/miasGate.cjs');
 
 test('a background cooldown does not block interactive NexRay calls', () => {
   NX.markLimited(0, 'interactive');
