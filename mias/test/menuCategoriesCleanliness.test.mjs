@@ -1,9 +1,11 @@
+import fs from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { REMOVED_MENU_CATEGORIES, canonicalMenuEntries, activeMenuCategories, GAMES_MENU_EXCLUSIONS } from "../lib/premiumMenus.js";
 import { createExternalPluginSystem } from "../lib/externalPlugins.js";
 import { createMessage } from "../lib/eplugins/messageApi.js";
-import { readRollbackState, saveRollbackState } from "../features/updateCommand.js";
+import { readRollbackState, saveRollbackState, setRollbackEnvFlag } from "../features/updateCommand.js";
+import { isRollback } from "../../lib/auto-update-watch.cjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -139,4 +141,66 @@ test("rollback state saves inRollback and guards auto-update", () => {
   saveRollbackState(null, "latest123", "Manual update", false);
   const updatedState = readRollbackState();
   assert.equal(updatedState.inRollback, false);
+});
+
+
+test("dall, groq, and or are registered in miasSuite as non-owner (public) AI commands", async () => {
+  const commands = new Map();
+  const menuCategories = [];
+  const host = {
+    libDir: path.resolve(__dirname, "..", "lib"),
+    commands,
+    aliases: new Map(),
+    cmd(names, opts, handler) {
+      for (const n of names) {
+        commands.set(n, { ...opts, name: n, handler });
+      }
+    },
+    addMenu(cmd, cat) {
+      let c = menuCategories.find(m => m.name === cat);
+      if (!c) {
+        c = { name: cat, cmds: [] };
+        menuCategories.push(c);
+      }
+      if (!c.cmds.includes(cmd)) c.cmds.push(cmd);
+    },
+    prefixes: () => ["."],
+    getBody: () => "",
+    isSudo: () => false,
+    getSender: () => "",
+    isDisabled: () => false,
+  };
+
+  const sys = createExternalPluginSystem(host);
+  await sys.loadBuiltins();
+
+  for (const name of ["dall", "groq", "or"]) {
+    const entry = commands.get(name);
+    assert.ok(entry, name + " must be registered");
+    assert.equal(entry.category, "AI", name + " must have category AI");
+    assert.equal(entry.ownerOnly, false, name + " must be public (not owner-only)");
+  }
+});
+
+test("isRollback helper correctly detects rollback state", () => {
+  const root = path.resolve(__dirname, "..", "..");
+  saveRollbackState("abc1234", "def5678", "Testing rollback", true);
+  assert.equal(isRollback(root), true);
+
+  saveRollbackState(null, "latest123", "Manual update", false);
+  assert.equal(isRollback(root), false);
+});
+
+test("setRollbackEnvFlag correctly manages AUTO_PULL and BUILD_SYNC in .env", () => {
+  setRollbackEnvFlag(true);
+  const root = path.resolve(__dirname, "..", "..");
+  const envPath = path.join(root, ".env");
+  const contentOn = fs.readFileSync(envPath, "utf8");
+  assert.match(contentOn, /AUTO_PULL=off/);
+  assert.match(contentOn, /BUILD_SYNC=off/);
+
+  setRollbackEnvFlag(false);
+  const contentOff = fs.readFileSync(envPath, "utf8");
+  assert.ok(!contentOff.includes("AUTO_PULL=off"));
+  assert.ok(!contentOff.includes("BUILD_SYNC=off"));
 });

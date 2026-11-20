@@ -591,6 +591,7 @@ bot(
 bot(
   {
     pattern: 'dall ?(.*)',
+    fromMe: false,
     desc: 'Generate an AI image with DALL-E prompt',
     type: 'ai',
   },
@@ -610,6 +611,7 @@ bot(
 bot(
   {
     pattern: 'groq ?(.*)',
+    fromMe: false,
     desc: 'Chat with Groq Llama 3 models',
     type: 'ai',
   },
@@ -624,6 +626,7 @@ bot(
 bot(
   {
     pattern: 'or ?(.*)',
+    fromMe: false,
     desc: 'Chat with OpenRouter AI models',
     type: 'ai',
   },

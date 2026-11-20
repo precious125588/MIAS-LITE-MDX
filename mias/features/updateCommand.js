@@ -357,6 +357,29 @@ export function readRollbackState() {
   return null;
 }
 
+export function setRollbackEnvFlag(enable) {
+  try {
+    const envPath = path.join(REPO_ROOT, ".env");
+    let content = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
+    if (enable) {
+      if (!/^\s*AUTO_PULL\s*=/m.test(content)) {
+        content = content ? content.trimEnd() + "\nAUTO_PULL=off\n" : "AUTO_PULL=off\n";
+      } else {
+        content = content.replace(/^\s*AUTO_PULL\s*=.*/m, "AUTO_PULL=off");
+      }
+      if (!/^\s*BUILD_SYNC\s*=/m.test(content)) {
+        content = content.trimEnd() + "\nBUILD_SYNC=off\n";
+      } else {
+        content = content.replace(/^\s*BUILD_SYNC\s*=.*/m, "BUILD_SYNC=off");
+      }
+    } else {
+      content = content.replace(/^\s*AUTO_PULL\s*=.*(\r?\n)?/gm, "");
+      content = content.replace(/^\s*BUILD_SYNC\s*=.*(\r?\n)?/gm, "");
+    }
+    fs.writeFileSync(envPath, content, "utf8");
+  } catch {}
+}
+
 function writeBuildStamp(sha, message = "Rollback", author = "MIAS LITE MDX") {
   try {
     const stampDir = path.join(REPO_ROOT, "lib");
@@ -397,6 +420,7 @@ function writeBuildStamp(sha, message = "Rollback", author = "MIAS LITE MDX") {
 export async function applyUpdateCode(remoteSha, commitMessage, author) {
   // Clear rollback mode on manual update
   saveRollbackState(null, remoteSha, commitMessage, false);
+  setRollbackEnvFlag(false);
   let pulled = false;
   const hasGit = fs.existsSync(path.join(REPO_ROOT, ".git"));
 
@@ -495,6 +519,7 @@ export async function applyRollbackCode(targetSha, commitMessage = "Rollback") {
   if (success) {
     writeBuildStamp(targetSha, commitMessage, "MIAS LITE MDX");
     saveRollbackState(readLocalCommit().sha || targetSha, targetSha, commitMessage, true);
+    setRollbackEnvFlag(true);
   }
   return success;
 }
@@ -704,6 +729,7 @@ let _lastStampOnlySha = null;
 function startAutoUpdatePoller(ctx) {
   if (_autoUpdateTimer) return;
   const { getSettings, CONFIG } = ctx;
+  const P = CONFIG?.PREFIX || ".";
 
   // A new commit is queued and applied only when the bot is idle: no command running,
   // no recent output, and the owner not using it. MAX_DEFER_MS caps the wait.
