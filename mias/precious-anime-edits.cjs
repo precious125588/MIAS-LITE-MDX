@@ -832,6 +832,8 @@ function hasHandledMsg(msg) {
 async function handleBotAudio(sock, msg, P = null) {
   const jid = msg?.key?.remoteJid;
   if (!sock || !jid) return;
+  // hi and bot only answer in direct messages, never in groups.
+  if (String(jid).endsWith('@g.us')) return;
   if (hasHandledMsg(msg)) return;
 
   await doReact(sock, msg, '🌀', P);
