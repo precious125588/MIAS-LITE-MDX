@@ -11605,6 +11605,10 @@ cmd(["allmenu", 'fullmenu'], {
   'desc': "Show all active canonical commands",
   'category': "INFO"
 }, cmdAll);
+cmd(["aimenu"], {
+  'desc': "Show AI category menu",
+  'category': "AI"
+}, (_0x141da8, _0x36a603) => sendPremiumMenu(_0x141da8, _0x36a603, ["ai"], ![]));
 cmd(["menu", 'help', "commands", ".menu", 'start'], {
   'desc': "Show menu or category",
   'category': "INFO"
@@ -25152,32 +25156,6 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
       }
     ];
 
-    for (const resFn of resolvers) {
-      try {
-        const cand = await resFn();
-        if (cand && cand.dl) {
-          resolved = cand;
-          break;
-        }
-      } catch {}
-    }
-
-    if (!resolved || !resolved.dl) {
-      await liveEdit("❌ Video download failed.");
-      await react(sock, msg, "❌");
-      return;
-    }
-
-    const title = (resolved.title || videoTitle).replace(/[\r\n]+/g, " ").trim();
-    const shortTitle = title.length > 55 ? title.slice(0, 52) + "..." : title;
-
-    // Step 2: found {title}
-    await liveEdit(`found ${shortTitle}`);
-    await new Promise(r => setTimeout(r, 400));
-
-    // Step 3: download {title}
-    await liveEdit(`download ${shortTitle}`);
-
     const fs = require("fs");
     const os = require("os");
     const path = require("path");
@@ -25187,23 +25165,93 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
     const rawFile = path.join(tmpDir, "source.mp4");
     const enhancedFile = path.join(tmpDir, "enhanced_1080p.mp4");
 
-    try {
-      const resp = await axiosMod.get(resolved.dl, {
-        responseType: "stream",
-        timeout: 90000,
-        headers: { "User-Agent": "Mozilla/5.0", Range: "bytes=0-" }
-      });
+    async function tryDownloadStream(dlUrl, destPath) {
+      const headerSets = [
+        {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.youtube.com/",
+          "Origin": "https://www.youtube.com",
+          "Sec-Fetch-Dest": "video",
+          "Sec-Fetch-Mode": "no-cors",
+          "Sec-Fetch-Site": "cross-site",
+          "Accept": "*/*",
+          "Range": "bytes=0-"
+        },
+        {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Referer": "https://www.youtube.com/",
+          "Range": "bytes=0-"
+        },
+        {
+          "User-Agent": "Mozilla/5.0",
+          "Range": "bytes=0-"
+        }
+      ];
 
-      const writer = fs.createWriteStream(rawFile);
-      resp.data.pipe(writer);
-      await new Promise((res, rej) => {
-        writer.on("finish", res);
-        writer.on("error", rej);
-      });
-
-      if (!fs.existsSync(rawFile) || fs.statSync(rawFile).size < 1000) {
-        throw new Error("Downloaded file is empty");
+      for (const hdrs of headerSets) {
+        try {
+          const resp = await axiosMod.get(dlUrl, {
+            responseType: "stream",
+            timeout: 60000,
+            headers: hdrs,
+            maxRedirects: 5,
+            validateStatus: (s) => s >= 200 && s < 400
+          });
+          const writer = fs.createWriteStream(destPath);
+          resp.data.pipe(writer);
+          await new Promise((resolve, reject) => {
+            writer.on("finish", resolve);
+            writer.on("error", reject);
+          });
+          if (fs.existsSync(destPath) && fs.statSync(destPath).size > 1000) {
+            return true;
+          }
+        } catch {
+          try { if (fs.existsSync(destPath)) fs.unlinkSync(destPath); } catch {}
+        }
       }
+      return false;
+    }
+
+    try {
+      for (const resFn of resolvers) {
+        try {
+          const cand = await resFn();
+          if (!cand || !cand.dl) continue;
+          const ok = await tryDownloadStream(cand.dl, rawFile);
+          if (ok) {
+            resolved = cand;
+            break;
+          }
+        } catch {}
+      }
+
+      if (!resolved && typeof _p2VideoBuf === "function") {
+        try {
+          const buf = await _p2VideoBuf(targetUrl);
+          if (buf && buf.length > 1000) {
+            fs.writeFileSync(rawFile, buf);
+            resolved = { dl: targetUrl, title: videoTitle, is1080p: false };
+          }
+        } catch {}
+      }
+
+      if (!resolved || !fs.existsSync(rawFile) || fs.statSync(rawFile).size < 1000) {
+        await liveEdit("❌ Video download failed.");
+        await react(sock, msg, "❌");
+        return;
+      }
+
+      const title = (resolved.title || videoTitle).replace(/[\r\n]+/g, " ").trim();
+      const shortTitle = title.length > 55 ? title.slice(0, 52) + "..." : title;
+
+      // Step 2: found {title}
+      await liveEdit(`found ${shortTitle}`);
+      await new Promise(r => setTimeout(r, 400));
+
+      // Step 3: download {title}
+      await liveEdit(`download ${shortTitle}`);
+      await new Promise(r => setTimeout(r, 400));
 
       // Step 4: . downloaded enchancing quality to 1080p
       await liveEdit(". downloaded enchancing quality to 1080p");

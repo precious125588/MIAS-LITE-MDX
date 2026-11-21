@@ -75,10 +75,10 @@ export async function groqResponse(prompt, id = "0") {
   // Fallback to free AI
   try {
     const res = await axios.get(
-      `https://api.nexray.site/ai/gpt4?prompt=${encodeURIComponent(prompt)}`,
+      `https://text.pollinations.ai/${encodeURIComponent(prompt)}`,
       { timeout: 9000 }
     );
-    if (res.data?.result) return res.data.result;
+    if (res.data) return String(res.data);
   } catch {}
 
   return "Groq response unavailable. Please configure GROQ_API_KEY.";
@@ -118,10 +118,10 @@ export async function openRouter(prompt, id = "0") {
   // Fallback
   try {
     const res = await axios.get(
-      `https://api.nexray.site/ai/gpt4?prompt=${encodeURIComponent(prompt)}`,
+      `https://text.pollinations.ai/${encodeURIComponent(prompt)}`,
       { timeout: 9000 }
     );
-    if (res.data?.result) return res.data.result;
+    if (res.data) return String(res.data);
   } catch {}
 
   return "OpenRouter response unavailable. Please configure OPENROUTER_API_KEY.";

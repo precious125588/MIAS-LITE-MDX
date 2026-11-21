@@ -177,7 +177,9 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
     const options = opts || {};
     let payload;
     if (type === "react") {
-      payload = { react: { text: String(content), key: options.key || msg.key } };
+      const emoji = typeof content === "object" ? (content?.react?.text || content?.text || "") : String(content);
+      const reactKey = (typeof content === "object" && (content?.react?.key || content?.key)) || options.key || msg.key;
+      payload = { react: { text: String(emoji), key: reactKey } };
     } else if (type === "delete") {
       payload = { delete: options.key || msg.key };
     } else if (type === "text") {

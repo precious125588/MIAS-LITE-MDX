@@ -406,11 +406,11 @@ export async function kevdraMessageHook(sock, msg, body, isOwner) {
     }
   }
 
-  // ── 4K & HD Media Commands Hook (bare or prefixed, replies, captions & links) ──
+  // ── 4K & HD Media Commands Hook (prefixed, replies, captions & links) ──
   try {
     const rawText = String(body || '').trim();
-    const is4k = /^[.!#/]?(4k|uhd|4kvideo|remini4k)(\s+.*)?$/i.test(rawText);
-    const isHd = /^[.!#/]?(hd|hdvideo|hd-video|tthd)(\s+.*)?$/i.test(rawText);
+    const is4k = /^[.!#/](4k|uhd|4kvideo|remini4k)(\s+.*)?$/i.test(rawText);
+    const isHd = /^[.!#/](hd|hdvideo|hd-video|tthd)(\s+.*)?$/i.test(rawText);
     if (is4k || isHd) {
       const parts = rawText.split(/\s+/);
       const args = parts.slice(1);

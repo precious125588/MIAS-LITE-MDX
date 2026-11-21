@@ -65,8 +65,8 @@ function menuHiddenCanonicals(commands, aliases) {
 
 // Presentation-only labels; API/command metadata and handlers stay untouched.
 const LEGACY_LABELS = {
-  GENERAL: 'INFO', MENU: 'INFO', AI: 'INTELLIGENCE', ANIME: 'ANIMATION',
-  'NEXRAY-AI': 'INTELLIGENCE', 'NEXRAY-ANIME': 'ANIMATION',
+  GENERAL: 'INFO', MENU: 'INFO', AI: 'AI', ANIME: 'ANIMATION',
+  'NEXRAY-AI': 'AI', 'NEXRAY-ANIME': 'ANIMATION',
   'NEXRAY-CANVAS': 'MEDIA', 'NEXRAY-DOWNLOADER': 'DOWNLOAD',
   'NEXRAY-EDITOR': 'MEDIA', 'NEXRAY-EPHOTO': 'LOGO',
   'NEXRAY-FUN': 'FUN', 'NEXRAY-GAMES': 'GAMES', 'NEXRAY-INFO': 'INFO',
@@ -105,7 +105,7 @@ export const ORIGINAL_PHASE1_QUOTES = Object.freeze([
 const CATEGORY_ALIASES = { GAME: 'GAMES', STALKER: 'STALK', GROUPS: 'GROUP', TOOL: 'TOOLS', DOWNLOADS: 'DOWNLOAD', DL: 'DOWNLOAD', MAIN: 'INFO', SYSTEM: 'INFO', SETTING: 'SETTINGS' };
 export function normalizeMenuCategory(value, categories = []) {
   const key = String(value || '').trim().toUpperCase().replace(/^CAT_/, '');
-  if (key === 'AI' && Array.isArray(categories) && categories.some(c => String(c?.name || '').toUpperCase() === 'AI')) {
+  if (key === 'AI' || key === 'INTELLIGENCE') {
     return 'AI';
   }
   return LEGACY_LABELS[key] || CATEGORY_ALIASES[key] || key;
