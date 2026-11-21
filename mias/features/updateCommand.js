@@ -332,6 +332,9 @@ export function saveRollbackState(previousSha, nextSha, message = "", inRollback
     previousSha: previousSha ? String(previousSha).toLowerCase() : null,
     targetSha: nextSha ? String(nextSha).toLowerCase() : null,
     inRollback: Boolean(inRollback),
+    // Only an explicit rollback pauses auto-update. Older builds wrote inRollback=true on every
+    // normal update, so records without kind === "rollback" are treated as ordinary updates.
+    kind: inRollback ? "rollback" : "update",
     previousMessage: message,
     savedAt: new Date().toISOString(),
   };
@@ -343,6 +346,11 @@ export function saveRollbackState(previousSha, nextSha, message = "", inRollback
     } catch {}
   }
   return false;
+}
+
+/** True only for a real rollback record (see saveRollbackState). */
+export function isRollbackActive(record) {
+  return Boolean(record && record.inRollback === true && record.kind === "rollback");
 }
 
 export function readRollbackState() {
@@ -460,7 +468,8 @@ export async function applyUpdateCode(remoteSha, commitMessage, author) {
       }).trim().toLowerCase();
 
       if (previousSha !== installedSha) {
-        saveRollbackState(previousSha, installedSha, commitMessage);
+        // A normal forward update is not a rollback, so it must not pause auto-update.
+        saveRollbackState(previousSha, installedSha, commitMessage, false);
       }
       pulled = true;
     } catch (err) {
@@ -796,7 +805,7 @@ function startAutoUpdatePoller(ctx) {
       const botSettings = typeof getSettings === "function" ? getSettings("bot") : null;
       // Auto-update is ON by default unless explicitly set to false
       const rollbackState = readRollbackState();
-      const isRollback = Boolean(rollbackState?.inRollback);
+      const isRollback = isRollbackActive(rollbackState);
 
       const local = readLocalCommit();
       const remote = await fetchRemoteCommit();
