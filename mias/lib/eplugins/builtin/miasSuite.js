@@ -155,8 +155,8 @@ bot(
     type: 'whatsapp',
   },
   async (message, match) => {
-    if (!match) return await message.send('Usage:\n.scstatus list\n.scstatus del <time>\n.scstatus <time> (reply to media/text)')
-    const [action, ...rest] = match.split(' ')
+    const trimmed = (match || '').trim()
+    const [action, ...rest] = trimmed.split(/\s+/)
     if (action === 'list') {
       const list = await getScheduleStatus(message.id)
       if (!list || !list.length) return await message.send('No scheduled status updates.')
@@ -171,8 +171,29 @@ bot(
       await delScheduleStatus(time, message.id)
       return await message.send('_Scheduled status removed._')
     }
-    await createStatusSchedule(match, message.reply_message ? 'media' : match, [], message.id)
-    return await message.send(`_Status scheduled for ${match}._`)
+    if (message.reply_message) {
+      const timeArg = trimmed || 'now'
+      if (timeArg === 'now') {
+        try {
+          const buf = await (typeof message.reply_message.download === 'function' ? message.reply_message.download() : message.reply_message.downloadMediaMessage())
+          const mime = message.reply_message.mimetype || 'image/jpeg'
+          const isVideo = String(mime).startsWith('video') || message.reply_message.video
+          await message.setStatus(buf, { type: isVideo ? 'video' : 'image', caption: trimmed || message.reply_message.text || '' })
+          return await message.send('_Status updated successfully._')
+        } catch (e) {
+          await createStatusSchedule('now', 'media', [], message.id)
+          return await message.send('_Status scheduled for now._')
+        }
+      } else {
+        await createStatusSchedule(timeArg, 'media', [], message.id)
+        return await message.send(`_Status scheduled for ${timeArg}._`)
+      }
+    }
+    if (trimmed) {
+      await createStatusSchedule(trimmed, trimmed, [], message.id)
+      return await message.send(`_Status scheduled for ${trimmed}._`)
+    }
+    return await message.send('Usage:\n.scstatus list\n.scstatus del <time>\n.scstatus <time> (reply to media/text)\n.scstatus (reply to media/text to set immediately)')
   }
 )
 

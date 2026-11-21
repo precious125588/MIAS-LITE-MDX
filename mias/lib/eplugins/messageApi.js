@@ -47,11 +47,15 @@ export function contentOf(message) {
   if (message.ephemeralMessage) return contentOf(message.ephemeralMessage.message);
   if (message.viewOnceMessage) return contentOf(message.viewOnceMessage.message);
   if (message.viewOnceMessageV2) return contentOf(message.viewOnceMessageV2.message);
+  if (message.viewOnceMessageV2Extension) return contentOf(message.viewOnceMessageV2Extension.message);
+  if (message.documentWithCaptionMessage) return contentOf(message.documentWithCaptionMessage.message);
+  if (message.editedMessage) return contentOf(message.editedMessage.message?.protocolMessage?.editedMessage);
   return message;
 }
 
 function contextInfoOf(content) {
   if (!content) return null;
+  if (content.contextInfo) return content.contextInfo;
   for (const key of Object.keys(content)) {
     const ci = content[key]?.contextInfo;
     if (ci) return ci;
@@ -218,10 +222,13 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
   }
 
   async function sendFromUrl(urls, opts = {}) {
-    if (typeof httpGet !== "function") throw new Error("sendFromUrl: no HTTP client");
+    const fetchFn = typeof httpGet === "function" ? httpGet : (async (u, o) => {
+      const a = (await import("axios")).default;
+      return a.get(u, o);
+    });
     const list = Array.isArray(urls) ? urls : [urls];
     for (const url of list) {
-      const res = await httpGet(String(url), { responseType: "arraybuffer", timeout: 30000 });
+      const res = await fetchFn(String(url), { responseType: "arraybuffer", timeout: 30000 });
       const buffer = Buffer.from(res.data);
       const mime = String(res.headers?.["content-type"] || "").split(";")[0].trim();
       const kind = mime.startsWith("image/") ? "image"
@@ -343,13 +350,25 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
 
   /** Levanter setStatus(quotedMessage, jids, 'contact' | 'list'). Returns the number of recipients. */
   async function setStatus(quotedMsg, jids, type = "contact") {
+    if (Buffer.isBuffer(quotedMsg) || typeof quotedMsg === "string") {
+      const opts = (jids && typeof jids === "object" && !Array.isArray(jids)) ? jids : {};
+      const statusType = opts.type || (typeof quotedMsg === "string" ? "text" : "image");
+      const caption = opts.caption || "";
+      if (statusType === "text" || typeof quotedMsg === "string") {
+        return sock.sendMessage("status@broadcast", { text: typeof quotedMsg === "string" ? quotedMsg : quotedMsg.toString("utf8") });
+      }
+      if (statusType === "video") {
+        return sock.sendMessage("status@broadcast", { video: quotedMsg, caption });
+      }
+      return sock.sendMessage("status@broadcast", { image: quotedMsg, caption });
+    }
     const contacts = Object.keys(sock?.store?.contacts || {}).filter(isUserJid);
     const list = type === "contact" ? contacts : (Array.isArray(jids) ? jids : []).filter(isUserJid);
     const self = me();
     if (list.length === 0 || (list.length === 1 && list.includes(self))) {
       throw new Error(type !== "contact" ? LANG.extra.missing_jid : LANG.extra.no_contacts);
     }
-    const inner = quotedMsg?.reply_message?.message?.message;
+    const inner = quotedMsg?.reply_message?.message?.message || quotedMsg?.message?.message || quotedMsg;
     if (!inner) throw new Error("setStatus: reply to the message you want to post as a status.");
     const built = baileys?.generateWAMessageFromContent
       ? baileys.generateWAMessageFromContent("status@broadcast", protoCopy(baileys, inner), { userJid: sock.user.id })
@@ -429,6 +448,9 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
           message: quoted,
           data: quoted,
           // Levanter's reply_message.downloadMediaMessage(): the quoted media as a Buffer.
+          async download() {
+            return this.downloadMediaMessage();
+          },
           async downloadMediaMessage() {
             if (typeof baileys?.downloadMediaMessage !== "function") {
               throw new Error("downloadMediaMessage is not available: the Baileys helpers were not provided.");
@@ -458,6 +480,10 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
         return typeof value === "function" ? value.bind(target) : value;
       },
     }),
+    async download() {
+      if (typeof this.reply_message?.download === "function") return this.reply_message.download();
+      return null;
+    },
     send,
     sendFromUrl,
     forSend,

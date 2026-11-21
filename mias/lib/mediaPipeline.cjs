@@ -138,7 +138,7 @@ async function fetchToDisk(url, opts = {}) {
         responseType: 'stream',
         timeout: opts.timeout || 120000,
         maxRedirects: 10,
-        headers: opts.headers || { 'User-Agent': 'Mozilla/5.0 (MIAS-Pipeline)' },
+        headers: opts.headers || { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', 'Accept': '*/*', 'Range': 'bytes=0-' },
       });
       const res = await streamToDisk(resp.data, file, opts.cap || MAX_FILE);
       return { path: res.path, bytes: res.bytes, cleanup: () => safeUnlink(res.path) };
@@ -150,7 +150,7 @@ async function fetchToDisk(url, opts = {}) {
   if (typeof fetch === 'function') {
     const resp = await fetch(url, {
       redirect: 'follow',
-      headers: opts.headers || { 'User-Agent': 'Mozilla/5.0 (MIAS-Pipeline)' },
+      headers: opts.headers || { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', 'Accept': '*/*', 'Range': 'bytes=0-' },
       signal: AbortSignal.timeout(opts.timeout || 120000),
     });
     if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status} streaming media`);

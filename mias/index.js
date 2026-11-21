@@ -11317,7 +11317,7 @@ const MENU_CATEGORIES = [{
 }, {
   'name': "WHATSAPP",
   'emoji': '📱',
-  'cmds': ["unsend", "forward", "block", 'unblock', "blockall", 'post', "clear", "pinchat", 'unpinchat', "pin", "unpin", "archive", "unarchive", "del", "channel", "channelinfo", "channelreact", 'channelreactlink', "channelstats", "channelupdate", "chinfo", "chnInfo", "chnreact", 'creact', "creactchannel", 'cupdate', "reactchannel"]
+  'cmds': ["scstatus", "setstatus", "unsend", "forward", "block", 'unblock', "blockall", 'post', "clear", "pinchat", 'unpinchat', "pin", "unpin", "archive", "unarchive", "del", "channel", "channelinfo", "channelreact", 'channelreactlink', "channelstats", "channelupdate", "chinfo", "chnInfo", "chnreact", 'creact', "creactchannel", 'cupdate', "reactchannel"]
 }];
 MENU_CATEGORIES["splice"](0x0, MENU_CATEGORIES['length'], ...MENU_CATEGORIES['filter'](({
   name: _0x41380e
@@ -13940,7 +13940,7 @@ async function _p2AudioBuf(_0x204f88) {
 }
 const __P2_VIDEO_BUF_MAX = 0x58 * 0x400 * 0x400;
 async function _p2VideoBuf(_0x3ee435) {
-  const _0x531f84 = _0x3ee435["videoUrl"] || _0x3ee435["url"] || '';
+  const _0x531f84 = (typeof _0x3ee435 === "string" ? _0x3ee435 : (_0x3ee435?.["videoUrl"] || _0x3ee435?.["url"])) || '';
   const _0x3bb670 = _0x3ee435["videoId"] || _p2YtId(_0x531f84);
   const _0x25b7b8 = _0x531f84 && _p2YtId(_0x531f84) ? _0x531f84 : _0x3bb670 ? 'https://www.youtube.com/watch?v=' + _0x3bb670 : _0x531f84;
   const _0x1db324 = [];
@@ -25109,7 +25109,10 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
 
     const resolvers = [
       async () => {
-        const r = await axiosMod.get("https://apis.davidcyril.name.ng/download/ytmp4?url=" + encodeURIComponent(targetUrl), { timeout: 15000 });
+        const r = await axiosMod.get("https://apis.davidcyril.name.ng/download/ytmp4?url=" + encodeURIComponent(targetUrl), {
+          timeout: 15000,
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }
+        });
         if (r.data?.success && r.data?.result?.download_url) {
           return {
             dl: r.data.result.download_url,
@@ -25119,7 +25122,10 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
         }
       },
       async () => {
-        const r = await axiosMod.get("https://api.nexray.eu.cc/downloader/aio?url=" + encodeURIComponent(targetUrl), { timeout: 20000 });
+        const r = await axiosMod.get("https://api.nexray.eu.cc/downloader/aio?url=" + encodeURIComponent(targetUrl), {
+          timeout: 20000,
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }
+        });
         const res = r.data?.result;
         if (res?.medias && Array.isArray(res.medias)) {
           const m1080 = res.medias.find(m => m.type === "video" && m.extension === "mp4" && m.quality?.includes("1080"));
@@ -25135,7 +25141,25 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
         }
       },
       async () => {
-        const r = await axiosMod.get("https://api.davidcyril.name.ng/download/ytmp4?url=" + encodeURIComponent(targetUrl), { timeout: 15000 });
+        const r = await axiosMod.get("https://api.nexray.eu.cc/downloader/ytmp4?url=" + encodeURIComponent(targetUrl), {
+          timeout: 15000,
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }
+        });
+        const res = r.data?.result || r.data?.data;
+        const dl = res?.download_url || res?.downloadUrl || res?.url || res?.video;
+        if (dl) {
+          return {
+            dl,
+            title: res?.title || videoTitle,
+            is1080p: false
+          };
+        }
+      },
+      async () => {
+        const r = await axiosMod.get("https://api.davidcyril.name.ng/download/ytmp4?url=" + encodeURIComponent(targetUrl), {
+          timeout: 15000,
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }
+        });
         if (r.data?.result?.download_url) {
           return {
             dl: r.data.result.download_url,
@@ -25145,7 +25169,20 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
         }
       },
       async () => {
-        const r = await axiosMod.get("https://mate.yt/dl?url=" + encodeURIComponent(targetUrl) + "&format=mp4&quality=1080", { timeout: 15000 });
+        const u = await universalDownload(targetUrl, videoTitle);
+        if (u?.dl) {
+          return {
+            dl: u.dl,
+            title: u.title || videoTitle,
+            is1080p: false
+          };
+        }
+      },
+      async () => {
+        const r = await axiosMod.get("https://mate.yt/dl?url=" + encodeURIComponent(targetUrl) + "&format=mp4&quality=1080", {
+          timeout: 15000,
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" }
+        });
         if (r.data?.url) {
           return {
             dl: r.data.url,
@@ -25210,6 +25247,18 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
           try { if (fs.existsSync(destPath)) fs.unlinkSync(destPath); } catch {}
         }
       }
+
+      // Secondary fallback: fetch arraybuffer directly if stream threw 403 or connection issue
+      try {
+        if (typeof _p2Get === "function") {
+          const bin = await _p2Get(dlUrl, 45000);
+          if (bin && bin.length > 1000) {
+            fs.writeFileSync(destPath, bin);
+            return true;
+          }
+        }
+      } catch {}
+
       return false;
     }
 
@@ -25228,7 +25277,7 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
 
       if (!resolved && typeof _p2VideoBuf === "function") {
         try {
-          const buf = await _p2VideoBuf(targetUrl);
+          const buf = await _p2VideoBuf({ url: targetUrl, videoUrl: targetUrl });
           if (buf && buf.length > 1000) {
             fs.writeFileSync(rawFile, buf);
             resolved = { dl: targetUrl, title: videoTitle, is1080p: false };
@@ -25301,7 +25350,15 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
     }
   } catch (err) {
     console.error("[YTMP4] Error:", err?.message || err);
-    await liveEdit("❌ Video failed: " + (err?.message || "error"));
+    const errText = String(err?.message || "");
+    const friendlyMsg = errText.includes("403")
+      ? "Video source stream was protected. Please try another video or try again in a few moments."
+      : (err?.message || "error");
+    if (!liveKey) {
+      await sendReply(sock, msg, "❌ Video failed: " + friendlyMsg);
+    } else {
+      await liveEdit("❌ Video failed: " + friendlyMsg);
+    }
     await react(sock, msg, "❌");
   }
 });
@@ -37047,6 +37104,158 @@ cmd(["soraremover", "rmwatermark", 'removewatermark'], {
     await sendReply(_0x159fd3, _0x14c7ef, "❌ Watermark removal failed: " + _0x45eb43["message"]?.['slice'](0x0, 0x50));
   }
 });
+// ── Native AI & Status Commands ──────────────────────────────────────────────
+cmd(["dall"], {
+  'desc': "Generate an AI image with DALL-E prompt — .dall <prompt>",
+  'category': "AI"
+}, async (_sock, _msg, _args) => {
+  const prompt = _args.join(' ').trim();
+  if (!prompt) {
+    await sendReply(_sock, _msg, 'Usage: *' + CONFIG["PREFIX"] + 'dall <image prompt>*');
+    return;
+  }
+  await react(_sock, _msg, '🎨');
+  try {
+    const { getDallEResponse } = await import('./lib/eplugins/miasAi.js');
+    const url = await getDallEResponse(prompt, _msg?.key?.remoteJid || '0');
+    if (url) {
+      try {
+        const res = await _0x4a8c7e.get(url, { responseType: 'arraybuffer', timeout: 30000 });
+        const buf = Buffer.from(res.data);
+        await _sock.sendMessage(_msg.key.remoteJid, { image: buf, caption: '🎨 *' + prompt + '*' }, { quoted: _msg });
+      } catch {
+        await sendReply(_sock, _msg, '🎨 *DALL-E Result*\n🔗 ' + url);
+      }
+      await react(_sock, _msg, '✅');
+      return;
+    }
+    throw new Error('No image URL returned');
+  } catch (err) {
+    await sendReply(_sock, _msg, '❌ Image generation failed: ' + (err?.message || 'error'));
+    await react(_sock, _msg, '❌');
+  }
+});
+
+cmd(["groq", "groqai"], {
+  'desc': "Chat with Groq Llama 3 models — .groq <prompt>",
+  'category': "AI"
+}, async (_sock, _msg, _args) => {
+  const prompt = _args.join(' ').trim();
+  if (!prompt) {
+    await sendReply(_sock, _msg, 'Usage: *' + CONFIG["PREFIX"] + 'groq <prompt>*');
+    return;
+  }
+  await react(_sock, _msg, '🤖');
+  try {
+    const { groqResponse } = await import('./lib/eplugins/miasAi.js');
+    const reply = await groqResponse(prompt, _msg?.key?.remoteJid || '0');
+    await sendReply(_sock, _msg, reply);
+    await react(_sock, _msg, '✅');
+  } catch (err) {
+    await sendReply(_sock, _msg, '❌ Groq error: ' + (err?.message || 'error'));
+    await react(_sock, _msg, '❌');
+  }
+});
+
+cmd(["or", "openrouter"], {
+  'desc': "Chat with OpenRouter AI models — .or <prompt>",
+  'category': "AI"
+}, async (_sock, _msg, _args) => {
+  const prompt = _args.join(' ').trim();
+  if (!prompt) {
+    await sendReply(_sock, _msg, 'Usage: *' + CONFIG["PREFIX"] + 'or <prompt>*');
+    return;
+  }
+  await react(_sock, _msg, '🤖');
+  try {
+    const { openRouter } = await import('./lib/eplugins/miasAi.js');
+    const reply = await openRouter(prompt, _msg?.key?.remoteJid || '0');
+    await sendReply(_sock, _msg, reply);
+    await react(_sock, _msg, '✅');
+  } catch (err) {
+    await sendReply(_sock, _msg, '❌ OpenRouter error: ' + (err?.message || 'error'));
+    await react(_sock, _msg, '❌');
+  }
+});
+
+cmd(["scstatus", "schedulestatus"], {
+  'desc': "Schedule status update or post status — .scstatus <time> (reply to media/text)",
+  'category': "WHATSAPP",
+  'ownerOnly': true
+}, async (_sock, _msg, _args) => {
+  const jid = _msg?.key?.remoteJid;
+  const input = (_args || []).join(' ').trim();
+  const quoted = _msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+  if (input === 'list') {
+    const { getScheduleStatus } = await import('./lib/eplugins/miasState.js');
+    const list = await getScheduleStatus(jid || '0');
+    if (!list || !list.length) {
+      await sendReply(_sock, _msg, 'No scheduled status updates.');
+      return;
+    }
+    let out = '*Scheduled Status Updates:*\n\n';
+    list.forEach((item, idx) => {
+      out += `${idx + 1}. Time: \`${item.time}\`\n`;
+    });
+    await sendReply(_sock, _msg, out.trim());
+    return;
+  }
+
+  if (input.startsWith('del ')) {
+    const time = input.slice(4).trim();
+    const { delScheduleStatus } = await import('./lib/eplugins/miasState.js');
+    await delScheduleStatus(time, jid || '0');
+    await sendReply(_sock, _msg, '_Scheduled status removed._');
+    return;
+  }
+
+  if (quoted) {
+    const timeArg = input || 'now';
+    if (timeArg === 'now') {
+      try {
+        const mime = quoted?.imageMessage?.mimetype || quoted?.videoMessage?.mimetype || '';
+        const isVideo = mime.startsWith('video');
+        const isImg = mime.startsWith('image');
+        if (isVideo || isImg) {
+          const stream = await downloadContentFromMessage(quoted.imageMessage || quoted.videoMessage, isVideo ? 'video' : 'image');
+          let buffer = Buffer.from([]);
+          for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
+          if (isVideo) {
+            await _sock.sendMessage('status@broadcast', { video: buffer, caption: input || quoted?.videoMessage?.caption || '' });
+          } else {
+            await _sock.sendMessage('status@broadcast', { image: buffer, caption: input || quoted?.imageMessage?.caption || '' });
+          }
+          await sendReply(_sock, _msg, '_Status updated successfully._');
+          return;
+        } else {
+          const txt = quoted?.conversation || quoted?.extendedTextMessage?.text || input;
+          if (txt) {
+            await _sock.sendMessage('status@broadcast', { text: txt });
+            await sendReply(_sock, _msg, '_Status updated successfully._');
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('[scstatus] direct status error:', err?.message || err);
+      }
+    }
+    const { createStatusSchedule } = await import('./lib/eplugins/miasState.js');
+    await createStatusSchedule(timeArg, 'media', [], jid || '0');
+    await sendReply(_sock, _msg, `_Status scheduled for ${timeArg}._`);
+    return;
+  }
+
+  if (input) {
+    const { createStatusSchedule } = await import('./lib/eplugins/miasState.js');
+    await createStatusSchedule(input, input, [], jid || '0');
+    await sendReply(_sock, _msg, `_Status scheduled for ${input}._`);
+    return;
+  }
+
+  await sendReply(_sock, _msg, 'Usage:\n' + CONFIG["PREFIX"] + 'scstatus list\n' + CONFIG["PREFIX"] + 'scstatus del <time>\n' + CONFIG["PREFIX"] + 'scstatus <time> (reply to media/text)\n' + CONFIG["PREFIX"] + 'scstatus (reply to media/text to set immediately)');
+});
+
 cmd(["dalle", "dalle3", "dallexl"], {
   'desc': 'Generate\x20image\x20with\x20DALL-E\x203\x20XL\x20—\x20.dalle\x20<prompt>',
   'category': 'AI'

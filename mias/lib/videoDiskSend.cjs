@@ -81,7 +81,15 @@ function extractRemoteUrl(val) {
 }
 
 async function streamRemoteUrlToDisk(url, targetPath, timeoutMs = 60000) {
-  const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
+  const res = await fetch(url, {
+    redirect: "follow",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "Accept": "*/*",
+      "Range": "bytes=0-"
+    },
+    signal: AbortSignal.timeout(timeoutMs)
+  });
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} streaming media`);
   const out = fs.createWriteStream(targetPath);
   const nodeStream = typeof Readable.fromWeb === "function" ? Readable.fromWeb(res.body) : res.body;
