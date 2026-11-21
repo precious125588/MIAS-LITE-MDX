@@ -25310,7 +25310,7 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
       // Enhance quality to 1080p using ffmpeg
       let finalFile = rawFile;
       try {
-        const trans = spawnSync("ffmpeg", [
+        const trans = spawnSync(require("./lib/portableVideo.cjs").resolveFfmpeg(), [
           "-y", "-i", rawFile,
           "-map", "0:v:0", "-map", "0:a?",
           "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
@@ -25332,13 +25332,22 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
       }
 
       // Make sure WhatsApp can actually play the file (H.264 4:2:0 + AAC, faststart).
-      // Falls back to the original bytes if the check cannot run.
+      // Never send a file WhatsApp cannot decode: it must end up as H.264 4:2:0.
+      let playableOk = false;
       try {
         const wpMod = require("./lib/whatsappPlayable.cjs");
         const playable = await wpMod.makeWhatsAppPlayable(finalFile);
         console.log("[YTMP4] playable check:", playable?.action, playable?.reason || "");
+        const probed = await wpMod.probeVideo(finalFile);
+        playableOk = playable?.send !== false && probed.videoCodec === "h264" && probed.pixFmt === "yuv420p";
+        if (!playableOk) console.warn("[YTMP4] not playable after conversion:", JSON.stringify(probed));
       } catch (err) {
         console.warn("[YTMP4] playable check failed:", err?.message || err);
+      }
+      if (!playableOk) {
+        await liveEdit("❌ Video failed: couldn't convert it to a WhatsApp-playable format on this host.");
+        await react(sock, msg, "❌");
+        return;
       }
 
       // Step 5: qualities enchanted
