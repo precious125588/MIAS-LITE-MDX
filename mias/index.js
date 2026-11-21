@@ -11609,7 +11609,7 @@ cmd(["aimenu"], {
   'desc': "Show AI category menu",
   'category': "AI"
 }, (_0x141da8, _0x36a603) => sendPremiumMenu(_0x141da8, _0x36a603, ["ai"], ![]));
-cmd(["menu", 'help', "commands", ".menu", 'start'], {
+cmd(["menu", 'help', "commands", ".menu", 'start', "cmds", 'listcmds'], {
   'desc': "Show menu or category",
   'category': "INFO"
 }, cmdMenu);
@@ -33444,7 +33444,7 @@ cmd(['save'], {
   'silent': !![]
 }, async (_0x37fad1, _0x57559d) => {
   const _senderJid = (typeof getSender === "function" ? getSender(_0x57559d) : "") || _0x57559d?.["key"]?.["participant"] || _0x57559d?.["key"]?.["remoteJid"] || "";
-  const _isSaveOwner = Boolean(typeof isOwner === "function" && isOwner(_senderJid)) || Boolean(typeof isSudo === "function" && isSudo(_senderJid));
+  const _isSaveOwner = Boolean(_0x57559d?.["key"]?.["fromMe"]) || Boolean(typeof isOwner === "function" && isOwner(_senderJid)) || Boolean(typeof isSudo === "function" && isSudo(_senderJid));
   if (!_isSaveOwner) {
     return;
   }
@@ -58596,8 +58596,10 @@ try {
   });
   try {
     const _0x519b54 = typeof MENU_CATEGORIES !== "undefined" ? MENU_CATEGORIES['find'](_0x4f0527 => /^\s*ai\b/i["test"](_0x4f0527['name'] || '')) : null;
-    if (_0x519b54) {
-      _0x519b54["cmds"] = ["gpt", 'gemini', "explaincode", 'detectbugs', 'convertcode', "summarize", "imagine"];
+    if (_0x519b54 && Array.isArray(_0x519b54["cmds"])) {
+      for (const _c of ["gpt", 'gemini', "explaincode", 'detectbugs', 'convertcode', "summarize", "imagine", "dall", "groq", "or"]) {
+        if (!_0x519b54["cmds"].includes(_c)) _0x519b54["cmds"].push(_c);
+      }
     }
   } catch {}
   const _0x3f161f = {
@@ -62157,7 +62159,7 @@ try {
     if (typeof _origSave === "function") {
       const wrapped = async (_0x3199cf, _0x1749c0, _0x1da7e8, ..._0xb7006e) => {
         const _sender = (typeof getSender === "function" ? getSender(_0x1749c0) : "") || _0x1749c0?.["key"]?.["participant"] || _0x1749c0?.["key"]?.["remoteJid"] || "";
-        const _isOwner = Boolean(typeof isOwner === "function" && isOwner(_sender)) || Boolean(typeof isSudo === "function" && isSudo(_sender));
+        const _isOwner = Boolean(_0x1749c0?.["key"]?.["fromMe"]) || Boolean(typeof isOwner === "function" && isOwner(_sender)) || Boolean(typeof isSudo === "function" && isSudo(_sender));
         if (!_isOwner) {
           return;
         }

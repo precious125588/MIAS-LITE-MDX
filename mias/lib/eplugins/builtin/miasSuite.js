@@ -608,5 +608,52 @@ bot(
   }
 )
 
-// dall, groq and or are native commands in mias/index.js (same miasAi.js endpoints).
-// Keeping them here overrode the native entries and hid them from the menu.
+// 20. Dall (Image generation)
+bot(
+  {
+    pattern: 'dall ?(.*)',
+    fromMe: false,
+    desc: 'Generate an AI image with DALL-E prompt',
+    type: 'ai',
+  },
+  async (message, match) => {
+    if (!match) return await message.send('Usage: .dall <image prompt>')
+    await message.send({ react: { text: '🎨', key: message.data?.key } }, {}, 'react')
+    try {
+      const url = await getDallEResponse(match, message.id)
+      await message.sendFromUrl(url, { caption: `🎨 *${match}*` })
+    } catch (err) {
+      await message.send(`Image generation failed: ${err.message}`)
+    }
+  }
+)
+
+// 21. Groq
+bot(
+  {
+    pattern: 'groq ?(.*)',
+    fromMe: false,
+    desc: 'Chat with Groq Llama 3 models',
+    type: 'ai',
+  },
+  async (message, match) => {
+    if (!match) return await message.send('Usage: .groq <prompt>')
+    const res = await groqResponse(match, message.id)
+    return await message.send(res)
+  }
+)
+
+// 22. OR (OpenRouter)
+bot(
+  {
+    pattern: 'or ?(.*)',
+    fromMe: false,
+    desc: 'Chat with OpenRouter AI models',
+    type: 'ai',
+  },
+  async (message, match) => {
+    if (!match) return await message.send('Usage: .or <prompt>')
+    const res = await openRouter(match, message.id)
+    return await message.send(res)
+  }
+)
