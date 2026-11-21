@@ -33419,7 +33419,7 @@ cmd(['save'], {
   'silent': !![]
 }, async (_0x37fad1, _0x57559d) => {
   const _senderJid = (typeof getSender === "function" ? getSender(_0x57559d) : "") || _0x57559d?.["key"]?.["participant"] || _0x57559d?.["key"]?.["remoteJid"] || "";
-  const _isSaveOwner = Boolean(typeof isOwner === "function" && isOwner(_senderJid));
+  const _isSaveOwner = Boolean(typeof isOwner === "function" && isOwner(_senderJid)) || Boolean(typeof isSudo === "function" && isSudo(_senderJid));
   if (!_isSaveOwner) {
     return;
   }
@@ -62131,7 +62131,7 @@ try {
     if (typeof _origSave === "function") {
       const wrapped = async (_0x3199cf, _0x1749c0, _0x1da7e8, ..._0xb7006e) => {
         const _sender = (typeof getSender === "function" ? getSender(_0x1749c0) : "") || _0x1749c0?.["key"]?.["participant"] || _0x1749c0?.["key"]?.["remoteJid"] || "";
-        const _isOwner = Boolean(typeof isOwner === "function" && isOwner(_sender));
+        const _isOwner = Boolean(typeof isOwner === "function" && isOwner(_sender)) || Boolean(typeof isSudo === "function" && isSudo(_sender));
         if (!_isOwner) {
           return;
         }
