@@ -25067,19 +25067,20 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
   // Initial status: . fetching link.... (at most 2 lines)
   let liveKey = null;
   try {
-    const initMsg = await sock.sendMessage(jid, { text: ". fetching link...." }, { quoted: msg });
+    const initMsg = await sock.sendMessage(jid, { text: "_. fetching link...._" }, { quoted: msg });
     liveKey = initMsg?.key;
   } catch {}
 
   const liveEdit = async (txt) => {
     const lineBounded = String(txt || "").split("\n").slice(0, 2).join("\n").trim();
+    const styledText = lineBounded.split("\n").map((l) => (l ? "_" + l + "_" : l)).join("\n");
     try {
       if (liveKey) {
-        await sock.sendMessage(jid, { text: lineBounded, edit: liveKey });
+        await sock.sendMessage(jid, { text: styledText, edit: liveKey });
       }
     } catch {
       try {
-        const next = await sock.sendMessage(jid, { text: lineBounded }, { quoted: msg });
+        const next = await sock.sendMessage(jid, { text: styledText }, { quoted: msg });
         if (next?.key) liveKey = next.key;
       } catch {}
     }
@@ -25311,18 +25312,33 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
       try {
         const trans = spawnSync("ffmpeg", [
           "-y", "-i", rawFile,
+          "-map", "0:v:0", "-map", "0:a?",
           "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
-          "-c:a", "copy",
+          "-profile:v", "high", "-pix_fmt", "yuv420p",
+          "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
           "-movflags", "+faststart",
+          "-f", "mp4",
           enhancedFile
-        ], { stdio: "ignore", timeout: 120000 });
+        ], { stdio: "ignore", timeout: 240000 });
 
-        if (fs.existsSync(enhancedFile) && fs.statSync(enhancedFile).size > 10000) {
+        if (trans?.status === 0 && fs.existsSync(enhancedFile) && fs.statSync(enhancedFile).size > 10000) {
           finalFile = enhancedFile;
+        } else {
+          console.warn("[YTMP4] ffmpeg enhancement returned status", trans?.status);
         }
       } catch (err) {
         console.warn("[YTMP4] ffmpeg enhancement failed, using raw:", err?.message || err);
+      }
+
+      // Make sure WhatsApp can actually play the file (H.264 4:2:0 + AAC, faststart).
+      // Falls back to the original bytes if the check cannot run.
+      try {
+        const wpMod = require("./lib/whatsappPlayable.cjs");
+        const playable = await wpMod.makeWhatsAppPlayable(finalFile);
+        console.log("[YTMP4] playable check:", playable?.action, playable?.reason || "");
+      } catch (err) {
+        console.warn("[YTMP4] playable check failed:", err?.message || err);
       }
 
       // Step 5: qualities enchanted
