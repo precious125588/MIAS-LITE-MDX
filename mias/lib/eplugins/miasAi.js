@@ -45,7 +45,7 @@ export async function nixResponse(message, id = "0") {
 
 export async function groqResponse(prompt, id = "0") {
   const apiKey = process.env.GROQ_API_KEY || "";
-  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+  const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
   if (apiKey) {
     try {
@@ -66,7 +66,8 @@ export async function groqResponse(prompt, id = "0") {
           timeout: 15000
         }
       );
-      return res.data?.choices?.[0]?.message?.content || "";
+      const answer = res.data?.choices?.[0]?.message?.content;
+      if (answer) return answer;
     } catch (err) {
       // fallback
     }
@@ -86,7 +87,7 @@ export async function groqResponse(prompt, id = "0") {
 
 export async function openRouter(prompt, id = "0") {
   const apiKey = process.env.OPENROUTER_API_KEY || "";
-  const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct:free";
+  const model = process.env.OPENROUTER_MODEL || "openrouter/free";
 
   if (apiKey) {
     try {
@@ -109,7 +110,8 @@ export async function openRouter(prompt, id = "0") {
           timeout: 15000
         }
       );
-      return res.data?.choices?.[0]?.message?.content || "";
+      const answer = res.data?.choices?.[0]?.message?.content;
+      if (answer) return answer;
     } catch (err) {
       // fallback
     }
