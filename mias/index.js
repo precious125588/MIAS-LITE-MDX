@@ -59839,7 +59839,7 @@ try {
         'url': _0x1b82ae,
         'info': _0x5d870d,
         'ts': Date["now"]()
-      }, _0x1f9282?.['mode'] ? parseTikTokMode(_0x1f9282['mode']) : parseTikTokMode("1.3"), _0x1f9282);
+      }, (parseTikTokMode(_0x1f9282?.['mode']) || parseTikTokMode("1.3")), _0x1f9282);
     } catch (_0x9c9e6) {
       await forceReaction(_0x427f7f, _0x2a62f5, '❌')['catch'](() => {});
       !_0x1f9282['silentReactions'] && (await sendReply(_0x427f7f, _0x2a62f5, '❌\x20TikTok\x20HD\x20download\x20failed:\x20' + (_0x9c9e6?.['message'] || "Unknown error")));
@@ -59847,6 +59847,7 @@ try {
     }
   };
   async function __v32ExecuteTikTokDownload(_0x56a9c1, _0x52244f, _0x153f92, _0x1f5e2c, _0x365ea2 = {}) {
+    _0x1f5e2c = _0x1f5e2c || parseTikTokMode("1.3");
     const _0x52d36c = _0x52244f["key"]['remoteJid'];
     const _0x552335 = _0x5b4305 => !!_0x5b4305 && _0x5b4305["length"] > 0xc && _0x5b4305["slice"](0x4, 0x8)["toString"]('ascii') === "ftyp";
     const _0x322841 = _0x3701ff => !!_0x3701ff && _0x3701ff["length"] > 0x800 && (_0x3701ff["slice"](0x0, 0x3)["toString"]('latin1') === "ID3" || _0x3701ff[0x0] === 0xff && (_0x3701ff[0x1] & 0xe0) === 0xe0 || _0x3701ff["slice"](0x0, 0x4)["toString"]("ascii") === 'OggS' || _0x3701ff["slice"](0x4, 0x8)["toString"]("ascii") === "ftyp");
