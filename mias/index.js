@@ -31746,7 +31746,7 @@ cmd(["pick", 'p'], {
   const _0x1f473b = parseInt(_0x298ad9[0x0] || '', 0xa);
   let _0x6739c1 = __ttGetSelection(_0x212ec1);
   let _0x16720b = parseTikTokMode(_0x9b53f9);
-  const _isSdChoice = Boolean(_0x16720b && (_0x16720b["quality"] === "sd" || _0x16720b["id"] === "1.1" || _0x16720b["id"] === "1.2" || _0x16720b["id"] === "1.5"));
+  const _isSdChoice = Boolean(_0x16720b && (_0x16720b["quality"] === "sd" || _0x16720b["quality"] === "hd" || _0x16720b["id"] === "1.1" || _0x16720b["id"] === "1.2" || _0x16720b["id"] === "1.3" || _0x16720b["id"] === "1.4" || _0x16720b["id"] === "1.5" || _0x16720b["id"] === "1.6"));
   if (!_0x6739c1 && _0x16720b) {
     _0x6739c1 = await __ttRestoreFromQuote(_0x7e636);
   }
@@ -60015,7 +60015,7 @@ try {
               'cap': _0x5bc6dd,
               'timeout': 0x1d4c0
             });
-            if (!_0x1f5e2c["document"] || _0x1f5e2c['id'] === "1.4" || _0x1f5e2c["quality"] === 'hd' && _0x1f5e2c['document']) {
+            if (_0x1f5e2c['id'] !== "1.3" && _0x1f5e2c['id'] !== "1.4" && _0x1f5e2c["quality"] !== 'hd' && _0x1f5e2c["quality"] !== 'sd' && (!_0x1f5e2c["document"] || _0x1f5e2c['id'] === "1.4" || _0x1f5e2c["quality"] === 'hd' && _0x1f5e2c['document'])) {
               const _0xf20ebf = await _0x3c44e7["reencodeHdForWhatsApp"](_0x893b95, {
                 'maxBytes': _0x1f5e2c['document'] ? TIKTOK_DOCUMENT_MAX_BYTES : _0x3c44e7["TT_INLINE_VIDEO_MAX_BYTES"],
                 'sourceQualityBoost': _0x1f5e2c['id'] === "1.3" || _0x1f5e2c['id'] === "1.4" ? null : null

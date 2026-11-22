@@ -207,3 +207,77 @@ test('deliverTikTokFile mode 1.1 sends original video untouched without re-encod
     try { fs.unlinkSync(tmpFile); } catch {}
   }
 });
+
+test('deliverTikTokFile mode 1.3 HD passes through high-quality streams directly without re-encoding', async () => {
+  const tmpFile = path.join(os.tmpdir(), "test_hd_passthrough_" + Date.now() + ".mp4");
+  fs.writeFileSync(tmpFile, Buffer.from("fake-high-quality-mp4-stream-content-bytes"));
+  let reencodeCalled = false;
+  const originalReencode = delivery.reencodeHdForWhatsApp;
+  delivery.reencodeHdForWhatsApp = async () => {
+    reencodeCalled = true;
+    throw new Error('reencodeHdForWhatsApp should NOT be called for 1.3 HD pass-through');
+  };
+
+  let sentPayload = null;
+  const mockSock = {
+    user: { id: 'bot@s.whatsapp.net' },
+    sendMessage: async (jid, content) => {
+      sentPayload = content;
+      return { key: { id: 'PASSTHROUGH_SENT' } };
+    }
+  };
+
+  try {
+    const result = await delivery.deliverTikTokFile({
+      sock: mockSock,
+      jid: 'user@s.whatsapp.net',
+      file: { path: tmpFile, bytes: 42 },
+      mode: { id: '1.3', kind: 'video', quality: 'hd', document: false },
+      caption: 'HD 1.3 stream pass-through',
+      fileName: 'tiktok_hd_direct.mp4',
+    });
+    assert.equal(reencodeCalled, false, 'reencodeHdForWhatsApp must not be called for 1.3 HD direct stream');
+    assert.equal(result.type, 'video');
+    assert.equal(sentPayload?.video?.url, tmpFile, 'Video URL must be the exact original high quality file path');
+  } finally {
+    delivery.reencodeHdForWhatsApp = originalReencode;
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+});
+
+test('deliverTikTokFile mode 1.4 HD document passes through high-quality streams directly without re-encoding', async () => {
+  const tmpFile = path.join(os.tmpdir(), "test_hd_doc_passthrough_" + Date.now() + ".mp4");
+  fs.writeFileSync(tmpFile, Buffer.from("fake-high-quality-mp4-doc-stream-content-bytes"));
+  let reencodeCalled = false;
+  const originalReencode = delivery.reencodeHdForWhatsApp;
+  delivery.reencodeHdForWhatsApp = async () => {
+    reencodeCalled = true;
+    throw new Error('reencodeHdForWhatsApp should NOT be called for 1.4 HD doc pass-through');
+  };
+
+  let sentDocPayload = null;
+  const mockSock = {
+    user: { id: 'bot@s.whatsapp.net' },
+    sendMessage: async (jid, content) => {
+      sentDocPayload = content;
+      return { key: { id: 'PASSTHROUGH_DOC_SENT' } };
+    }
+  };
+
+  try {
+    const result = await delivery.deliverTikTokFile({
+      sock: mockSock,
+      jid: 'user@s.whatsapp.net',
+      file: { path: tmpFile, bytes: 46 },
+      mode: { id: '1.4', kind: 'video', quality: 'hd', document: true },
+      caption: 'HD 1.4 doc stream pass-through',
+      fileName: 'tiktok_hd_doc_direct.mp4',
+    });
+    assert.equal(reencodeCalled, false, 'reencodeHdForWhatsApp must not be called for 1.4 HD doc stream');
+    assert.equal(result.type, 'document');
+    assert.equal(sentDocPayload?.document?.url, tmpFile, 'Document URL must be the exact original high quality file path');
+  } finally {
+    delivery.reencodeHdForWhatsApp = originalReencode;
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+});

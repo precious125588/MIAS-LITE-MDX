@@ -419,18 +419,29 @@ async function deliverTikTokFile({
     return finalizeResult({ type: "audio", bytes: file.bytes, sent });
   }
 
-  // Document modes: send untouched source directly as original file only for non-HD modes (e.g. 1.2 SD document).
-  // 1.4 HD Document uses the exact same HD re-encode with 1.2 quality boost pipeline as 1.3 HD Video.
-  if (mode && mode.document && !mode.upscale4k && mode.id !== "1.4" && mode.quality !== "hd") {
+  // Document modes: send untouched source directly as original file without re-encoding
+  if (mode && mode.document && !mode.upscale4k) {
     const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, caption, quoted);
     return finalizeResult({ type: "document", bytes: file.bytes, sent });
   }
 
-  // SD choices (1.1, 1.2, 1.5, or quality 'sd'): send direct from TT CDN without re-encoding
-  const isSdChoice = Boolean(
-    mode && (mode.quality === "sd" || mode.id === "1.1" || mode.id === "1.2" || mode.id === "1.5" || mode.id === "3.2")
+  // Pass through high-quality streams directly without re-encoding (1.1, 1.2, 1.3 HD, 1.4 HD, 1.5, 1.6, or quality 'sd'/'hd').
+  // Preserves original video quality, audio stream, codec, color profile, and file properties.
+  const isDirectChoice = Boolean(
+    mode && !mode.upscale4k && !mode.videoNote && (
+      mode.quality === "sd" ||
+      mode.quality === "hd" ||
+      mode.id === "1.1" ||
+      mode.id === "1.2" ||
+      mode.id === "1.3" ||
+      mode.id === "1.4" ||
+      mode.id === "1.5" ||
+      mode.id === "1.6" ||
+      mode.id === "3.2"
+    )
   );
-  if (isSdChoice && !mode?.upscale4k) {
+  const isSdChoice = isDirectChoice;
+  if (isDirectChoice) {
     if (isDoc || file.bytes > TT_INLINE_VIDEO_MAX_BYTES) {
       const docCaption = (caption && file.bytes > TT_INLINE_VIDEO_MAX_BYTES && !isDoc)
         ? `${caption}\n📎 (Sent as document: video exceeds WhatsApp 95 MiB inline limit)`
