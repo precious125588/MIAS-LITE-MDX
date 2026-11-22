@@ -60038,7 +60038,7 @@ try {
         throw new Error("TikTok returned a file that is not a playable " + (_0x1f5e2c["kind"] === "audio" ? "audio" : 'MP4\x20video') + '\x20(' + _0x9171f4["length"] + " bytes). Nothing was sent.");
       }
       if (_0x5883cf?.["key"]) {
-        const _0x3275d8 = _0x893b95 ? '\x20(' + (_0x893b95["bytes"] / (0x400 * 0x400))['toFixed'](0x1) + " MiB)\n" + (_0x1f5e2c['upscale4k'] ? "Enhanced to 4K Ultra HD resolution." : "Re-encoded to high quality for WhatsApp.") + " Large uploads can take a few minutes." : "...";
+        const _0x3275d8 = _0x893b95 ? '\x20(' + (_0x893b95["bytes"] / (0x400 * 0x400))['toFixed'](0x1) + " MiB)\n" + (_0x1f5e2c['upscale4k'] ? "Enhanced to 4K Ultra HD resolution." : "Sending original highest quality directly without re-encoding.") + " Large uploads can take a few minutes." : "...";
         await _0x56a9c1['sendMessage'](_0x52d36c, {
           'text': '📤\x20*Uploading\x20' + _0x71342c + "* (" + _0x1f5e2c['id'] + ')' + _0x3275d8,
           'edit': _0x5883cf["key"]
