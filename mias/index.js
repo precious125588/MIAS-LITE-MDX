@@ -25321,51 +25321,6 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
         console.warn("[YTMP4] ffmpeg enhancement failed, using raw:", err?.message || err);
       }
 
-      // Make sure WhatsApp can actually play the file (H.264 4:2:0 + AAC, faststart).
-      // Never send a file WhatsApp cannot decode: it must end up as H.264 4:2:0.
-      let playableOk = false;
-      try {
-        const wpMod = require("./lib/whatsappPlayable.cjs");
-        const playable = await wpMod.makeWhatsAppPlayable(finalFile);
-        console.log("[YTMP4] playable check:", playable?.action, playable?.reason || "");
-        const probed = await wpMod.probeVideo(finalFile);
-        playableOk = playable?.send !== false && probed.videoCodec === "h264" && probed.pixFmt === "yuv420p";
-        if (!playableOk) console.warn("[YTMP4] not playable after conversion:", JSON.stringify(probed));
-      } catch (err) {
-        console.warn("[YTMP4] playable check failed:", err?.message || err);
-      }
-      if (!playableOk) {
-        await liveEdit("❌ Video failed: couldn't convert it to a WhatsApp-playable format on this host.");
-        await react(sock, msg, "❌");
-        return;
-      }
-
-      // Run the same WhatsApp-oriented encode used by .video, then validate the
-      // exact bytes that will be sent rather than only checking the source file.
-      const sourceStat = fs.statSync(finalFile);
-      if (sourceStat.size > 95 * 1024 * 1024) {
-        await liveEdit("❌ Video exceeds WhatsApp's inline playback limit.");
-        await react(sock, msg, "❌");
-        return;
-      }
-      let playbackBuffer = await fs.promises.readFile(finalFile);
-      playbackBuffer = await prepareTikTokVideo(playbackBuffer);
-      if (!Buffer.isBuffer(playbackBuffer) || playbackBuffer.length < 10000 || playbackBuffer.length > 95 * 1024 * 1024) {
-        throw new Error("Encoded video is empty or exceeds WhatsApp's inline playback limit");
-      }
-      const playbackFile = path.join(tmpDir, "whatsapp_playback.mp4");
-      fs.writeFileSync(playbackFile, playbackBuffer);
-      const playableFinal = await require("./lib/whatsappPlayable.cjs").makeWhatsAppPlayable(playbackFile);
-      const finalProbe = await require("./lib/whatsappPlayable.cjs").probeVideo(playbackFile);
-      if (playableFinal?.send === false || finalProbe.videoCodec !== "h264" || finalProbe.pixFmt !== "yuv420p") {
-        throw new Error("Encoded video did not pass WhatsApp H.264 playback checks");
-      }
-      // makeWhatsAppPlayable may remux the file, so send exactly the bytes it validated.
-      playbackBuffer = await fs.promises.readFile(playbackFile);
-      if (playbackBuffer.length < 10000 || playbackBuffer.length > 95 * 1024 * 1024) {
-        throw new Error("Validated video is empty or exceeds WhatsApp's inline playback limit");
-      }
-
       // Step 5: qualities enchanted
       await liveEdit("qualities enchanted");
       await new Promise(r => setTimeout(r, 400));
@@ -25376,12 +25331,52 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
       const finalCaption = `sent ${shortTitle} 1080p`;
       const fileName = `${shortTitle.slice(0, 30).replace(/[^a-zA-Z0-9_-]/g, "_")}_1080p.mp4`;
 
-      await deliverVideoWithTTHD(sock, jid, playbackBuffer, {
-        caption: finalCaption,
-        fileName,
-        quoted: msg,
-        prepared: true
-      });
+      // Use the .video command logic encode playback:
+      // Read video file, run prepareTikTokVideo (bot HD encoder -> video normalization -> source fallback),
+      // and deliver safely without failing or dropping playback on this host.
+      let playbackBuffer = null;
+      try {
+        const wpMod = require("./lib/whatsappPlayable.cjs");
+        await wpMod.makeWhatsAppPlayable(finalFile).catch(() => null);
+      } catch (_) {}
+
+      try {
+        playbackBuffer = await fs.promises.readFile(finalFile);
+      } catch (_) {
+        if (fs.existsSync(rawFile)) {
+          playbackBuffer = await fs.promises.readFile(rawFile);
+        }
+      }
+
+      if (!Buffer.isBuffer(playbackBuffer) || playbackBuffer.length < 1000) {
+        throw new Error("Downloaded video file is empty or missing");
+      }
+
+      try {
+        const prepared = await prepareTikTokVideo(playbackBuffer);
+        if (Buffer.isBuffer(prepared) && prepared.length >= 1000) {
+          playbackBuffer = prepared;
+        }
+      } catch (encodeErr) {
+        console.warn("[YTMP4] prepareTikTokVideo fallback:", encodeErr?.message || encodeErr);
+      }
+
+      // If video exceeds WhatsApp inline playback limit (> 60MB), send as document like .video does
+      if (playbackBuffer.length > 60 * 1024 * 1024) {
+        await sock.sendMessage(jid, {
+          document: playbackBuffer,
+          fileName,
+          mimetype: "video/mp4",
+          caption: finalCaption
+        }, { quoted: msg });
+      } else {
+        await deliverVideoWithTTHD(sock, jid, playbackBuffer, {
+          caption: finalCaption,
+          fileName,
+          quoted: msg,
+          prepared: true
+        });
+      }
 
       // Step 7: sent {title} 1080p
       await liveEdit(finalCaption);
@@ -58239,8 +58234,10 @@ try {
   } catch {}
   try {
     for (const [_0x2da886, _0x4a6f6f] of [...commands["entries"]()]) {
-      if (String(_0x4a6f6f?.["category"] || '')['toUpperCase']() === 'AI') {
-        commands["delete"](_0x2da886);
+      if (String(_0x4a6f6f?.["category"] || "")["toUpperCase"]() === "AI") {
+        if (!["dall", "groq", "groqai", "or", "openrouter"].includes(String(_0x2da886).toLowerCase())) {
+          commands["delete"](_0x2da886);
+        }
       }
     }
   } catch {}
@@ -58608,6 +58605,76 @@ try {
     } catch (_0x44207f) {
       await react(_0x52e478, _0x5d50eb, '❌');
       await sendReply(_0x52e478, _0x5d50eb, "❌ *Imagine Error:* " + (_0x44207f['message'] || "Failed to generate image"));
+    }
+  });
+  cmd(["dall"], {
+    desc: "Generate an AI image with DALL-E prompt — .dall <prompt>",
+    category: "AI"
+  }, async (_sock, _msg, _args) => {
+    const prompt = (_args || []).join(" ").trim();
+    if (!prompt) {
+      await sendReply(_sock, _msg, "Usage: *" + CONFIG["PREFIX"] + "dall <image prompt>*");
+      return;
+    }
+    await react(_sock, _msg, "🎨");
+    try {
+      const { getDallEResponse } = await import("./lib/eplugins/miasAi.js");
+      const url = await getDallEResponse(prompt, _msg?.key?.remoteJid || "0");
+      if (url) {
+        try {
+          const res = await _0x4a8c7e.get(url, { responseType: "arraybuffer", timeout: 30000 });
+          const buf = Buffer.from(res.data);
+          await _sock.sendMessage(_msg.key.remoteJid, { image: buf, caption: "🎨 *" + prompt + "*" }, { quoted: _msg });
+        } catch {
+          await sendReply(_sock, _msg, "🎨 *DALL-E Result*\n🔗 " + url);
+        }
+        await react(_sock, _msg, "✅");
+        return;
+      }
+      throw new Error("No image URL returned");
+    } catch (err) {
+      await sendReply(_sock, _msg, "❌ Image generation failed: " + (err?.message || "error"));
+      await react(_sock, _msg, "❌");
+    }
+  });
+  cmd(["groq", "groqai"], {
+    desc: "Chat with Groq Llama 3 models — .groq <prompt>",
+    category: "AI"
+  }, async (_sock, _msg, _args) => {
+    const prompt = (_args || []).join(" ").trim();
+    if (!prompt) {
+      await sendReply(_sock, _msg, "Usage: *" + CONFIG["PREFIX"] + "groq <prompt>*");
+      return;
+    }
+    await react(_sock, _msg, "🤖");
+    try {
+      const { groqResponse } = await import("./lib/eplugins/miasAi.js");
+      const reply = await groqResponse(prompt, _msg?.key?.remoteJid || "0");
+      await sendReply(_sock, _msg, reply);
+      await react(_sock, _msg, "✅");
+    } catch (err) {
+      await sendReply(_sock, _msg, "❌ Groq error: " + (err?.message || "error"));
+      await react(_sock, _msg, "❌");
+    }
+  });
+  cmd(["or", "openrouter"], {
+    desc: "Chat with OpenRouter AI models — .or <prompt>",
+    category: "AI"
+  }, async (_sock, _msg, _args) => {
+    const prompt = (_args || []).join(" ").trim();
+    if (!prompt) {
+      await sendReply(_sock, _msg, "Usage: *" + CONFIG["PREFIX"] + "or <prompt>*");
+      return;
+    }
+    await react(_sock, _msg, "🤖");
+    try {
+      const { openRouter } = await import("./lib/eplugins/miasAi.js");
+      const reply = await openRouter(prompt, _msg?.key?.remoteJid || "0");
+      await sendReply(_sock, _msg, reply);
+      await react(_sock, _msg, "✅");
+    } catch (err) {
+      await sendReply(_sock, _msg, "❌ OpenRouter error: " + (err?.message || "error"));
+      await react(_sock, _msg, "❌");
     }
   });
   try {
