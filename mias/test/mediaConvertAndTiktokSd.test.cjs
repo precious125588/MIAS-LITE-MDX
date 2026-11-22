@@ -25,7 +25,7 @@ test("tomp3 and tovn commands are registered with 🌀✅❌ and clean error han
   assert.match(indexSource, /_cmfExtractCleanError/);
 });
 
-test("selectTikTokUrl chooses direct HD true stream for SD modes without re-encoding", async () => {
+test("selectTikTokUrl chooses SD stream for SD modes (1.1, 1.2) and highest HD stream for 1.3/1.4", async () => {
   const { selectTikTokUrl } = await import("../features/tiktok.js");
 
   const mockInfo = {
@@ -37,19 +37,41 @@ test("selectTikTokUrl chooses direct HD true stream for SD modes without re-enco
     audio: "https://v16-webapp-prime.tiktok.com/audio/music.mp3",
   };
 
-  // SD mode 1.1 should prefer direct HD true CDN URL
+  // SD mode 1.1 should fetch true SD stream
   const sdUrl = selectTikTokUrl(mockInfo, { id: "1.1", kind: "video", quality: "sd" });
-  assert.equal(sdUrl, "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4");
+  assert.equal(sdUrl, "https://v16-webapp-prime.tiktok.com/video/sd720p.mp4");
 
-  // SD mode 1.2 (document) should prefer direct HD true CDN URL
+  // SD mode 1.2 (document) should fetch true SD stream
   const sdDocUrl = selectTikTokUrl(mockInfo, { id: "1.2", kind: "video", quality: "sd", document: true });
-  assert.equal(sdDocUrl, "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4");
+  assert.equal(sdDocUrl, "https://v16-webapp-prime.tiktok.com/video/sd720p.mp4");
 
-  // Fallback to videoSd when videoHd is absent
+  // HD mode 1.3 should fetch the highest stream quality (HD 1080p)
+  const hdUrl = selectTikTokUrl(mockInfo, { id: "1.3", kind: "video", quality: "hd" });
+  assert.equal(hdUrl, "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4");
+
+  // HD mode 1.4 (document) should fetch the highest stream quality (HD 1080p)
+  const hdDocUrl = selectTikTokUrl(mockInfo, { id: "1.4", kind: "video", quality: "hd", document: true });
+  assert.equal(hdDocUrl, "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4");
+
+  // 1.8 and 1.9 (4K modes) remain untouched, fetching HD stream for 4K upscale
+  const fourKUrl = selectTikTokUrl(mockInfo, { id: "1.8", kind: "video", quality: "4k", upscale4k: true });
+  assert.equal(fourKUrl, "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4");
+
+  const fourKDocUrl = selectTikTokUrl(mockInfo, { id: "1.9", kind: "video", quality: "4k", document: true, upscale4k: true });
+  assert.equal(fourKDocUrl, "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4");
+
+  // Fallback to videoHd when videoSd is absent for SD
+  const mockHdOnly = {
+    videoHd: "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4",
+  };
+  const fallbackHd = selectTikTokUrl(mockHdOnly, { id: "1.1", kind: "video", quality: "sd" });
+  assert.equal(fallbackHd, "https://v16-webapp-prime.tiktok.com/video/hd1080p.mp4");
+
+  // Fallback to videoSd when videoHd is absent for HD
   const mockSdOnly = {
     videoSd: "https://v16-webapp-prime.tiktok.com/video/sd720p.mp4",
   };
-  const fallbackSd = selectTikTokUrl(mockSdOnly, { id: "1.1", kind: "video", quality: "sd" });
+  const fallbackSd = selectTikTokUrl(mockSdOnly, { id: "1.3", kind: "video", quality: "hd" });
   assert.equal(fallbackSd, "https://v16-webapp-prime.tiktok.com/video/sd720p.mp4");
 });
 

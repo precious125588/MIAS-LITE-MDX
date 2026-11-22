@@ -261,7 +261,7 @@ export function buildTikTokPickerSections(info = null) {
         { title: "1.1 SD Video", description: "MP4 video", id: "1.1", rowId: "1.1" },
         { title: "1.2 SD Document", description: "Send as MP4 document", id: "1.2", rowId: "1.2" },
         { title: "1.3 HD Video", description: "Best quality MP4", id: "1.3", rowId: "1.3" },
-        { title: "1.4 HD Document", description: "Re-encoded HD MP4 sent as document", id: "1.4", rowId: "1.4" },
+        { title: "1.4 HD Document", description: "Original HD MP4 sent as document (highest stream quality)", id: "1.4", rowId: "1.4" },
         { title: "1.5 SD Watermark", description: "SD video with watermark", id: "1.5", rowId: "1.5" },
         { title: "1.6 HD Watermark", description: "HD video with watermark", id: "1.6", rowId: "1.6" },
         { title: "1.7 HD Video Note", description: "Send as a video note", id: "1.7", rowId: "1.7" },
@@ -516,19 +516,41 @@ export async function fetchTikTokInfo(url, fetchImpl = fetch, { order = null } =
 }
 
 // Returns only the URL for the exact format requested, or null.
-// No quality or watermark substitution.
+// SD choices fetch SD stream; 1.3/1.4 HD choices fetch the highest CDN stream quality; 1.8/1.9 4K remain untouched.
 export function selectTikTokUrl(info, mode) {
+  if (!info || typeof info !== "object") return null;
+  if (!mode || typeof mode !== "object") return info.videoHd || info.videoSd || null;
+
   if (mode.kind === "slider") {
     return (info.images && info.images.length > 0) ? (info.images[0] || "slider") : null;
   }
   if (mode.kind === "audio") return info.audio || null;
-  if (mode.watermark) return info.videoWatermark || null;
-  if (mode.quality === "4k" || mode.upscale4k) return (info.videoHd || info.videoSd) || null;
-  // All SD choices download direct from TT CDN HD true without re-encoding:
-  if (mode.quality === "sd" || mode.id === "1.1" || mode.id === "1.2") {
+  if (mode.watermark) {
+    if (mode.quality === "hd" || mode.id === "1.6") {
+      return info.videoWatermark || info.videoHd || info.videoSd || null;
+    }
+    return info.videoWatermark || info.videoSd || info.videoHd || null;
+  }
+  if (mode.kind === "sticker") {
+    if (mode.quality === "sd" || mode.id === "3.2") {
+      return (info.videoSd || info.videoHd || info.video) || null;
+    }
     return (info.videoHd || info.videoSd || info.video) || null;
   }
-  return (mode.quality === "hd" ? (info.videoHd || info.videoSd) : info.videoSd) || null;
+  // 1.8 and 1.9 (4K modes) remain untouched:
+  if (mode.quality === "4k" || mode.upscale4k) return (info.videoHd || info.videoSd) || null;
+
+  // SD choices (1.1, 1.2, or quality "sd") fetch SD directly from CDN:
+  if (mode.quality === "sd" || mode.id === "1.1" || mode.id === "1.2") {
+    return (info.videoSd || info.videoHd || info.video) || null;
+  }
+
+  // HD choices (1.3, 1.4, 1.7, or quality "hd") fetch the highest stream quality from CDN:
+  if (mode.quality === "hd" || mode.id === "1.3" || mode.id === "1.4" || mode.id === "1.7") {
+    return (info.videoHd || info.videoSd || info.video) || null;
+  }
+
+  return (info.videoHd || info.videoSd || info.video) || null;
 }
 
 export { MODES, TIKTOK_PROVIDER_NAMES, PRIMARY_ORDER, ANIME_STATUS_PRIMARY_ORDER };
