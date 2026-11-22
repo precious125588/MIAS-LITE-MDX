@@ -203,36 +203,40 @@ const APIs = {
     throw new Error('Failed to get AI response');
   },
 
-  // TikTok Download — ZeroAPI primary, prexzyvilla fallback, tikwm final
+  // TikTok Download — Prexzy first, TikWM second, NexRay third
   getTikTokDownload: async (url) => {
-    // 1. ZeroAPI
-    try {
-      const r = await zeroGet("/download/tiktok", { url }, 30000);
-      const d = r.data?.data || r.data;
-      const videoUrl = d?.play || d?.video || d?.url || d?.download;
-      const title = d?.title || "TikTok Video";
-      if (videoUrl) return { videoUrl, title };
-    } catch (e) { }
-
-    // 2. Prexzy primary
+    // 1. Prexzy primary
     try {
       const r = await prexzyGet("/download/tiktok", { url }, 30000);
       const d = r.data;
-      const videoUrl = d?.data?.play || d?.data?.video || d?.data?.url || d?.url || d?.video;
+      const videoUrl = d?.data?.hdplay || d?.data?.play || d?.data?.video || d?.data?.url || d?.url || d?.video;
       const title = d?.data?.title || d?.title || "TikTok Video";
       if (videoUrl) return { videoUrl, title };
     } catch (e) { }
 
-    // 3. Prexzy V2
+    // 1b. Prexzy V2
     try {
       const r = await prexzyGet("/download/tiktokV2", { url }, 30000);
       const d = r.data;
-      const videoUrl = d?.data?.play || d?.data?.video || d?.data?.url || d?.url;
+      const videoUrl = d?.data?.hdplay || d?.data?.play || d?.data?.video || d?.data?.url || d?.url;
       const title = d?.data?.title || d?.title || "TikTok Video";
       if (videoUrl) return { videoUrl, title };
     } catch (e) { }
 
-    // 4. Nexray tiktok
+    // 2. TikWM second
+    if (tikwmGate.isTikwmEnabled()) try {
+      const response = await axios.get(`https://tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`, {
+        timeout: 15000,
+        headers: { 'accept': '*/*', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      if (response.data && response.data.data) {
+        const d = response.data.data;
+        const videoUrl = d.hdplay || d.play || d.video;
+        if (videoUrl) return { videoUrl, title: d.title || 'TikTok Video' };
+      }
+    } catch (e) { }
+
+    // 3. Nexray tiktok third
     try {
       const rnx = await nxGet('/downloader/tiktok', { url }, 45000);
       if (rnx.ok && !rnx.media) {
@@ -241,7 +245,7 @@ const APIs = {
         if (videoUrl) return { videoUrl, title: d?.title || 'TikTok Video' };
       }
     } catch (e) { }
-    // 4b. Nexray tiktok v2
+    // 3b. Nexray tiktok v2
     try {
       const rnx2 = await nxGet('/downloader/v2/tiktok', { url }, 45000);
       if (rnx2.ok && !rnx2.media) {
@@ -250,15 +254,14 @@ const APIs = {
         if (videoUrl) return { videoUrl, title: d?.title || 'TikTok Video' };
       }
     } catch (e) { }
-    // 5. tikwm.com (opt-in: TIKWM_ENABLED=1; Cloudflare blocks it on most hosts)
-    if (tikwmGate.isTikwmEnabled()) try {
-      const response = await axios.get(`https://tikwm.com/api/?url=${encodeURIComponent(url)}`, {
-        timeout: 15000,
-        headers: { 'accept': '*/*', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-      });
-      if (response.data && response.data.data && response.data.data.play) {
-        return { videoUrl: response.data.data.play, title: response.data.data.title || 'TikTok Video' };
-      }
+
+    // 4. ZeroAPI fallback
+    try {
+      const r = await zeroGet("/download/tiktok", { url }, 30000);
+      const d = r.data?.data || r.data;
+      const videoUrl = d?.play || d?.video || d?.url || d?.download;
+      const title = d?.title || "TikTok Video";
+      if (videoUrl) return { videoUrl, title };
     } catch (e) { }
 
     throw new Error('TikTok download failed');

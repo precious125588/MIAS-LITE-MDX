@@ -34105,33 +34105,34 @@ cmd(["aio", 'alldl', 'universaldl'], {
     let _0x33afa3 = null;
     let _0x16f02e = null;
     if (_0x3c402f && !_0x1aa24c) {
+      // TikTok download: Prexzy first, TikWM second, NexRay third
       try {
-        const {
-          data: _0x68c734
-        } = await _0x4a8c7e["get"]("https://www.tikwm.com/api/?url=" + encodeURIComponent(_0xb447e9) + '&hd=1', {
-          'timeout': 0x4e20
-        });
-        const _0x123462 = _0x68c734?.["data"];
-        if (_0x123462) {
-          const _0x459b06 = Array["isArray"](_0x123462["images"]) ? _0x123462['images'] : Array["isArray"](_0x123462["image_post_info"]?.["images"]) ? _0x123462["image_post_info"]["images"]['map'](_0x5c995f => _0x5c995f?.["display_image"]?.['url_list']?.[0x0] || _0x5c995f) : [];
-          const _0x21eba0 = _0x459b06["filter"](_0x2e715c => typeof _0x2e715c === 'string' && _0x2e715c);
-          if (_0x21eba0['length']) {
-            _0x33afa3 = _0x21eba0;
-            _0x16f02e = _0x123462["music"] || _0x123462["play"];
-          } else {
-            _0x1aa24c = _0x123462["hdplay"] || _0x123462["play"] || _0x123462['video'] || _0x123462["url"];
-          }
-          _0x3f89f8 = _0x123462['title'] || _0x3f89f8;
-          _0x34acb3 = _0x123462['cover'] || _0x123462["thumbnail"] || _0x34acb3;
-        }
+        const _0x2d30e2 = await prexzyGet("/download/tiktok", {
+          'url': _0xb447e9
+        }, 0x61a8);
+        const _0x3f1608 = _0x2d30e2["data"]?.["data"] || _0x2d30e2["data"];
+        _0x2d30e2['ok'] && _0x3f1608 && (_0x1aa24c = _0x3f1608?.['hdplay'] || _0x3f1608?.["play"] || _0x3f1608?.["video"] || _0x3f1608?.["url"], _0x3f89f8 = _0x3f1608?.["title"] || _0x3f89f8, _0x34acb3 = _0x3f1608?.["cover"] || _0x3f1608?.["thumbnail"] || _0x34acb3);
       } catch {}
       if (!_0x1aa24c && !_0x33afa3) {
         try {
-          const _0x2d30e2 = await prexzyGet("/download/tiktok", {
-            'url': _0xb447e9
-          }, 0x61a8);
-          const _0x3f1608 = _0x2d30e2["data"]?.["data"] || _0x2d30e2["data"];
-          _0x2d30e2['ok'] && _0x3f1608 && (_0x1aa24c = _0x3f1608?.['hdplay'] || _0x3f1608?.["play"] || _0x3f1608?.["video"] || _0x3f1608?.["url"], _0x3f89f8 = _0x3f1608?.["title"] || _0x3f89f8, _0x34acb3 = _0x3f1608?.["cover"] || _0x3f1608?.["thumbnail"] || _0x34acb3);
+          const {
+            data: _0x68c734
+          } = await _0x4a8c7e["get"]("https://www.tikwm.com/api/?url=" + encodeURIComponent(_0xb447e9) + '&hd=1', {
+            'timeout': 0x4e20
+          });
+          const _0x123462 = _0x68c734?.["data"];
+          if (_0x123462) {
+            const _0x459b06 = Array["isArray"](_0x123462["images"]) ? _0x123462['images'] : Array["isArray"](_0x123462["image_post_info"]?.["images"]) ? _0x123462["image_post_info"]["images"]['map'](_0x5c995f => _0x5c995f?.["display_image"]?.['url_list']?.[0x0] || _0x5c995f) : [];
+            const _0x21eba0 = _0x459b06["filter"](_0x2e715c => typeof _0x2e715c === 'string' && _0x2e715c);
+            if (_0x21eba0['length']) {
+              _0x33afa3 = _0x21eba0;
+              _0x16f02e = _0x123462["music"] || _0x123462["play"];
+            } else {
+              _0x1aa24c = _0x123462["hdplay"] || _0x123462["play"] || _0x123462['video'] || _0x123462["url"];
+            }
+            _0x3f89f8 = _0x123462['title'] || _0x3f89f8;
+            _0x34acb3 = _0x123462['cover'] || _0x123462["thumbnail"] || _0x34acb3;
+          }
         } catch {}
       }
     }

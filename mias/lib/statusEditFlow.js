@@ -474,30 +474,30 @@ async function bingSearch(query, platform) {
 
 async function searchCandidates(query, platform = DEFAULT_PLATFORM) {
   const target = APPROVED_PLATFORMS.has(platform) ? platform : DEFAULT_PLATFORM;
-  const primary = await tikwmSearch(query).catch(() => []);
-  const all = [...primary];
+  const all = [];
 
-  if (uniqueCandidates(all).length < 5) {
-    try {
-      const { data: pxData } = await axios.get("https://prexzyapis.com/search/tiktoksearch", {
-        params: { q: query },
-        timeout: 20000,
-        headers: { "User-Agent": "Mozilla/5.0" },
-      });
-      const pxRows = pxData?.data || pxData?.result || [];
-      for (const r of Array.isArray(pxRows) ? pxRows : []) {
-        const u = r?.url || r?.play || r?.video;
-        if (u && !all.some((it) => it.sourceUrl === u)) {
-          all.push(candidate(u, {
-            platform: "tiktok",
-            title: r?.title || `${query} viral edit`,
-            downloadUrl: r?.play || r?.video || u,
-            qualityScore: 70,
-          }));
-        }
+  // Anime status search: Prexzy first, NexRay second, TikWM third
+  try {
+    const pxBase = process.env.PREXZY_API || "https://prexzyapis.com";
+    const { data: pxData } = await axios.get(`${pxBase}/search/tiktoksearch`, {
+      params: { q: query },
+      timeout: 20000,
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+    const pxRows = pxData?.data || pxData?.result || [];
+    for (const r of Array.isArray(pxRows) ? pxRows : []) {
+      const u = r?.url || r?.play || r?.video;
+      if (u && !all.some((it) => it.sourceUrl === u)) {
+        all.push(candidate(u, {
+          platform: "tiktok",
+          title: r?.title || `${query} viral edit`,
+          downloadUrl: r?.play || r?.video || u,
+          qualityScore: 70,
+        }));
       }
-    } catch {}
-  }
+    }
+  } catch {}
+
   if (uniqueCandidates(all).length < 5) {
     try {
       const { data: nxData } = await axios.get("https://api.nexray.eu.cc/search/tiktok", {
@@ -518,6 +518,15 @@ async function searchCandidates(query, platform = DEFAULT_PLATFORM) {
         }
       }
     } catch {}
+  }
+
+  if (uniqueCandidates(all).length < 5) {
+    const primary = await tikwmSearch(query).catch(() => []);
+    for (const item of primary) {
+      if (!all.some((it) => it.sourceUrl === item.sourceUrl)) {
+        all.push(item);
+      }
+    }
   }
 
   // Search-engine scraping is only a fallback now, and every scraped link is
@@ -555,15 +564,22 @@ async function prexzyDownload(sourceUrl, platform) {
       if (u) return u;
     } catch {}
   }
-  try {
-    const { data } = await axios.get("https://api.nexray.eu.cc/downloader/tiktok", {
-      params: { url: sourceUrl },
-      timeout: 35000,
-      headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
-    });
-    const u = deepUrl(data);
-    if (u) return u;
-  } catch {}
+  return "";
+}
+
+async function nexrayDownload(sourceUrl, platform) {
+  const endpoints = ["/downloader/tiktok", "/downloader/aio"];
+  for (const ep of endpoints) {
+    try {
+      const { data } = await axios.get(`https://api.nexray.eu.cc${ep}`, {
+        params: { url: sourceUrl },
+        timeout: 35000,
+        headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+      });
+      const u = deepUrl(data);
+      if (u) return u;
+    } catch {}
+  }
   return "";
 }
 
@@ -721,32 +737,26 @@ async function resolveCandidate(item, { normalize = true } = {}) {
       || !hostMatches(item.sourceUrl, platformInfo(item.platform).domains)) {
     return null;
   }
-  const directUrls = [];
-  if (item.downloadUrl) directUrls.push(item.downloadUrl);
+  const orderedUrls = [];
+
+  // For anime status menu: Prexzy first, NexRay second
+  const prexzy = await prexzyDownload(item.sourceUrl, item.platform);
+  if (prexzy) orderedUrls.push(prexzy);
+
+  const nexray = await nexrayDownload(item.sourceUrl, item.platform);
+  if (nexray) orderedUrls.push(nexray);
+
+  if (item.downloadUrl) orderedUrls.push(item.downloadUrl);
+
   try {
     const platformUrl = await tikwmDownload(item.sourceUrl);
-    if (platformUrl) directUrls.push(platformUrl);
+    if (platformUrl) orderedUrls.push(platformUrl);
   } catch {}
 
-  // Try the source-specific URL before contacting generic fallbacks. The old
-  // order always waited for Cobalt and Prexzy even after TikWM/Pinterest had
-  // already returned a usable video, making a working edit look stuck for
-  // 60–90 seconds and often timing out before WhatsApp received anything.
-  for (const url of [...new Set(directUrls)]) {
-    try {
-      const buffer = await downloadBuffer(url);
-      if (!buffer) continue;
-      const limited = await enforceDuration(buffer, { normalize });
-      if (limited) return { ...item, buffer: limited, duration: getMp4DurationSeconds(limited) };
-    } catch {}
-  }
-
-  const fallbackUrls = [];
   const cobalt = await cobaltDownload(item.sourceUrl);
-  if (cobalt) fallbackUrls.push(cobalt);
-  const fallback = await prexzyDownload(item.sourceUrl, item.platform);
-  if (fallback) fallbackUrls.push(fallback);
-  for (const url of [...new Set(fallbackUrls)]) {
+  if (cobalt) orderedUrls.push(cobalt);
+
+  for (const url of [...new Set(orderedUrls)]) {
     try {
       const buffer = await downloadBuffer(url);
       if (!buffer) continue;

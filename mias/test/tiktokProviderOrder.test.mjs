@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const { fetchTikTokInfo } = await import('../features/tiktok.js');
+const { fetchTikTokInfo, PRIMARY_ORDER, ANIME_STATUS_PRIMARY_ORDER } = await import('../features/tiktok.js');
 
 const URL_ = 'https://www.tiktok.com/@user/video/7673326979118140692';
 
@@ -24,39 +24,54 @@ const withEnv = async (value, fn) => {
   }
 };
 
-test('NexRay AIO is primary and an HD answer ends the chain', async () => {
+test('Prexzy is primary and an HD answer ends the chain', async () => {
+  const f = mockFetch((u) => u.includes('prexzyapis.com')
+    ? { status: 200, body: { status: true, data: { title: 'T', hdplay: 'https://cdn.example/prexzy-hd.mp4', play: 'https://cdn.example/sd.mp4' } } }
+    : down);
+  const info = await withEnv(undefined, () => fetchTikTokInfo(URL_, f));
+  assert.equal(info.videoHd, 'https://cdn.example/prexzy-hd.mp4');
+  assert.equal(f.calls.length, 1);
+  assert.ok(f.calls[0].includes('prexzyapis.com'));
+});
+
+test('when Prexzy is down, TikWM answers second', async () => {
+  const f = mockFetch((u) => u.includes('tikwm.com')
+    ? { status: 200, body: { code: 0, data: { hdplay: 'https://cdn.example/tikwm-hd.mp4', title: 'T' } } }
+    : down);
+  const info = await withEnv(undefined, () => fetchTikTokInfo(URL_, f));
+  assert.equal(info.videoHd, 'https://cdn.example/tikwm-hd.mp4');
+  assert.ok(f.calls[0].includes('prexzyapis.com'), 'Prexzy should be called first');
+  assert.ok(f.calls[1].includes('tikwm.com'), 'TikWM should be called second');
+});
+
+test('when Prexzy and TikWM are down, NexRay answers third', async () => {
   const f = mockFetch((u) => u.includes('nexray.eu.cc/downloader/aio')
     ? { status: 200, body: { status: true, result: { medias: [{ type: 'video', quality: 'hd_no_watermark', url: 'https://cdn.example/aio-hd.mp4' }] } } }
     : down);
   const info = await withEnv(undefined, () => fetchTikTokInfo(URL_, f));
   assert.equal(info.videoHd, 'https://cdn.example/aio-hd.mp4');
-  assert.equal(f.calls.length, 1);
-  assert.ok(f.calls[0].includes('nexray.eu.cc/downloader/aio'));
+  assert.ok(f.calls[0].includes('prexzyapis.com'), 'Prexzy should be called first');
+  assert.ok(f.calls[1].includes('tikwm.com'), 'TikWM should be called second');
+  assert.ok(f.calls[2].includes('nexray.eu.cc/downloader/aio'), 'NexRay should be called third');
 });
 
-test('when NexRay is down, Prexzy answers next', async () => {
-  const f = mockFetch((u) => u.includes('prexzyapis.com')
-    ? { status: 200, body: { status: true, data: { title: 'T', hdplay: 'https://cdn.example/hd.mp4', play: 'https://cdn.example/sd.mp4' } } }
+test('TikWM can be explicitly disabled via TIKWM_ENABLED=0', async () => {
+  const f = mockFetch((u) => u.includes('nexray.eu.cc/downloader/aio')
+    ? { status: 200, body: { status: true, result: { medias: [{ type: 'video', quality: 'hd_no_watermark', url: 'https://cdn.example/aio-hd.mp4' }] } } }
     : down);
-  const info = await withEnv(undefined, () => fetchTikTokInfo(URL_, f));
-  assert.equal(info.videoHd, 'https://cdn.example/hd.mp4');
-  assert.ok(f.calls[0].includes('nexray.eu.cc/downloader/aio'));
-  assert.ok(f.calls[1].includes('prexzyapis.com'));
+  const info = await withEnv('0', () => fetchTikTokInfo(URL_, f));
+  assert.equal(info.videoHd, 'https://cdn.example/aio-hd.mp4');
+  assert.ok(f.calls[0].includes('prexzyapis.com'));
+  assert.ok(f.calls.every((u) => !u.includes('tikwm.com')), 'TikWM was called despite TIKWM_ENABLED=0');
 });
 
-test('TikWM is never called unless TIKWM_ENABLED is set', async () => {
-  const f = mockFetch(() => down);
-  await withEnv(undefined, async () => {
-    await assert.rejects(fetchTikTokInfo(URL_, f), (e) => e.code === 'ALL_PROVIDERS_FAILED');
-  });
-  assert.ok(f.calls.every((u) => !u.includes('tikwm.com')), 'tikwm was called while disabled');
-});
-
-test('TikWM is used as a last resort once it is enabled', async () => {
-  const f = mockFetch((u) => u.includes('tikwm.com')
-    ? { status: 200, body: { code: 0, data: { hdplay: 'https://cdn.example/tikwm-hd.mp4', title: 'T' } } }
+test('for anime status menu categories, Prexzy is first and NexRay is second', async () => {
+  const f = mockFetch((u) => u.includes('nexray.eu.cc/downloader/aio')
+    ? { status: 200, body: { status: true, result: { medias: [{ type: 'video', quality: 'hd_no_watermark', url: 'https://cdn.example/anime-nexray-hd.mp4' }] } } }
     : down);
-  const info = await withEnv('1', () => fetchTikTokInfo(URL_, f));
-  assert.equal(info.videoHd, 'https://cdn.example/tikwm-hd.mp4');
-  assert.ok(f.calls.some((u) => u.includes('tikwm.com')));
+  const info = await fetchTikTokInfo(URL_, f, { order: ANIME_STATUS_PRIMARY_ORDER });
+  assert.equal(info.videoHd, 'https://cdn.example/anime-nexray-hd.mp4');
+  assert.ok(f.calls[0].includes('prexzyapis.com'), 'Prexzy must be first for anime status');
+  assert.ok(f.calls[1].includes('nexray.eu.cc/downloader/aio'), 'NexRay must be second for anime status');
+  assert.ok(!f.calls.slice(0, 2).some((u) => u.includes('tikwm.com')), 'TikWM must not precede NexRay in anime status');
 });

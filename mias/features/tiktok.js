@@ -8,7 +8,9 @@ import tikwmGate from "../lib/tikwmGate.cjs";
 // delivery format. Normalization keeps provider quality/watermark fields distinct.
 const PROVIDER = (url) => `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
 // Sequential first pass, in this order. TikWM is blocked by Cloudflare on most hosts, so it is opt-in (TIKWM_ENABLED=1).
-const PRIMARY_ORDER = ["nexray-aio", "prexzy", "nexray-tiktok", "davidcyril-rapid"];
+// Sequential first pass: Prexzy first, TikWM second, NexRay third.
+const PRIMARY_ORDER = ["prexzy", "tikwm", "nexray-aio", "nexray-tiktok", "davidcyril-rapid"];
+const ANIME_STATUS_PRIMARY_ORDER = ["prexzy", "nexray-aio", "nexray-tiktok", "davidcyril-rapid"];
 const TIKTOK_PROVIDER_NAMES = Object.freeze([
   "tikwm",
   "prexzy",
@@ -31,6 +33,7 @@ function fallbackProviderRequests(url) {
   const giftedKey = encodeURIComponent(process.env.GIFTED_KEY || "gifted");
   return [
     { label: "prexzy", url: `${prexzy}/download/tiktok?url=${encoded}` },
+    { label: "tikwm", url: PROVIDER(url) },
     { label: "nexray-aio", url: `https://api.nexray.eu.cc/downloader/aio?url=${encoded}` },
     { label: "nexray-tiktok", url: `https://api.nexray.eu.cc/downloader/tiktok?url=${encoded}` },
     { label: "davidcyril-rapid", url: `${davidCyril}/download/tiktokdl-rapid?url=${encoded}` },
@@ -444,7 +447,7 @@ async function _fetchOne(request, fetchImpl, parentSignal = null) {
   return info;
 }
 
-export async function fetchTikTokInfo(url, fetchImpl = fetch) {
+export async function fetchTikTokInfo(url, fetchImpl = fetch, { order = null } = {}) {
   if (!isValidTikTokUrl(url)) {
     const err = new Error("Invalid TikTok link");
     err.code = "INVALID_URL";
@@ -453,13 +456,18 @@ export async function fetchTikTokInfo(url, fetchImpl = fetch) {
   const primaryError = [];
   // HD-first: the first provider that returns a real HD file wins. A provider that answers with only
   // SD is kept as a fallback, and the next provider is asked for HD before SD is accepted.
-  // Order: Prexzy, NexRay AIO (labelled HD/SD), NexRay TikTok, DavidCyril rapid. TikWM only when enabled.
+  // Default order: Prexzy first, TikWM second, NexRay third.
+  // Anime status order: Prexzy first, NexRay second.
   let sdFallback = null;
   const allRoutes = fallbackProviderRequests(url);
-  const primaryRoutes = PRIMARY_ORDER
+  const activeOrder = Array.isArray(order) && order.length ? order : PRIMARY_ORDER;
+  const primaryRoutes = activeOrder
     .map((label) => allRoutes.find((r) => r.label === label))
     .filter(Boolean);
   for (const request of primaryRoutes) {
+    if (request.label === "tikwm" && !tikwmGate.isTikwmEnabled()) {
+      continue;
+    }
     try {
       const info = await _fetchOne(request, fetchImpl);
       if (info.videoHd) return info;
@@ -470,20 +478,13 @@ export async function fetchTikTokInfo(url, fetchImpl = fetch) {
   }
   if (sdFallback) return sdFallback;
 
-  // The previous "tikwm-nohd" retry hit the same TikWM host again, so a
-  // provider-level 403 still left the command without an independent fallback.
-  // Fan out only after the primary failure and stop once one real media result
-  // arrives. Run one request per upstream origin at a time: Nexray and
-  // DavidCyril each have alternate routes, but hitting both endpoints together
-  // can trigger provider-side throttling rather than improving availability.
   const controller = new AbortController();
   const fallbackErrors = [];
-  const providerGroups = groupProviderRequestsByOrigin(
-    [
-      ...allRoutes.filter((r) => !PRIMARY_ORDER.includes(r.label)),
-      ...(tikwmGate.isTikwmEnabled() ? [{ label: "tikwm", url: PROVIDER(url) }] : []),
-    ],
-  );
+  const fallbackCandidates = allRoutes.filter((r) => !activeOrder.includes(r.label));
+  if (!activeOrder.includes("tikwm") && tikwmGate.isTikwmEnabled() && !fallbackCandidates.some((r) => r.label === "tikwm")) {
+    fallbackCandidates.push({ label: "tikwm", url: PROVIDER(url) });
+  }
+  const providerGroups = groupProviderRequestsByOrigin(fallbackCandidates);
   const attempts = providerGroups.map(async (group) => {
     let lastError;
     for (const request of group) {
@@ -530,4 +531,4 @@ export function selectTikTokUrl(info, mode) {
   return (mode.quality === "hd" ? (info.videoHd || info.videoSd) : info.videoSd) || null;
 }
 
-export { MODES, TIKTOK_PROVIDER_NAMES };
+export { MODES, TIKTOK_PROVIDER_NAMES, PRIMARY_ORDER, ANIME_STATUS_PRIMARY_ORDER };

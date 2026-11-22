@@ -1258,16 +1258,18 @@ async function resolvePlatformMedia(url, platform) {
     throw new Error(`Could not resolve an APK download for ${new URL(expanded).hostname}; try a direct .apk URL or an app name with .apk`);
   }
 
-  // ── TikTok ──
+  // ── TikTok ── Prexzy first, TikWM second, NexRay third
   if (platform === "tiktok") {
-    const tik = await fromTikwm(expanded, platform).catch(() => null);
-    if (tik?.url || (tik?.type === "slider" && tik?.images?.length)) return tik;
     try {
       const r = await prexzyGet("/download/tiktok", { url: expanded });
       const d = r?.data?.data || r?.data?.result || r?.data;
       const u = d?.hdplay || d?.play || d?.video || d?.url;
       if (u) return { url: u, type: "video", title: d?.title || "TikTok", thumb: d?.cover || d?.thumbnail, _via: "prexzy-tt" };
     } catch {}
+    const tik = await fromTikwm(expanded, platform).catch(() => null);
+    if (tik?.url || (tik?.type === "slider" && tik?.images?.length)) return tik;
+    const nx = await nexrayFallback(expanded, platform).catch(() => null);
+    if (nx?.url) return nx;
     for (const ep of ["/download/tiktok", "/download/tiktokv2"]) {
       try {
         const r = await dcGet(ep, { url: expanded });

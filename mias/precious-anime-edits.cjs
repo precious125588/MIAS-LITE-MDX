@@ -289,8 +289,10 @@ let _sharedTikTokApi;
 async function resolveTikTok(videoUrl) {
   try {
     _sharedTikTokApi ||= import('./features/tiktok.js');
-    const { fetchTikTokInfo } = await _sharedTikTokApi;
-    const info = await fetchTikTokInfo(videoUrl);
+    const { fetchTikTokInfo, ANIME_STATUS_PRIMARY_ORDER } = await _sharedTikTokApi;
+    const info = await fetchTikTokInfo(videoUrl, fetch, {
+      order: ANIME_STATUS_PRIMARY_ORDER || ['prexzy', 'nexray-aio', 'nexray-tiktok', 'davidcyril-rapid'],
+    });
     const bestVideo = info.videoHd || info.videoSd || info.videoWatermark;
     const play = info.videoSd || bestVideo || info.videoWatermark;
     if (!play) return null;
@@ -309,9 +311,37 @@ async function resolveTikTok(videoUrl) {
     return null;
   }
 }
-async function nexraySearch(keywords) {
+async function prexzySearch(keywords) {
+  try {
+    const pxBase = process.env.PREXZY_API || 'https://prexzyapis.com';
+    const r = await axios.get(`${pxBase}/search/tiktoksearch?q=` + encodeURIComponent(keywords), {
+      headers: UA,
+      timeout: 15000,
+      validateStatus: () => true,
+    });
+    const data = r?.data?.data || r?.data?.result;
+    if (Array.isArray(data) && data.length) {
+      const items = data.map((v) => ({
+        id: v.id || v.video_id,
+        title: v.title || v.caption || `${keywords} edit`,
+        author: { nickname: v.author?.nickname || v.author || 'tiktok' },
+        data: v.hdplay || v.play || v.video || v.url,
+        stats: { likes: v.digg_count || v.likes || 0, views: v.play_count || v.views || 0 },
+      })).filter((v) => v.id && v.data);
+      if (items.length) return items;
+    }
+  } catch {}
+  return [];
+}
+
+async function animeStatusSearch(keywords) {
+  // Anime status categories: Prexzy first, NexRay second
+  const pxList = await prexzySearch(keywords).catch(() => []);
+  if (pxList && pxList.length) return pxList;
+
   const nx = await NX.nexrayList('https://api.nexray.eu.cc/search/tiktok?q=' + encodeURIComponent(keywords), 20000);
-  if (nx.list.length) return nx.list;
+  if (nx.list && nx.list.length) return nx.list;
+
   if (!require('./lib/tikwmGate.cjs').isTikwmEnabled()) return [];
   try {
     const d = await getJson('https://www.tikwm.com/api/feed/search?keywords=' + encodeURIComponent(keywords) + '&count=20&hd=1', 15000);
@@ -319,7 +349,8 @@ async function nexraySearch(keywords) {
     return Array.isArray(arr) ? arr : [];
   } catch { return []; }
 }
-async function tikwmSearch(keywords) { return nexraySearch(keywords); }
+async function nexraySearch(keywords) { return animeStatusSearch(keywords); }
+async function tikwmSearch(keywords) { return animeStatusSearch(keywords); }
 
 // ── franchise validation ─────────────────────────────────────────────────
 function textOf(item) {
