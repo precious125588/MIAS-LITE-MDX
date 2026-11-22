@@ -264,6 +264,8 @@ module.exports = function installV36(ctx) {
       } finally { clearTimeout(timer); }
     };
     let dir;
+    let stage = 'prepare';
+    const { sendWithRetry, isTransientTransportError } = require('./lib/reliableSend.cjs');
     const confirm = result => {
       if (!result?.key?.id) throw new Error("WhatsApp did not confirm the status send");
       return result;
@@ -271,11 +273,13 @@ module.exports = function installV36(ctx) {
     await quietReact("🌀");
     try {
       if (!requester) throw new Error("Cannot determine status recipient");
+      stage = 'inspect status';
       const kind = ["image", "video", "audio", "document"].find(k => quoted?.[k + "Message"]);
       if (!kind) {
         const text = quoted?.conversation || quoted?.extendedTextMessage?.text;
         if (!text) throw new Error("Unsupported or missing status content");
-        confirm(await bounded(sock.sendMessage(requester, { text }), 180000, "Status delivery"));
+        stage = 'send text';
+        confirm(await bounded(sendWithRetry(sock, requester, { text }, undefined, { attempts: 2 }), 180000, "Status delivery"));
       } else {
         const { pipeline } = require("node:stream/promises");
         const { Transform } = require("node:stream");
@@ -283,15 +287,30 @@ module.exports = function installV36(ctx) {
         const raw = quoted[kind + "Message"];
         const ext = ({ image: "jpg", video: "mp4", audio: "ogg", document: "bin" })[kind];
         const file = path.join(dir, "status." + ext);
-        const source = await bounded(downloadContentFromMessage(raw, kind), 30000, "Status download setup");
         let bytes = 0;
-        const limit = new Transform({ transform(chunk, encoding, done) {
-          bytes += chunk.length;
-          if (bytes > 2 * 1024 ** 3) return done(new Error("Status exceeds 2 GB delivery limit"));
-          done(null, chunk);
-        }});
-        await pipeline(source, limit, fs.createWriteStream(file), { signal: AbortSignal.timeout(150000) });
-        if (!bytes) throw new Error("Status download returned an empty file");
+        let downloaded = false;
+        let downloadError;
+        for (let attempt = 1; attempt <= 2 && !downloaded; attempt += 1) {
+          bytes = 0;
+          try {
+            stage = `download ${kind} (attempt ${attempt})`;
+            const source = await bounded(downloadContentFromMessage(raw, kind), 30000, "Status download setup");
+            const limit = new Transform({ transform(chunk, encoding, done) {
+              bytes += chunk.length;
+              if (bytes > 2 * 1024 ** 3) return done(new Error("Status exceeds 2 GB delivery limit"));
+              done(null, chunk);
+            }});
+            await pipeline(source, limit, fs.createWriteStream(file), { signal: AbortSignal.timeout(150000) });
+            if (!bytes) throw new Error("Status download returned an empty file");
+            downloaded = true;
+          } catch (error) {
+            downloadError = error;
+            await fs.promises.rm(file, { force: true }).catch(() => {});
+            if (attempt >= 2 || !isTransientTransportError(error)) throw error;
+            await new Promise(resolve => setTimeout(resolve, 700));
+          }
+        }
+        if (!downloaded) throw downloadError || new Error("Status download failed");
         const asDocument = kind === "document" || (kind !== "video" && bytes > 90 * 1024 * 1024);
         let payload;
         if (kind === "video" && bytes > 95 * 1024 * 1024) {
@@ -314,14 +333,18 @@ module.exports = function installV36(ctx) {
           if (kind === "video") payload.mimetype = "video/mp4";
           if (kind === "audio") { payload.mimetype = "audio/ogg; codecs=opus"; payload.ptt = true; }
         }
-        confirm(await bounded(sock.sendMessage(requester, payload), 180000, "Status delivery"));
+        stage = 'send media';
+        confirm(await bounded(sendWithRetry(sock, requester, payload, undefined, { attempts: 2 }), 180000, "Status delivery"));
       }
       await quietReact("✅");
       return true;
     } catch (err) {
-      console.error("[V36_STATUS_SEND error]", err?.message || err);
+      console.error("[V36_STATUS_SEND error]", { stage, message: err?.message || String(err), stack: err?.stack });
       await quietReact("❌");
-      if (requester) await bounded(sock.sendMessage(requester, { text: "❌ Status delivery failed: " + (err?.message || "Unknown error") }), 15000, "Error notification").catch(() => {});
+      const detail = isTransientTransportError(err)
+        ? 'WhatsApp connection dropped during delivery. Please try again.'
+        : (err?.message || "Unknown error");
+      if (requester) await bounded(sock.sendMessage(requester, { text: "❌ Status delivery failed: " + detail }), 15000, "Error notification").catch(() => {});
       return false;
     } finally {
       if (dir) await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});

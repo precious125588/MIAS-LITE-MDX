@@ -233,11 +233,12 @@ async function deliverMediaWithDiskTemp(_0x581e93, _0x1b94db, _0x4f2ac2, _0x3a87
 async function deliverVideoWithTTHD(_0x2bdfd8, _0x1c5b8c, _0x50737f, {
   caption = '',
   fileName = "video_" + Date["now"]() + ".mp4",
-  quoted = null
+  quoted = null,
+  prepared = false
 } = {}) {
   caption = withJustXFooter(caption);
   let _0x195690 = _0x50737f;
-  if (Buffer["isBuffer"](_0x50737f)) {
+  if (!prepared && Buffer["isBuffer"](_0x50737f)) {
     try {
       _0x195690 = await prepareTikTokVideo(_0x50737f);
     } catch (_0x5719ed) {
@@ -6965,29 +6966,15 @@ function parseCommandBody(_0x40b419 = '') {
       };
     }
   }
-  // Explicit no-prefix mode (.setprefix none / null): a known command word runs the command.
-  // A leading "." (or other standard prefix like !, #, /) still works as a fallback.
+  // Explicit no-prefix mode (.setprefix none / null): only bare command words run.
+  // Prefix-style commands are intentionally ignored until a prefix is configured again.
   if (CONFIG && CONFIG.PREFIX === '') {
-    const _pfxMatch = _0x5f49af.match(/^[.!\/#]/);
-    if (_pfxMatch) {
-      const _pfx = _pfxMatch[0];
-      const _sliced = _0x5f49af.slice(_pfx.length).trim();
-      const _pfxCmd = (_sliced.split(/\s+/)[0] || '').toLowerCase();
-      const _isKnown = (typeof commands !== 'undefined' && commands.has(_pfxCmd)) ||
-                       (typeof aliases !== 'undefined' && aliases.has(_pfxCmd)) ||
-                       (typeof customCmds !== 'undefined' && customCmds.has(_pfxCmd));
-      if (_pfxCmd && _isKnown) {
-        return { 'isCommand': true, 'prefix': _pfx, 'raw': _sliced, 'name': _pfxCmd };
-      }
-    }
-    const _bareName = (_0x5f49af.split(/\s+/)[0] || '').toLowerCase();
-    const _knownCmd = (typeof commands !== 'undefined' && commands.has(_bareName)) ||
-                      (typeof aliases !== 'undefined' && aliases.has(_bareName)) ||
-                      (typeof customCmds !== 'undefined' && customCmds.has(_bareName));
-    if (!_bareName || !_knownCmd) {
-      return { 'isCommand': ![], 'prefix': null, 'raw': '', 'name': '' };
-    }
-    return { 'isCommand': !![], 'prefix': '', 'raw': _0x5f49af, 'name': _bareName };
+    const { parseBareCommand } = require('./lib/commandPrefix.cjs');
+    return parseBareCommand(_0x5f49af, name =>
+      (typeof commands !== 'undefined' && commands.has(name)) ||
+      (typeof aliases !== 'undefined' && aliases.has(name)) ||
+      (typeof customCmds !== 'undefined' && customCmds.has(name))
+    );
   }
   const _0x57de35 = Array["isArray"](CONFIG?.["PREFIXES"]) ? CONFIG["PREFIXES"]["filter"](_0x23bec0 => typeof _0x23bec0 === "string" && _0x23bec0["length"] > 0x0) : [];
   const _0xb79e9b = _0x57de35["length"] ? _0x57de35 : [CONFIG?.["PREFIX"] || '.'];
@@ -25236,14 +25223,17 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
             validateStatus: (s) => s >= 200 && s < 400
           });
           const writer = fs.createWriteStream(destPath);
-          resp.data.pipe(writer);
-          await new Promise((resolve, reject) => {
-            writer.on("finish", resolve);
-            writer.on("error", reject);
-          });
-          if (fs.existsSync(destPath) && fs.statSync(destPath).size > 1000) {
+          // pipeline observes errors from both the HTTP source and destination;
+          // pipe()+writer.finish can otherwise accept a truncated response.
+          await require("node:stream/promises").pipeline(resp.data, writer);
+          const size = fs.existsSync(destPath) ? fs.statSync(destPath).size : 0;
+          const contentLength = Number(resp.headers?.["content-length"] || 0);
+          const contentRange = String(resp.headers?.["content-range"] || "").match(/\/(\d+)$/);
+          const expectedLength = contentRange ? Number(contentRange[1]) : contentLength;
+          if (size > 1000 && (!expectedLength || size === expectedLength)) {
             return true;
           }
+          throw new Error("Video download was incomplete or truncated");
         } catch {
           try { if (fs.existsSync(destPath)) fs.unlinkSync(destPath); } catch {}
         }
@@ -25350,21 +25340,47 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
         return;
       }
 
+      // Run the same WhatsApp-oriented encode used by .video, then validate the
+      // exact bytes that will be sent rather than only checking the source file.
+      const sourceStat = fs.statSync(finalFile);
+      if (sourceStat.size > 95 * 1024 * 1024) {
+        await liveEdit("❌ Video exceeds WhatsApp's inline playback limit.");
+        await react(sock, msg, "❌");
+        return;
+      }
+      let playbackBuffer = await fs.promises.readFile(finalFile);
+      playbackBuffer = await prepareTikTokVideo(playbackBuffer);
+      if (!Buffer.isBuffer(playbackBuffer) || playbackBuffer.length < 10000 || playbackBuffer.length > 95 * 1024 * 1024) {
+        throw new Error("Encoded video is empty or exceeds WhatsApp's inline playback limit");
+      }
+      const playbackFile = path.join(tmpDir, "whatsapp_playback.mp4");
+      fs.writeFileSync(playbackFile, playbackBuffer);
+      const playableFinal = await require("./lib/whatsappPlayable.cjs").makeWhatsAppPlayable(playbackFile);
+      const finalProbe = await require("./lib/whatsappPlayable.cjs").probeVideo(playbackFile);
+      if (playableFinal?.send === false || finalProbe.videoCodec !== "h264" || finalProbe.pixFmt !== "yuv420p") {
+        throw new Error("Encoded video did not pass WhatsApp H.264 playback checks");
+      }
+      // makeWhatsAppPlayable may remux the file, so send exactly the bytes it validated.
+      playbackBuffer = await fs.promises.readFile(playbackFile);
+      if (playbackBuffer.length < 10000 || playbackBuffer.length > 95 * 1024 * 1024) {
+        throw new Error("Validated video is empty or exceeds WhatsApp's inline playback limit");
+      }
+
       // Step 5: qualities enchanted
       await liveEdit("qualities enchanted");
       await new Promise(r => setTimeout(r, 400));
 
-      // Step 6: sending
+      // Step 6: sending through the same sender as .video.
       await liveEdit("sending");
 
       const finalCaption = `sent ${shortTitle} 1080p`;
       const fileName = `${shortTitle.slice(0, 30).replace(/[^a-zA-Z0-9_-]/g, "_")}_1080p.mp4`;
 
-      await deliverMediaWithDiskTemp(sock, jid, finalFile, {
-        type: "video",
+      await deliverVideoWithTTHD(sock, jid, playbackBuffer, {
         caption: finalCaption,
         fileName,
-        quoted: msg
+        quoted: msg,
+        prepared: true
       });
 
       // Step 7: sent {title} 1080p
