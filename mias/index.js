@@ -1218,6 +1218,7 @@ function _resolveAuthDir() {
   return _0xf9fd94["join"](__dirname, 'prezzy_auth');
 }
 const AUTH_DIR = _resolveAuthDir();
+globalThis.AUTH_DIR = AUTH_DIR;
 function _writeBotStatus(_0x5649f5) {
   try {
     let _0x49f66b;
@@ -2900,6 +2901,7 @@ async function connectToWA(_0x4ec381 = ![]) {
       state: _0x28c414,
       saveCreds: _0xe4e8e
     } = await useMultiFileAuthState(AUTH_DIR);
+    globalThis.saveCreds = _0xe4e8e;
     let _0x4f54bf = null;
     const _0xa33986 = () => {
       if (authRecoveryRequired) {
@@ -21639,7 +21641,12 @@ cmd("fetch", {
       react,
       contacts: _contactsStore,
       pushNames: pushNameCache,
-      sock: _0x5317f0
+      sock: _0x5317f0,
+      lookupContactByFn: (name) => {
+        try {
+          return require('./lib/contactsIndex.cjs').lookupContactByFn(CONTACTS_FILE, name);
+        } catch { return null; }
+      }
     })) return;
   } catch (e) {
     console.warn("[statusGroupCard] fetch target status error:", e?.message || e);
@@ -48679,11 +48686,7 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
         'messageTimestamp': Math["floor"](Date["now"]() / 0x3e8)
       }];
     }
-    const _0x247271 = Object["prototype"]["hasOwnProperty"]["call"](_0x3858f6, "archive") || Object['prototype']['hasOwnProperty']["call"](_0x3858f6, "pin");
-    const _0x328c2e = _0x247271 ? [{
-      ..._0x3858f6,
-      'lastMessages': _0x45e708
-    }] : _0x45e708 ? [{
+    const _0x328c2e = _0x45e708 ? [{
       ..._0x3858f6,
       'lastMessages': _0x45e708
     }, {
@@ -49100,6 +49103,8 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
     _0x4ebcc6['desc'] = "Archive this chat or a DM — .archive <number>";
     _0x4ebcc6['handler'] = _0x1af281;
     commands["set"]('archive', _0x4ebcc6);
+    commands["set"]('archiver', _0x4ebcc6);
+    commands["set"]('archivechat', _0x4ebcc6);
   }
   {
     const _0x263efd = commands["get"]('unarchive') || {
@@ -49110,6 +49115,8 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
     _0x263efd["desc"] = "Unarchive this chat or a DM — .unarchive <number>";
     _0x263efd["handler"] = _0xb003bc;
     commands["set"]('unarchive', _0x263efd);
+    commands["set"]('unarchiver', _0x263efd);
+    commands["set"]('unarchivechat', _0x263efd);
   }
   async function _0xd7ee21(_0x123d2a, _0x1504b8, _0x1a0fb8, _0x31c8c6) {
     const _0x17e74c = [];

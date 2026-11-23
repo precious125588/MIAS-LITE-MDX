@@ -313,5 +313,21 @@ const statusWithGroup = {
 
   console.log('target status fetch tests passed!');
 
+  
+  // Test name-based target extraction (e.g. "@⁨Just Xavier...⁩" or "Just Xavier")
+  console.log('running name-based target extraction tests...');
+  const nameTarget = mod.extractTarget(null, ['@⁨Just Xavier...⁩'], {
+    contacts: new Map([['2349068551055', 'Just Xavier']])
+  });
+  assert.ok(nameTarget, 'Should resolve target from contact name mention');
+  assert.strictEqual(nameTarget.phone, '2349068551055', 'Resolved phone should match contact');
+
+  // Test plain name argument
+  const plainNameTarget = mod.extractTarget(null, ['Just', 'Xavier'], {
+    contacts: new Map([['2349068551055', 'Just Xavier']])
+  });
+  assert.ok(plainNameTarget, 'Should resolve target from plain name argument');
+  assert.strictEqual(plainNameTarget.phone, '2349068551055');
+
   console.log('statusGroupCard: all tests passed');
 })().catch((e) => { console.error(e); process.exit(1); });

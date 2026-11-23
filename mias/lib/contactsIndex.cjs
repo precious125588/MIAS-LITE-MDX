@@ -86,4 +86,39 @@ function lookupContact(file, phoneOrWaid) {
   return map.get(clean) || '';
 }
 
-module.exports = { vcfLines, getContactMap, lookupContact };
+
+function lookupContactByFn(file, nameQuery) {
+  if (!nameQuery) return null;
+  const cleanQ = String(nameQuery).normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u200B-\u200D\u200E\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!cleanQ) return null;
+
+  const map = getContactMap(file);
+  // 1. Exact match
+  for (const [waid, fn] of map.entries()) {
+    const cleanFn = String(fn || '').normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u200B-\u200D\u200E\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (cleanFn === cleanQ) {
+      return { waid, fn };
+    }
+  }
+  // 2. Contains match (minimum 3 chars)
+  if (cleanQ.length >= 3) {
+    for (const [waid, fn] of map.entries()) {
+      const cleanFn = String(fn || '').normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u200B-\u200D\u200E\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      if (cleanFn.includes(cleanQ) || cleanQ.includes(cleanFn)) {
+        return { waid, fn };
+      }
+    }
+  }
+  return null;
+}
+
+module.exports = { vcfLines, getContactMap, lookupContact, lookupContactByFn };
