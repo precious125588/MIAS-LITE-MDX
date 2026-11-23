@@ -249,6 +249,25 @@ const statusWithGroup = {
   const foundLocal = mod.findStatusesByTarget(currentIdx, '09068551055');
   assert.strictEqual(foundLocal.length, 3, 'Local 09068551055 should find statuses of 2349068551055');
 
+  // A status may arrive under an opaque LID; match it to the saved contact name.
+  const lidStatusIndex = {
+    LID_STATUS: {
+      statusId: 'LID_STATUS',
+      postedAt: Date.now(),
+      senderPhone: '123456789012345',
+      senderJid: '123456789012345@lid',
+      poster: 'Just Xavier',
+      kind: 'text',
+      rawContent: 'LID status'
+    }
+  };
+  const savedContacts = new Map([['2349068551055', 'Just Xavier']]);
+  assert.strictEqual(
+    mod.findStatusesByTarget(lidStatusIndex, '2349068551055', { contacts: savedContacts }).length,
+    1,
+    'Saved contact name should match status posted with an opaque LID'
+  );
+
   // Test handleFetchTargetStatus
   const userFetchCmdMsg = {
     key: { remoteJid: '120363000000000001@g.us', id: 'USER_FETCH_MSG' },
