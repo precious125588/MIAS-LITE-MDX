@@ -6,13 +6,9 @@
 //  Behaviour (per the owner's spec):
 //   • reacts ☄️ on every request
 //   • drops TWO edits per request
-//   • an edit is NEVER repeated for the same user (per-user seen list,
-//     persisted to edits/_seen.json; auto-resets when a category is drained)
-//   • each request rotates across 3 routes so different users get different
-//     videos from different places:
-//        1) the classified links zip files  (edits/<category>.txt)
-//        2) TikTok page videos of the usernames in edits/_usernames.txt
-//        3) random public TikTok search (multi-keyword, quality-filtered)
+//   • each category keeps two persistent, unique candidate IDs ready in a queue
+//   • queue refill shuffles classified repo links, creator pages, and keyword search
+//   • successful deliveries are recorded globally so the same TikTok ID is not reused
 //   • franchise accuracy is enforced by hashtag/caption validation:
 //     Naruto (== Boruto, same franchise) never fetches JJK-only edits, etc.
 //     Edits whose hashtags combine franchises live in BOTH category files,
@@ -38,14 +34,15 @@ const NX = require('./lib/miasGate.cjs');
 let axios = (typeof globalThis !== 'undefined' && globalThis.axios) ? globalThis.axios : null;
 try { if (!axios) axios = require('axios'); } catch {}
 
-// Creator pages are read LIVE at request time (creatorVideoStore only fetches;
-// no link or video is saved). Creator-page videos are downloaded to a temp
-// file on disk and that folder is removed after the send succeeds or fails.
+// Creator pages are prefetched in the background into a persistent ID queue.
+// Media itself is downloaded to a temporary disk file only when delivered, then removed.
 const os = require('os');
 let CVS = null;
 try { CVS = require('./lib/creatorVideoStore.cjs'); } catch (e) {
   // console.log silenced
 }
+let StatusEditQueue = null;
+try { StatusEditQueue = require('./lib/statusEditQueue.cjs').StatusEditQueue; } catch {}
 let CVD = null;
 try { CVD = require('./lib/tiktokDiskDelivery.cjs'); } catch (e) {
   // console.log silenced
@@ -706,8 +703,6 @@ function isDeadLink(url) {
   if (Date.now() - t > DEAD_LINK_TTL_MS) { _deadLinks.delete(String(url)); return false; }
   return true;
 }
-const DELIVERY_BUDGET_MS = 90 * 1000;   // stop starting new attempts after this
-const MAX_DELIVERY_TRIES = 12;          // a failed candidate is skipped and the next one tried
 function creatorOf(item) {
   if (item && item.creator) return String(item.creator).toLowerCase();
   const m = String((item && item.url) || '').match(/tiktok\.com\/@([^/?#\s]+)/i);
@@ -747,28 +742,6 @@ function makeDeliveryPlan(fresh) {
     delivered(c) { usedKeys.add(c.key); usedSrc.add(c.src); if (c.creator) usedCreators.add(c.creator); },
     failed(c) { usedKeys.add(c.key); failedSrc.add(c.src); },
   };
-}
-
-// Fetches fresh candidates when the first pool is used up. Skips anything already
-// tried in this request and any link that recently failed to deliver.
-async function fetchMoreCandidates(catKey, cat, user, zipItems, attempted) {
-  const named = (label, p) => Promise.resolve(p).catch((e) => {
-    
-    return [];
-  });
-  const parts = await Promise.race([
-    Promise.all([
-      named('pages', routePages(cat)),
-      named('search', routeSearch(cat)),
-    ]),
-    new Promise((resolve) => setTimeout(() => resolve([[], []]), 5000)),
-  ]);
-  
-  const all = [...(zipItems || []), ...parts.flat()].filter((i) => i && !isDeadLink(i.url));
-  const candidates = all.filter((i) => !attempted.has(contentKeyOf(i)));
-  const seen = new Set(((loadSeen()[user] || {})[catKey]) || []);
-  const unseen = candidates.filter((i) => !seen.has(contentKeyOf(i)));
-  return unseen.length ? unseen : candidates;
 }
 
 // ── Reaction helpers ─────────────────────────────────────────────────────
@@ -894,6 +867,9 @@ async function handleBotAudio(sock, msg, P = null) {
   }
 }
 
+let _statusQueue = null;
+let _queueRefillFn = null;
+
 const _attachedSockets = new WeakSet();
 function attachSocket(sock) {
   if (!sock || !sock.ev || typeof sock.ev.on !== 'function' || _attachedSockets.has(sock)) return;
@@ -943,80 +919,81 @@ module.exports = {
     if (!axios && helpers.axios) axios = helpers.axios;
     startCreatorLinks();
 
+    if (StatusEditQueue && !_statusQueue) {
+      _statusQueue = new StatusEditQueue({ categories: CATEGORIES, logger: console });
+      // Rehydrate immediately from repository links and the last-good cache, then
+      // let bounded background workers top each category up from live sources.
+      for (const [key, cat] of Object.entries(CATEGORIES)) {
+        for (const candidate of [...routeZip(cat), ...loadLastGood(key)]) {
+          _statusQueue.enqueue(key, candidate, false);
+        }
+      }
+      _statusQueue.persist();
+      _queueRefillFn = async (key) => {
+        const cat = CATEGORIES[key];
+        if (!cat) return [];
+        const [pages, search] = await Promise.all([
+          routePages(cat).catch(() => []),
+          routeSearch(cat).catch(() => []),
+        ]);
+        const live = [...(pages || []), ...(search || [])].filter((item) => item && !isDeadLink(item.url));
+        if (live.length) saveLastGood(key, live);
+        const merged = [...routeZip(cat), ...live, ...loadLastGood(key)]
+          .filter((item) => item && !isDeadLink(item.url));
+        for (let i = merged.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [merged[i], merged[j]] = [merged[j], merged[i]];
+        }
+        return merged;
+      };
+      _statusQueue.start(_queueRefillFn, { intervalMs: 300000, concurrency: 2 });
+    }
+
     async function runEditCmd(catKey, sock, msg) {
       const jid = msg.key.remoteJid;
       const user = (msg.key.participant || msg.key.remoteJid || '').split(':')[0];
       const cat = CATEGORIES[catKey];
       await doReact(sock, msg, '🌀', P);
-      // Fetch candidate routes concurrently on every request so repo links,
-      // creator pages, and keyword search can all participate in the shuffle.
-      // Bound live-source waiting so commands keep responding when an API stalls.
-      const zipItems = (routeZip(cat) || []).filter((i) => !isDeadLink(i.url));
-      const netPromise = Promise.all([
-        routePages(cat).catch(() => []),
-        routeSearch(cat).catch(() => []),
-      ]);
-      const networkParts = await Promise.race([
-        netPromise,
-        new Promise((r) => setTimeout(() => r([[], []]), 5000)),
-      ]);
-      const liveItems = networkParts.flat().filter((i) => i && !isDeadLink(i.url));
-      if (liveItems.length) saveLastGood(catKey, liveItems);
-      let pool = [...zipItems, ...liveItems].filter((i) => i && !isDeadLink(i.url));
-      if (!pool.length) {
-        // Every live source came back empty or was cooling down: serve the last good results.
-        pool = loadLastGood(catKey).filter((i) => !isDeadLink(i.url));
+      // Requests consume the already-prefetched persistent queue. Network lookups
+      // run only in background workers, never in this command handler.
+      if (_statusQueue && _statusQueue.count(catKey) < 2 && _statusQueue.locks?.has(catKey)) {
+        await Promise.race([
+          _statusQueue.locks.get(catKey).catch(() => {}),
+          new Promise((resolve) => setTimeout(resolve, 8000)),
+        ]);
       }
-      if (!pool.length) {
+      const leases = _statusQueue ? _statusQueue.reserve(catKey, 2) : [];
+      if (!leases.length) {
         await doReact(sock, msg, '❌', P);
         clearReactDelayed(sock, msg, 3000, P);
-        return P.sendReply(sock, msg, `❌ No ${cat.label} edits available right now. Please try again in a bit.`);
+        return P.sendReply(sock, msg, `❌ ${cat.label} edits are being refreshed in the background. Please try again shortly.`);
       }
-      const fresh = pickUnseen(user, catKey, pool, pool.length);
-      const countBySrc = {};
-      for (const i of pool) countBySrc[i.src || 'other'] = (countBySrc[i.src || 'other'] || 0) + 1;
-      
-      let plan = makeDeliveryPlan(fresh);
+
+      const reserved = leases.map(({ token, ...item }) => ({ ...item, _queueToken: token }));
+      if (_statusQueue && _queueRefillFn) void _statusQueue.refill(catKey, _queueRefillFn);
+      const plan = makeDeliveryPlan(reserved);
       const sent = [];
-      const attempted = new Set();   // every candidate tried in this request, delivered or not
-      let refetched = false;
+      const attempted = new Set();
       let fourKError = null;
-      const deadline = Date.now() + DELIVERY_BUDGET_MS;
-      let tries = 0;
-      while (sent.length < 2 && tries < MAX_DELIVERY_TRIES && Date.now() < deadline) {
-        let c = plan.next();
-        if (!c && !refetched) {
-          // The first pool is used up or failed: fetch new candidates once and keep going.
-          refetched = true;
-          const more = await fetchMoreCandidates(catKey, cat, user, zipItems, attempted);
-          
-          if (more.length) { plan = makeDeliveryPlan(more); c = plan.next(); }
-        }
+      while (sent.length < 2) {
+        const c = plan.next();
         if (!c) break;
         if (attempted.has(c.key)) continue;
         attempted.add(c.key);
-        tries++;
-        const where = c.src + (c.creator ? ' @' + c.creator : '');
         const caption = String(c.item.caption || c.item.title || (cat.label + ' edit'))
           .replace(/\s+/g, ' ').trim().slice(0, 120) || (cat.label + ' edit');
-        // Disk only: the edit is downloaded to a temp folder, sent from disk, and
-        // that folder is removed after the send succeeds or fails. No RAM fallback.
         let res = false;
-        try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch (e) {
-          
-          res = false;
-        }
+        try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch { res = false; }
         const ok = res === true;
         if (ok) {
           plan.delivered(c);
           sent.push(c.key);
-          
+          _statusQueue?.settle(c.item._queueToken, true);
         } else {
-          // Failed candidate: remember it, skip it, and move on to the next one.
           if (res && res.error) fourKError = res.error;
           plan.failed(c);
           markDeadLink(c.item.url);
-          
+          _statusQueue?.settle(c.item._queueToken, false);
         }
       }
       if (sent.length) {

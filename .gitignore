@@ -27,3 +27,7 @@ nexstore/secrets/
 
 # Runtime status-card cache (media kept while a status is live)
 nexstore/status-cards/
+
+# Persistent status-video ID queues (runtime metadata only)
+nexstore/status-edit-queue.json
+nexstore/status-edit-queue.json.*.tmp

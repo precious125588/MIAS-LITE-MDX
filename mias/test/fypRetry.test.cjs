@@ -35,12 +35,9 @@ test('a delivered candidate is not returned again by the plan', () => {
   assert.notEqual(b.key, a.key);
 });
 
-test('retry limits allow more than the old 4 tries and a longer budget', () => {
-  // Read the constants from the source: they are module-private.
-  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'precious-anime-edits.cjs'), 'utf8');
-  const tries = Number((src.match(/const MAX_DELIVERY_TRIES = (\d+)/) || [])[1]);
-  const budget = Number((src.match(/const DELIVERY_BUDGET_MS = (\d+) \* 1000/) || [])[1]);
-  assert.ok(tries >= 8, `MAX_DELIVERY_TRIES should be at least 8, got ${tries}`);
-  assert.ok(budget >= 60, `DELIVERY_BUDGET_MS should be at least 60s, got ${budget}`);
+test('status queue keeps a two-candidate buffer for each category', () => {
+  const queueCore = require('../lib/statusEditQueue.cjs');
+  assert.equal(queueCore.DEFAULT_CAPACITY, 2);
+  assert.equal(typeof queueCore.StatusEditQueue, 'function');
   assert.ok(edits && typeof edits.makeDeliveryPlan === 'function');
 });
