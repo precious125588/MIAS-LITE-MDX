@@ -4032,7 +4032,7 @@ async function connectToWA(_0x4ec381 = ![]) {
             }
             try {
               const _0x23804e = Number(_0x1b3ecb["messageTimestamp"]?.["low"] || _0x1b3ecb["messageTimestamp"] || 0x0);
-              if (_0x23804e && _0x213798 - _0x23804e > 0x3c && !_0x1b3ecb['key']?.["fromMe"]) {
+              if (_0x23804e && _0x213798 - _0x23804e > 0x3c && !_0x1b3ecb['key']?.["fromMe"] && _0x1b3ecb["key"]?.["remoteJid"] !== "status@broadcast") {
                 let _0x56efe9 = '';
                 try {
                   _0x56efe9 = typeof getBody === "function" ? getBody(_0x1b3ecb) || '' : '';
