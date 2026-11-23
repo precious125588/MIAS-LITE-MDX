@@ -198,3 +198,66 @@ test('unpinchat: owner unpins chat successfully', async () => {
   assert.equal(sock.sent.length, 1);
   assert.equal(sock.sent[0].content.text, '◆ Chat unpinned.');
 });
+
+test('pin: DM pin strictly omits participant in MessageKey', async () => {
+  const sock = createMockSocket();
+  const msg = {
+    key: { remoteJid: '12345@s.whatsapp.net', fromMe: false },
+    message: {
+      extendedTextMessage: {
+        text: '.pin',
+        contextInfo: { stanzaId: 'dm_msg_01', participant: '12345@s.whatsapp.net' },
+      },
+    },
+  };
+  const res = await handleMessagePinCommand(sock, msg, []);
+  assert.equal(res.ok, true);
+  assert.equal(sock.sent.length, 2);
+  assert.equal(sock.sent[0].content.pin.participant, undefined);
+  assert.equal(sock.sent[0].content.pin.remoteJid, '12345@s.whatsapp.net');
+  assert.equal(sock.sent[0].content.pin.id, 'dm_msg_01');
+  assert.equal(sock.sent[1].content.text, '✔ Message pinned.');
+});
+
+test('pin: supports custom duration in args', async () => {
+  const sock = createMockSocket();
+  const msg = {
+    key: { remoteJid: '123456@g.us', participant: '2348000000002@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.pin 24h',
+        contextInfo: { stanzaId: 'msg_24h_01', participant: '2348000000004@s.whatsapp.net' },
+      },
+    },
+  };
+  const res = await handleMessagePinCommand(sock, msg, ['24h']);
+  assert.equal(res.ok, true);
+  assert.equal(sock.sent[0].content.time, 86400);
+  assert.equal(sock.sent[1].content.text, '✔ Message pinned.');
+});
+
+test('pinchat: handles myAppStateKey missing error and provides helpful feedback', async () => {
+  const sock = createMockSocket({
+    chatModifyThrows: 'myAppStateKey ("AAAAAObh") not present',
+  });
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net', fromMe: true },
+  };
+  const res = await handlePinChatCommand(sock, msg, []);
+  assert.equal(res.ok, false);
+  assert.equal(sock.sent.length, 1);
+  assert.match(sock.sent[0].content.text, /WhatsApp sync error/i);
+});
+
+test('pinchat: handles slot limit error (max 3)', async () => {
+  const sock = createMockSocket({
+    chatModifyThrows: 'Maximum pinned chats reached: limit is 3',
+  });
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net', fromMe: true },
+  };
+  const res = await handlePinChatCommand(sock, msg, []);
+  assert.equal(res.ok, false);
+  assert.equal(sock.sent.length, 1);
+  assert.match(sock.sent[0].content.text, /Maximum pinned chats reached \(max 3\)/i);
+});

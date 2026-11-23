@@ -25297,28 +25297,29 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
       await liveEdit(". downloaded enchancing quality to 1080p");
       await new Promise(r => setTimeout(r, 400));
 
-      // Enhance quality to 1080p using ffmpeg
-      let finalFile = rawFile;
+      // Read downloaded video file
+      let playbackBuffer = null;
       try {
-        const trans = spawnSync(require("./lib/portableVideo.cjs").resolveFfmpeg(), [
-          "-y", "-i", rawFile,
-          "-map", "0:v:0", "-map", "0:a?",
-          "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
-          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
-          "-profile:v", "high", "-pix_fmt", "yuv420p",
-          "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
-          "-movflags", "+faststart",
-          "-f", "mp4",
-          enhancedFile
-        ], { stdio: "ignore", timeout: 240000 });
-
-        if (trans?.status === 0 && fs.existsSync(enhancedFile) && fs.statSync(enhancedFile).size > 10000) {
-          finalFile = enhancedFile;
-        } else {
-          console.warn("[YTMP4] ffmpeg enhancement returned status", trans?.status);
+        playbackBuffer = await fs.promises.readFile(rawFile);
+      } catch (_) {
+        if (fs.existsSync(enhancedFile)) {
+          playbackBuffer = await fs.promises.readFile(enhancedFile);
         }
-      } catch (err) {
-        console.warn("[YTMP4] ffmpeg enhancement failed, using raw:", err?.message || err);
+      }
+
+      if (!Buffer.isBuffer(playbackBuffer) || playbackBuffer.length < 1000) {
+        throw new Error("Downloaded video file is empty or missing");
+      }
+
+      // Use .video command logic for playback preparation:
+      // prepareTikTokVideo runs bot HD encoder -> portableVideo normalizeVideoBuffer (H.264 Baseline/Main + AAC with faststart) -> source fallback
+      try {
+        const prepared = await prepareTikTokVideo(playbackBuffer);
+        if (Buffer.isBuffer(prepared) && prepared.length >= 1000) {
+          playbackBuffer = prepared;
+        }
+      } catch (encodeErr) {
+        console.warn("[YTMP4] prepareTikTokVideo fallback:", encodeErr?.message || encodeErr);
       }
 
       // Step 5: qualities enchanted
@@ -25331,38 +25332,8 @@ cmd(['ytmp4', "ytvideo", "yt4", 'ytv'], {
       const finalCaption = `sent ${shortTitle} 1080p`;
       const fileName = `${shortTitle.slice(0, 30).replace(/[^a-zA-Z0-9_-]/g, "_")}_1080p.mp4`;
 
-      // Use the .video command logic encode playback:
-      // Read video file, run prepareTikTokVideo (bot HD encoder -> video normalization -> source fallback),
-      // and deliver safely without failing or dropping playback on this host.
-      let playbackBuffer = null;
-      try {
-        const wpMod = require("./lib/whatsappPlayable.cjs");
-        await wpMod.makeWhatsAppPlayable(finalFile).catch(() => null);
-      } catch (_) {}
-
-      try {
-        playbackBuffer = await fs.promises.readFile(finalFile);
-      } catch (_) {
-        if (fs.existsSync(rawFile)) {
-          playbackBuffer = await fs.promises.readFile(rawFile);
-        }
-      }
-
-      if (!Buffer.isBuffer(playbackBuffer) || playbackBuffer.length < 1000) {
-        throw new Error("Downloaded video file is empty or missing");
-      }
-
-      try {
-        const prepared = await prepareTikTokVideo(playbackBuffer);
-        if (Buffer.isBuffer(prepared) && prepared.length >= 1000) {
-          playbackBuffer = prepared;
-        }
-      } catch (encodeErr) {
-        console.warn("[YTMP4] prepareTikTokVideo fallback:", encodeErr?.message || encodeErr);
-      }
-
-      // If video exceeds WhatsApp inline playback limit (> 60MB), send as document like .video does
-      if (playbackBuffer.length > 60 * 1024 * 1024) {
+      // If video exceeds WhatsApp inline playback limit (> 55MB), send as document like .video does
+      if (playbackBuffer.length > 55 * 1024 * 1024) {
         await sock.sendMessage(jid, {
           document: playbackBuffer,
           fileName,
@@ -48565,6 +48536,13 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
 (() => {
   async function _0x6724b5(_0x1772a4) {
     try {
+      const _pinMod = require("../lib/pinCommand.cjs");
+      if (typeof _pinMod.ensureAppStateSyncKey === "function") {
+        const _ok = await _pinMod.ensureAppStateSyncKey(_0x1772a4);
+        if (_ok) return true;
+      }
+    } catch {}
+    try {
       if (!_0x1772a4?.["authState"]?.["creds"]?.["myAppStateKeyId"]) {
         const _0x570dfa = typeof AUTH_DIR === "string" && AUTH_DIR ? AUTH_DIR : "./auth";
         const _0x27f9f5 = typeof _0x2a74f2 !== "undefined" ? _0x2a74f2 : require('fs');
@@ -48714,7 +48692,7 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
           _0x54cc5f = _0x25c963?.["message"] || String(_0x25c963);
         }
       }
-      if (/app.?state.?key.?not.?present|not.?synced/i["test"](_0x54cc5f) || !_0x5427a3?.['authState']?.['creds']?.['myAppStateKeyId']) {
+      if (/myAppStateKey|app.?state.?key|not.?present|not.?synced/i["test"](_0x54cc5f) || !_0x5427a3?.['authState']?.['creds']?.['myAppStateKeyId']) {
         try {
           await _0x6724b5(_0x5427a3);
         } catch {}
