@@ -121,3 +121,16 @@ test("deliverTikTokFile skips re-encode completely for SD modes (1.1 and 1.2)", 
     try { fs.unlinkSync(tmpFile); } catch {}
   }
 });
+
+test("index.js TikTok picker streams direct choices to disk without buffer re-encode", () => {
+  const indexSource = fs.readFileSync(path.join(__dirname, "../index.js"), "utf8");
+
+  // Verify _0x20b579 does not have !_isSdChoice blocking disk streaming
+  assert.doesNotMatch(indexSource, /_0x20b579 = [^;]+&& !_isSdChoice;/);
+
+  // Verify maxBufferedBytes enables disk streaming for _isSdChoice
+  assert.match(indexSource, /maxBufferedBytes['"]?:\s*\(_0x20b579\s*\|\|\s*_isSdChoice\)\s*\?\s*0x0/);
+
+  // Verify buffer preparation skips direct/SD choices
+  assert.match(indexSource, /if\s*\(_0x16720b\[['"]kind['"]\]\s*===\s*['"]video['"]\s*&&\s*_0x3eb92a\s*&&\s*!_isSdChoice\)/);
+});

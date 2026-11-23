@@ -31863,7 +31863,7 @@ cmd(["pick", 'p'], {
         } else {
           const _0x35b218 = [_0x57f804];
           const _0x1490d0 = _0x16720b["kind"] === 'video' && !_0x16720b['videoNote'];
-          const _0x20b579 = _0x1490d0 && (!_0x16720b["document"] || _0x16720b['id'] === "1.4" || _0x16720b["quality"] === 'hd' && _0x16720b["document"]) && !_0x16720b["upscale4k"] && !_isSdChoice;
+          const _0x20b579 = _0x1490d0 && (!_0x16720b["document"] || _0x16720b['id'] === "1.4" || _0x16720b["quality"] === 'hd' && _0x16720b["document"]) && !_0x16720b["upscale4k"];
           const _0x57a77b = _0x1490d0 ? require("./lib/mediaPipeline.cjs") : null;
           _0x527a61 = _0x16720b["kind"] === "video" ? require("./lib/tiktokDiskDelivery.cjs") : null;
           const _0x3e46cf = async () => {
@@ -31921,7 +31921,7 @@ cmd(["pick", 'p'], {
               const _0x2a800a = await _0x527a61["fetchVideoCandidate"](_0x5bfca2, {
                 'pipeline': _0x57a77b,
                 'cap': _0x2d2f5d,
-                'maxBufferedBytes': _0x20b579 ? 0x0 : TT_VIDEO_ENCODE["maxInputBytes"],
+                'maxBufferedBytes': (_0x20b579 || _isSdChoice) ? 0x0 : TT_VIDEO_ENCODE["maxInputBytes"],
                 'timeout': 0x15f90,
                 'headers': {
                   'User-Agent': "Mozilla/5.0",
@@ -32093,7 +32093,7 @@ cmd(["pick", 'p'], {
                   }
                 }
               } else {
-                if (_0x16720b["kind"] === "video" && _0x3eb92a) {
+                if (_0x16720b["kind"] === "video" && _0x3eb92a && !_isSdChoice) {
                   _0x3eb92a = await prepareTikTokVideo(_0x3eb92a);
                 }
                 if (_0x16720b["kind"] === "video" && _0x16720b["videoNote"]) {
@@ -60015,7 +60015,7 @@ try {
               'cap': _0x5bc6dd,
               'timeout': 0x1d4c0
             });
-            if (_0x1f5e2c['id'] !== "1.3" && _0x1f5e2c['id'] !== "1.4" && _0x1f5e2c["quality"] !== 'hd' && _0x1f5e2c["quality"] !== 'sd' && (!_0x1f5e2c["document"] || _0x1f5e2c['id'] === "1.4" || _0x1f5e2c["quality"] === 'hd' && _0x1f5e2c['document'])) {
+            if (_0x1f5e2c['id'] !== "1.1" && _0x1f5e2c['id'] !== "1.2" && _0x1f5e2c['id'] !== "1.3" && _0x1f5e2c['id'] !== "1.4" && _0x1f5e2c['id'] !== "1.5" && _0x1f5e2c['id'] !== "1.6" && _0x1f5e2c["quality"] !== 'hd' && _0x1f5e2c["quality"] !== 'sd' && (!_0x1f5e2c["document"] || _0x1f5e2c['id'] === "1.4" || _0x1f5e2c["quality"] === 'hd' && _0x1f5e2c['document'])) {
               const _0xf20ebf = await _0x3c44e7["reencodeHdForWhatsApp"](_0x893b95, {
                 'maxBytes': _0x1f5e2c['document'] ? TIKTOK_DOCUMENT_MAX_BYTES : _0x3c44e7["TT_INLINE_VIDEO_MAX_BYTES"],
                 'sourceQualityBoost': _0x1f5e2c['id'] === "1.3" || _0x1f5e2c['id'] === "1.4" ? null : null
