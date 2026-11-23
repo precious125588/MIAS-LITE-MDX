@@ -419,8 +419,9 @@ async function deliverTikTokFile({
     return finalizeResult({ type: "audio", bytes: file.bytes, sent });
   }
 
-  // Document modes: send untouched source directly as original file without re-encoding
-  if (mode && mode.document && !mode.upscale4k) {
+  // Document modes: send untouched source directly as original file only for non-HD modes (e.g. 1.2 SD document).
+  // 1.4 HD Document uses the exact same HD re-encode with 1.2 quality boost pipeline as 1.3 HD Video.
+  if (mode && mode.document && !mode.upscale4k && mode.id !== "1.4" && mode.quality !== "hd") {
     const sent = await disk.sendDocumentFromDisk(sock, jid, file.path, fileName, caption, quoted);
     return finalizeResult({ type: "document", bytes: file.bytes, sent });
   }
@@ -430,11 +431,8 @@ async function deliverTikTokFile({
   const isDirectChoice = Boolean(
     mode && !mode.upscale4k && !mode.videoNote && (
       mode.quality === "sd" ||
-      mode.quality === "hd" ||
       mode.id === "1.1" ||
       mode.id === "1.2" ||
-      mode.id === "1.3" ||
-      mode.id === "1.4" ||
       mode.id === "1.5" ||
       mode.id === "1.6" ||
       mode.id === "3.2"

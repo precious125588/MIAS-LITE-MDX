@@ -54,12 +54,9 @@ async function encodeWithBotHd(buf) {
   }
 }
 
-export async function prepareTikTokVideo(buf, opts = {}) {
+export async function prepareTikTokVideo(buf) {
   if (!Buffer.isBuffer(buf) || buf.length < 1024) {
     throw new Error("TikTok returned an empty video, so nothing was sent.");
-  }
-  if (opts && (opts.skipEncode || opts.direct)) {
-    return buf;
   }
   const botHd = await encodeWithBotHd(buf);
   if (botHd) return botHd;

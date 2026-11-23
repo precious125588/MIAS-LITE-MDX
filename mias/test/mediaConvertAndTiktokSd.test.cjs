@@ -122,15 +122,15 @@ test("deliverTikTokFile skips re-encode completely for SD modes (1.1 and 1.2)", 
   }
 });
 
-test("index.js TikTok picker streams direct choices to disk without buffer re-encode", () => {
+test("index.js TikTok picker streams SD choices to disk and preserves HD re-encode", () => {
   const indexSource = fs.readFileSync(path.join(__dirname, "../index.js"), "utf8");
 
-  // Verify _0x20b579 does not have !_isSdChoice blocking disk streaming
-  assert.doesNotMatch(indexSource, /_0x20b579 = [^;]+&& !_isSdChoice;/);
+  // Verify maxBufferedBytes streams SD choices to disk
+  assert.match(indexSource, /maxBufferedBytes['"]?:\s*_isSdChoice\s*\?\s*0x0/);
 
-  // Verify maxBufferedBytes enables disk streaming for _isSdChoice
-  assert.match(indexSource, /maxBufferedBytes['"]?:\s*\(_0x20b579\s*\|\|\s*_isSdChoice\)\s*\?\s*0x0/);
+  // Verify _isSdChoice is scoped to SD modes
+  assert.match(indexSource, /const _isSdChoice = Boolean\(_0x16720b && \(_0x16720b\[['"]quality['"]\] === ['"]sd['"]/);
 
-  // Verify buffer preparation skips direct/SD choices
-  assert.match(indexSource, /if\s*\(_0x16720b\[['"]kind['"]\]\s*===\s*['"]video['"]\s*&&\s*_0x3eb92a\s*&&\s*!_isSdChoice\)/);
+  // Verify HD 1.3/1.4 line 60018 re-encodes with 1.2 boost
+  assert.match(indexSource, /sourceQualityBoost['"]?:\s*_0x1f5e2c\[['"]id['"]\] === ['"]1\.3['"] \|\| _0x1f5e2c\[['"]id['"]\] === ['"]1\.4['"] \? 1\.2 : null/);
 });
