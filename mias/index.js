@@ -60015,7 +60015,7 @@ try {
               'cap': _0x5bc6dd,
               'timeout': 0x1d4c0
             });
-            if (_0x1f5e2c['id'] !== "1.1" && _0x1f5e2c['id'] !== "1.2" && _0x1f5e2c['id'] !== "1.5" && _0x1f5e2c['id'] !== "1.6" && _0x1f5e2c["quality"] !== 'sd' && (!_0x1f5e2c["document"] || _0x1f5e2c['id'] === "1.4" || _0x1f5e2c["quality"] === 'hd' && _0x1f5e2c['document"])) {
+            if (_0x1f5e2c['id'] !== "1.1" && _0x1f5e2c['id'] !== "1.2" && _0x1f5e2c['id'] !== "1.5" && _0x1f5e2c['id'] !== "1.6" && _0x1f5e2c["quality"] !== 'sd' && (!_0x1f5e2c["document"] || _0x1f5e2c['id'] === "1.4" || _0x1f5e2c["quality"] === 'hd' && _0x1f5e2c['document'])) {
               const _0xf20ebf = await _0x3c44e7["reencodeHdForWhatsApp"](_0x893b95, {
                 'maxBytes': _0x1f5e2c['document'] ? TIKTOK_DOCUMENT_MAX_BYTES : _0x3c44e7["TT_INLINE_VIDEO_MAX_BYTES"],
                 'sourceQualityBoost': _0x1f5e2c['id'] === "1.3" || _0x1f5e2c['id'] === "1.4" ? 1.2 : null
