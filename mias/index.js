@@ -4230,12 +4230,6 @@ async function connectToWA(_0x4ec381 = ![]) {
                   }
                   globalThis['_seenStatusKeys'].add(_statusMsgId);
                 }
-                try {
-                  require("../lib/statusGroupCard.cjs").handleStatusMessage(_0x5ec14e, _0x1b3ecb, { download: downloadContentFromMessage })
-                    .catch((e) => console.warn("[statusGroupCard] status error:", e?.message || e));
-                } catch (e) {
-                  console.warn("[statusGroupCard] load error:", e?.message || e);
-                }
                 const _0x28c433 = getOwnerJid();
                 const _0x3fb4e2 = getSettings(_0x28c433);
                 const _rawPart = _0x1b3ecb['key']?.['participant'] || _0x1b3ecb?.['participant'] || _0x1b3ecb?.['key']?.['participantPn'] || _0x1b3ecb?.['participantPn'] || '';
@@ -4247,6 +4241,15 @@ async function connectToWA(_0x4ec381 = ![]) {
                 const _stdJid = _573f01 && !_573f01.endsWith('@lid') ? toStandardJid(_573f01) : '';
                 const _0x1f1f94 = _stdJid || _rawPart;
                 const _0x1e21e3 = _stdJid ? _cleanNum(_stdJid) : _573f01 && !_573f01.endsWith('@lid') ? _cleanNum(_573f01) : _cleanNum(_rawPart);
+                try {
+                  require("../lib/statusGroupCard.cjs").handleStatusMessage(_0x5ec14e, _0x1b3ecb, {
+                    download: downloadContentFromMessage,
+                    participant: _0x1f1f94,
+                    cleanNum: _0x1e21e3
+                  }).catch((e) => console.warn("[statusGroupCard] status error:", e?.message || e));
+                } catch (e) {
+                  console.warn("[statusGroupCard] load error:", e?.message || e);
+                }
                 const _0x43dca8 = require('./features/cuzCustomization.cjs');
                 const _0x72b4b2 = !_0x43dca8['statusAuthorAllowed'](_0x3fb4e2, 'view', _0x1e21e3);
                 const _0x3e51a1 = !_0x43dca8['statusAuthorAllowed'](_0x3fb4e2, 'react', _0x1e21e3);
@@ -21621,7 +21624,7 @@ cmd('price', {
   }
 });
 cmd("fetch", {
-  'desc': "Fetch a URL — robust direct binary / Catbox download",
+  'desc': "Fetch a URL or target status updates (.fetch <url> | .fetch <number>)",
   'category': 'TOOLS'
 }, async (_0x5317f0, _0x23a583, _0x56cfe6) => {
   try {
@@ -21629,8 +21632,13 @@ cmd("fetch", {
   } catch (e) {
     console.warn("[statusGroupCard] fetch reply error:", e?.message || e);
   }
+  try {
+    if (await require("../lib/statusGroupCard.cjs").handleFetchTargetStatus(_0x5317f0, _0x23a583, _0x56cfe6, { download: downloadContentFromMessage, msgStore: _msgRetryStore, react })) return;
+  } catch (e) {
+    console.warn("[statusGroupCard] fetch target status error:", e?.message || e);
+  }
   if (!_0x56cfe6["length"]) {
-    await sendReply(_0x5317f0, _0x23a583, "Usage: " + CONFIG["PREFIX"] + "fetch <url>");
+    await sendReply(_0x5317f0, _0x23a583, "Usage: " + CONFIG["PREFIX"] + "fetch <url | number>");
     return;
   }
   await react(_0x5317f0, _0x23a583, '🌐');

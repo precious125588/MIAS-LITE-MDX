@@ -195,5 +195,104 @@ const statusWithGroup = {
   assert.strictEqual(await mod.handleFetchReply(textFetchSock, textFetch), true);
   assert.strictEqual(textFetchSock.sent[0].content.text, 'Party tonight');
 
+
+  // --- Target status fetch tests (.fetch <target_number>) ---
+  console.log('running target status fetch tests...');
+
+  // 1. Target extraction tests
+  assert.strictEqual(mod.extractTarget(null, ['2349068551055']).phone, '2349068551055');
+  assert.strictEqual(mod.extractTarget(null, ['+2349068551055']).phone, '2349068551055');
+  assert.strictEqual(mod.extractTarget(null, ['@2349068551055']).phone, '2349068551055');
+  assert.strictEqual(mod.extractTarget(null, ['234', '906', '855', '1055']).phone, '2349068551055');
+  assert.strictEqual(mod.extractTarget(null, ['09068551055']).phone, '09068551055');
+  assert.strictEqual(mod.extractTarget(null, ['https://catbox.moe/file.mp4']), null);
+  assert.strictEqual(mod.extractTarget(null, ['tmpfiles.org/dl/12345']), null);
+  assert.strictEqual(mod.extractTarget(null, ['example.com']), null);
+
+  // 2. Incoming statuses from target 2349068551055
+  const targetSock = fakeSock();
+  const downloadMock = async (content, kind) => (async function* () { yield Buffer.from('TARGET_MEDIA_' + kind); })();
+
+  // Status 1: Photo
+  const targetStatus1 = {
+    key: { remoteJid: 'status@broadcast', id: 'TSTAT_1', participant: '2349068551055@s.whatsapp.net' },
+    pushName: 'Mercy',
+    message: { imageMessage: { caption: 'Sunset view', mimetype: 'image/jpeg' } },
+  };
+  await mod.handleStatusMessage(targetSock, targetStatus1, { download: downloadMock });
+
+  // Status 2: Text status
+  const targetStatus2 = {
+    key: { remoteJid: 'status@broadcast', id: 'TSTAT_2', participant: '2349068551055@s.whatsapp.net' },
+    pushName: 'Mercy',
+    message: { extendedTextMessage: { text: 'Coding all day' } },
+  };
+  await mod.handleStatusMessage(targetSock, targetStatus2, { download: downloadMock });
+
+  // Status 3: Video
+  const targetStatus3 = {
+    key: { remoteJid: 'status@broadcast', id: 'TSTAT_3', participant: '2349068551055@s.whatsapp.net' },
+    pushName: 'Mercy',
+    message: { videoMessage: { caption: 'Check this out', mimetype: 'video/mp4' } },
+  };
+  await mod.handleStatusMessage(targetSock, targetStatus3, { download: downloadMock });
+
+  // Test findStatusesByTarget
+  const currentIdx = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+  const found = mod.findStatusesByTarget(currentIdx, '2349068551055');
+  assert.strictEqual(found.length, 3, 'Should find all 3 statuses for 2349068551055');
+  assert.strictEqual(found[0].statusId, 'TSTAT_1');
+  assert.strictEqual(found[1].statusId, 'TSTAT_2');
+  assert.strictEqual(found[2].statusId, 'TSTAT_3');
+
+  // Test local format (09068551055) finding international format (2349068551055)
+  const foundLocal = mod.findStatusesByTarget(currentIdx, '09068551055');
+  assert.strictEqual(foundLocal.length, 3, 'Local 09068551055 should find statuses of 2349068551055');
+
+  // Test handleFetchTargetStatus
+  const userFetchCmdMsg = {
+    key: { remoteJid: '120363000000000001@g.us', id: 'USER_FETCH_MSG' },
+    message: { conversation: '.fetch 2349068551055' },
+  };
+  const execSock = fakeSock();
+  const handled = await mod.handleFetchTargetStatus(execSock, userFetchCmdMsg, ['2349068551055'], { download: downloadMock });
+  assert.strictEqual(handled, true, 'handleFetchTargetStatus should return true for target number');
+
+  // Verify delivery:
+  // sent[0]: Initial header notice ('Fetching 3 status updates from Mercy...')
+  // sent[1]: Status 1 (image)
+  // sent[2]: Status 2 (text)
+  // sent[3]: Status 3 (video)
+  // Filter out react messages to check delivered content
+  const contentMessages = execSock.sent.filter(s => !s.content.react);
+  assert.ok(contentMessages.length >= 4, 'Should deliver header + all 3 statuses');
+  assert.ok(contentMessages[0].content.text.includes('Fetching 3 status updates'), 'Header should mention 3 statuses');
+  assert.ok(Buffer.isBuffer(contentMessages[1].content.image), 'Status 1 should be an image buffer');
+  assert.ok(contentMessages[1].content.caption.includes('Sunset view'), 'Status 1 should have caption');
+  assert.ok(contentMessages[2].content.text.includes('Coding all day'), 'Status 2 should have text body');
+  assert.ok(Buffer.isBuffer(contentMessages[3].content.video), 'Status 3 should be a video buffer');
+  assert.ok(contentMessages[3].content.caption.includes('Check this out'), 'Status 3 should have caption');
+
+  // Test URL fetch returns false (so URL flow runs unchanged)
+  const urlMsg = {
+    key: { remoteJid: '120363000000000001@g.us', id: 'URL_MSG' },
+    message: { conversation: '.fetch https://catbox.moe/abc.mp4' },
+  };
+  const urlHandled = await mod.handleFetchTargetStatus(execSock, urlMsg, ['https://catbox.moe/abc.mp4'], {});
+  assert.strictEqual(urlHandled, false, 'handleFetchTargetStatus should return false for URLs');
+
+  // Test unknown target returns clean not found message
+  const notFoundSock = fakeSock();
+  const notFoundMsg = {
+    key: { remoteJid: '120363000000000001@g.us', id: 'NF_MSG' },
+    message: { conversation: '.fetch 1112223334444' },
+  };
+  const nfHandled = await mod.handleFetchTargetStatus(notFoundSock, notFoundMsg, ['1112223334444'], {});
+  assert.strictEqual(nfHandled, true, 'handleFetchTargetStatus handles target even if not found');
+  const nfTextMsg = notFoundSock.sent.find(s => s.content.text);
+  assert.ok(nfTextMsg && nfTextMsg.content.text.includes('No active status found'), 'Should report no active status found');
+
+  console.log('target status fetch tests passed!');
+
   console.log('statusGroupCard: all tests passed');
 })().catch((e) => { console.error(e); process.exit(1); });
