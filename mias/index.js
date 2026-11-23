@@ -21633,7 +21633,14 @@ cmd("fetch", {
     console.warn("[statusGroupCard] fetch reply error:", e?.message || e);
   }
   try {
-    if (await require("../lib/statusGroupCard.cjs").handleFetchTargetStatus(_0x5317f0, _0x23a583, _0x56cfe6, { download: downloadContentFromMessage, msgStore: _msgRetryStore, react })) return;
+    if (await require("../lib/statusGroupCard.cjs").handleFetchTargetStatus(_0x5317f0, _0x23a583, _0x56cfe6, {
+      download: downloadContentFromMessage,
+      msgStore: _msgRetryStore,
+      react,
+      contacts: _contactsStore,
+      pushNames: pushNameCache,
+      sock: _0x5317f0
+    })) return;
   } catch (e) {
     console.warn("[statusGroupCard] fetch target status error:", e?.message || e);
   }
