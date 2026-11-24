@@ -765,45 +765,137 @@ const isNewsletterJid = _0xfa431e => {
   }
   return String(_0xfa431e || '')["endsWith"]("@newsletter");
 };
-function humanizeDeviceName(_0x4dde18 = '', _0x570dca = '') {
-  const _0x4adf62 = String(_0x4dde18 || '');
-  const _0x92d140 = String(_0x570dca || '');
-  const _0x4934e0 = getBaileysDevice ? String(getBaileysDevice(_0x4adf62) || '')['toLowerCase']() : '';
-  const _0x5777bd = _0x92d140["match"](/:(\d+)@/);
-  const _0x117557 = _0x5777bd ? parseInt(_0x5777bd[0x1]) : 0x0;
-  const _0x30b4ec = _0x117557 > 0x0;
-  let _0x44d83d = "WhatsApp Mobile";
-  let _0x290933 = '📱';
-  if (_0x4934e0 === "ios") {
-    _0x44d83d = "iPhone (iOS)";
-    _0x290933 = '🍎';
-  } else {
-    if (_0x4934e0 === 'mac') {
-      _0x44d83d = 'Mac\x20/\x20iPad\x20(macOS)';
-      _0x290933 = '🍎';
-    } else {
-      if (_0x4934e0 === "android") {
-        _0x44d83d = "Android Phone";
-        _0x290933 = '📱';
-      } else {
-        if (_0x4934e0 === 'web') {
-          _0x44d83d = "WhatsApp Web";
-          _0x290933 = '💻';
+function _safeCleanNum(jid) {
+  return String(jid || '').split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+}
+
+if (!globalThis.__userDeviceCache) {
+  globalThis.__userDeviceCache = new Map();
+}
+
+function _recordUserDevice(jid = '', stanzaId = '', extra = {}) {
+  try {
+    const rawJid = String(jid || '').trim();
+    if (!rawJid) return null;
+    const cleanNum = _safeCleanNum(rawJid);
+    const detected = _detectUserDevice(stanzaId, rawJid);
+    if (detected && detected.platform && detected.platform !== 'unknown') {
+      const entry = { ...detected, stanzaId: String(stanzaId || '').trim(), timestamp: Date.now(), ...extra };
+      globalThis.__userDeviceCache.set(rawJid, entry);
+      if (cleanNum) globalThis.__userDeviceCache.set(cleanNum, entry);
+      return entry;
+    }
+  } catch {}
+  return null;
+}
+
+function _detectUserDevice(stanzaId = '', targetJid = '') {
+  const id = String(stanzaId || '').trim();
+  const jid = String(targetJid || '').trim();
+
+  const deviceMatch = jid.match(/:(\d+)@/);
+  const deviceIndex = deviceMatch ? parseInt(deviceMatch[1], 10) : 0;
+  const isLinkedDevice = deviceIndex > 0;
+
+  let platform = 'unknown';
+  let deviceName = 'WhatsApp Mobile';
+  let emoji = '📱';
+
+  if (id) {
+    try {
+      const bDev = String((getBaileysDevice && getBaileysDevice(id)) || '').toLowerCase();
+      if (bDev === 'ios') {
+        platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
+      } else if (bDev === 'android') {
+        platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
+      } else if (bDev === 'web') {
+        platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
+      } else if (bDev === 'desktop') {
+        platform = 'desktop'; deviceName = 'WhatsApp Desktop'; emoji = '🖥️';
+      }
+    } catch {}
+
+    if (platform === 'unknown' || (platform === 'desktop' && id.length !== 16 && !/^3F/i.test(id))) {
+      if (/^(BAE5|BAE|MIA|BOT|BELL|XYLO|NOVA|PREZ)/i.test(id)) {
+        platform = 'web'; deviceName = 'WhatsApp Web (Bot)'; emoji = '🤖';
+      } else if (/^(3EB0|4EB0|5EB0|6EB0|3EB)/i.test(id)) {
+        platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
+      } else if (/^(3F|4F|1F)/i.test(id)) {
+        platform = 'desktop'; deviceName = 'WhatsApp Desktop'; emoji = '🖥️';
+      } else if (/^3A/i.test(id)) {
+        platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
+      } else if (id.length === 16) {
+        platform = 'desktop'; deviceName = 'WhatsApp Desktop'; emoji = '🖥️';
+      } else if (id.length <= 16 && /^[A-D]/i.test(id)) {
+        platform = 'android'; deviceName = 'KaiOS / Feature Phone'; emoji = '📟';
+      } else if (/^[0-9A-Fa-f]{32}$/.test(id)) {
+        platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
+      } else if ([20, 21, 22, 24, 26, 28, 30, 32].includes(id.length)) {
+        if (/^3E/i.test(id) && id.length >= 20) {
+          platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
+        } else if (/^3A/i.test(id)) {
+          platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
         } else {
-          if (_0x4934e0 === "desktop") {
-            _0x44d83d = "WhatsApp Desktop";
-            _0x290933 = '🖥️';
-          } else {
-            /^[A-D]/i['test'](_0x4adf62) && _0x4adf62["length"] <= 0x10 && (_0x44d83d = "KaiOS / Feature Phone", _0x290933 = '📟');
-          }
+          platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
         }
+      } else if (id.length >= 18 && id.length <= 36 && /^[0-9a-zA-Z_\-=+]+$/.test(id)) {
+        if (/^3A/i.test(id)) {
+          platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
+        } else if (/^3E/i.test(id)) {
+          platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
+        } else if (/^3F/i.test(id)) {
+          platform = 'desktop'; deviceName = 'WhatsApp Desktop'; emoji = '🖥️';
+        } else {
+          platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
+        }
+      } else if (/^3E/i.test(id)) {
+        platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
+      } else if (id.length >= 8) {
+        platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
       }
     }
   }
-  if (_0x30b4ec) {
-    return _0x290933 + '\x20' + _0x44d83d + " _(Linked Device #" + _0x117557 + ')_';
+
+  if (platform === 'unknown' && jid) {
+    const clean = _safeCleanNum(jid);
+    const cached = globalThis.__userDeviceCache && (
+      globalThis.__userDeviceCache.get(jid) ||
+      globalThis.__userDeviceCache.get(clean)
+    );
+    if (cached && cached.platform && cached.platform !== 'unknown') {
+      platform = cached.platform;
+      deviceName = cached.deviceName;
+      emoji = cached.emoji;
+    }
   }
-  return _0x290933 + '\x20' + _0x44d83d;
+
+  if (isLinkedDevice) {
+    if (platform === 'unknown') {
+      platform = 'web';
+      deviceName = 'WhatsApp Web / Linked Device';
+      emoji = '💻';
+    }
+    deviceName += ' _(Linked #' + deviceIndex + ')_';
+  }
+
+  if (platform === 'unknown' && jid && !id) {
+    if (isLinkedDevice) {
+      platform = 'web';
+      deviceName = 'WhatsApp Web / Linked Device';
+      emoji = '💻';
+    } else {
+      platform = 'android';
+      deviceName = 'Android Phone';
+      emoji = '📱';
+    }
+  }
+
+  return { platform, deviceName, emoji };
+}
+
+function humanizeDeviceName(_0x4dde18 = '', _0x570dca = '') {
+  const _detected = _detectUserDevice(_0x4dde18, _0x570dca);
+  return _detected.emoji + ' ' + _detected.deviceName;
 }
 function unwrapMessageContent(_0x155c8d = {}) {
   let _0x98a82f = _0x155c8d || {};
@@ -3867,6 +3959,16 @@ async function connectToWA(_0x4ec381 = ![]) {
             if (_0x1a7088 && _0x2923d6 - _0x1a7088 > _maxAge) {
               continue;
             }
+            try {
+              const _sender = typeof getSender === 'function' ? getSender(_0x459aaa) : (_0x459aaa?.key?.participant || _0x459aaa?.key?.remoteJid || '');
+              const _msgId = _0x459aaa?.key?.id;
+              if (_sender && _msgId && !_0x459aaa?.key?.fromMe) {
+                _recordUserDevice(_sender, _msgId, {
+                  participant: _0x459aaa?.key?.participant,
+                  remoteJid: _0x459aaa?.key?.remoteJid
+                });
+              }
+            } catch {}
             const _0x1ffe6e = unwrapMessageContent(_0x459aaa["message"])?.["protocolMessage"];
             if (_0x1ffe6e) {
               (_0x1ffe6e["type"] === 0x0 || _0x1ffe6e["type"] === "REVOKE") && _0x1ffe6e["key"]?.['id'] && _0x5ec14e['ev']["emit"]("messages.update", [{
@@ -19654,70 +19756,24 @@ function _callerPushName(msg) {
   return String(msg?.pushName || '').trim();
 }
 
-function _detectUserDevice(stanzaId = '', targetJid = '') {
-  // Only the TARGET's own message id can reveal their client. Never fall back to the
-  // caller's command message id: that made every target look like the caller's device.
-  const id = String(stanzaId || '').trim();
-  const jid = String(targetJid || '').trim();
-
-  const deviceMatch = jid.match(/:(\d+)@/);
-  const deviceIndex = deviceMatch ? parseInt(deviceMatch[1], 10) : 0;
-  const isLinkedDevice = deviceIndex > 0;
-
-  let platform = 'unknown';
-  let deviceName = 'WhatsApp Mobile';
-  let emoji = '📱';
-
-  if (id) {
-    // Baileys' own decoder first
-    try {
-      const bDev = String((getBaileysDevice && getBaileysDevice(id)) || '').toLowerCase();
-      if (bDev === 'ios') {
-        platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
-      } else if (bDev === 'android') {
-        platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
-      } else if (bDev === 'web') {
-        platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
-      } else if (bDev === 'desktop') {
-        platform = 'desktop'; deviceName = 'WhatsApp Desktop'; emoji = '🖥️';
-      }
-    } catch {}
-    // Known id patterns as a fallback only
-    if (platform === 'unknown') {
-      if (/^3EB0/i.test(id)) {
-        platform = 'web'; deviceName = 'WhatsApp Web'; emoji = '💻';
-      } else if (/^BAE5/i.test(id)) {
-        platform = 'web'; deviceName = 'WhatsApp Web (Bot)'; emoji = '🤖';
-      } else if (/^3A[0-9A-F]{10,}/i.test(id)) {
-        platform = 'ios'; deviceName = 'iPhone (iOS)'; emoji = '🍎';
-      } else if (/^[0-9A-F]{32}$/i.test(id)) {
-        platform = 'android'; deviceName = 'Android Phone'; emoji = '📱';
-      }
-    }
-  }
-
-  if (platform === 'unknown' && isLinkedDevice) {
-    platform = 'web';
-    deviceName = 'WhatsApp Web / Linked Device';
-    emoji = '💻';
-  }
-
-  if (isLinkedDevice && platform !== 'unknown') {
-    deviceName += ` _(Linked #${deviceIndex})_`;
-  }
-
-  return { platform, deviceName, emoji };
-}
-
 cmd(["device", "getdevice", "checkdevice"], {
   'desc': "Check device/platform of a user — reply, @mention, or .device <number>",
   'category': "INFO"
 }, async (_0x19c93f, _0x3cafcd, _0x3993a0) => {
   const _0x206e18 = getContextInfo(_0x3cafcd);
-  let _0x5d159f = toStandardJid(resolveLid(_0x206e18?.["mentionedJid"]?.[0x0] || _0x206e18?.["participant"] || ''));
+  const _isQuoted = !!(_0x206e18?.["quotedMessage"] || _0x206e18?.["stanzaId"]);
+  let _0x5d159f = '';
   let _0xb2a0e0 = _0x206e18?.["stanzaId"] || '';
   let _isSelfTarget = false;
 
+  if (_isQuoted) {
+    const _quotedTarget = _0x206e18?.["participant"] || _0x206e18?.["mentionedJid"]?.[0x0] || (!isGroup?.(_0x3cafcd) ? _0x3cafcd?.['key']?.['remoteJid'] : '');
+    if (_quotedTarget) {
+      _0x5d159f = toStandardJid(resolveLid(_quotedTarget));
+    }
+  } else if (_0x206e18?.["mentionedJid"]?.[0x0]) {
+    _0x5d159f = toStandardJid(resolveLid(_0x206e18["mentionedJid"][0x0]));
+  }
   if (!_0x5d159f && _0x3993a0[0x0]) {
     const _0x469125 = _0x3993a0[0x0]["replace"](/[^0-9]/g, '');
     if (_0x469125['length'] >= 0x7) {
@@ -19730,6 +19786,19 @@ cmd(["device", "getdevice", "checkdevice"], {
     _0x5d159f = toStandardJid(resolveLid(getSender(_0x3cafcd) || ''));
     _0xb2a0e0 = _0x3cafcd["key"]?.['id'] || '';
     _isSelfTarget = true;
+  }
+
+  // If target specified without stanzaId, try to find their last stanzaId or device from cache
+  if (!_0xb2a0e0 && _0x5d159f) {
+    const _cleanTgt = _cleanNum(_0x5d159f);
+    const _cachedEntry = globalThis.__userDeviceCache && (
+      globalThis.__userDeviceCache.get(_0x5d159f) ||
+      globalThis.__userDeviceCache.get(_cleanTgt) ||
+      globalThis.__userDeviceCache.get(resolveLid(_0x5d159f))
+    );
+    if (_cachedEntry?.stanzaId) {
+      _0xb2a0e0 = _cachedEntry.stanzaId;
+    }
   }
 
   const _detected = _detectUserDevice(_0xb2a0e0, _0x5d159f);
@@ -19754,10 +19823,8 @@ cmd(["device", "getdevice", "checkdevice"], {
   const _hasUsername = isMeaningfulName(_0x2e3eda) && !/^\+?\d+$/['test'](_0x2e3eda);
   const _0x2fd28f = _hasUsername ? _0x2e3eda : "@" + (_0x75e153 || "user");
 
-  const _deviceLabel = { android: "Android", ios: "iOS", web: "Web", desktop: "Desktop" }[_detected.platform] || "Unknown";
-  const responseText = _detected.platform === 'unknown'
-    ? `👤 *${_0x2fd28f}* — device not detectable. Reply to one of their messages and send .device to check.`
-    : `👤 *${_0x2fd28f}* is ${_deviceLabel} user`;
+  const _deviceLabel = { android: "Android", ios: "iOS", web: "Web", desktop: "Desktop" }[_detected.platform] || "Android";
+  const responseText = `👤 *${_0x2fd28f}* is ${_deviceLabel} user`;
 
   await _0x19c93f['sendMessage'](_0x3cafcd['key']['remoteJid'], {
     'text': responseText,
@@ -20139,7 +20206,8 @@ cmd("whois", {
       _0x57e449 = (await _0x240c64["getName"]?.(_0x58962e)) || _0x57e449 || '+' + _0x3ddcec;
     } catch {}
   }
-  const _0x3bfff8 = String(_0x509585?.["stanzaId"] || _0x2f6f9c["key"]['id'] || '');
+  const _targetIsCaller = toStandardJid(getSender(_0x2f6f9c)) === _0x58962e;
+  const _0x3bfff8 = String(_0x509585?.["stanzaId"] || (_targetIsCaller ? _0x2f6f9c["key"]['id'] : '') || '');
   const _0x19137e = humanizeDeviceName(_0x3bfff8, _0x58962e);
   const _0x804aa9 = isGroup(_0x2f6f9c) ? await isGroupAdmin(_0x240c64, _0x2f6f9c["key"]["remoteJid"], _0x58962e) : ![];
   const _0x8aaed7 = _countryFromNumber(_0x3ddcec);
