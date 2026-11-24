@@ -402,13 +402,11 @@ async function main() {
     ].filter(Boolean).join(' '),
   };
 
-  if (httpMode.enabled) {
-    try {
-      const { startKeepAlive } = require('../lib/keepAlive.cjs');
-      startKeepAlive({ port, isSupervisor: true });
-    } catch (err) {
-      console.warn('[KEEP-ALIVE] Startup notice:', err && err.message);
-    }
+  try {
+    const { startKeepAlive } = require('../lib/keepAlive.cjs');
+    startKeepAlive({ port: port || 3000, isSupervisor: true });
+  } catch (err) {
+    console.warn('[KEEP-ALIVE] Startup notice:', err && err.message);
   }
 
   // One supervised server: reclaims a leftover copy, restarts with backoff, and
@@ -425,11 +423,16 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch((error) => {
-    const code = String(error?.code || error?.name || 'UNKNOWN').replace(/[^A-Z0-9_-]/gi, '').slice(0, 80);
-    console.error(`[session-startup] Startup preparation failed (${code}).`);
-    process.exitCode = 1;
-  });
+  const runWithRetry = async (attempts = 0) => {
+    try {
+      await main();
+    } catch (error) {
+      const code = String(error?.code || error?.name || 'UNKNOWN').replace(/[^A-Z0-9_-]/gi, '').slice(0, 80);
+      console.error(`[session-startup] Startup preparation error (${code}). Panel guard: retrying in 5s (attempt ${attempts + 1})...`);
+      setTimeout(() => runWithRetry(attempts + 1), 5000);
+    }
+  };
+  runWithRetry();
 }
 
 module.exports = {

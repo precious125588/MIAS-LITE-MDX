@@ -58,3 +58,27 @@ test('Railway with no public URL uses the 12-minute fallback interval', () => {
     }
   }
 });
+
+test('Optlink and panel URLs are accepted', () => {
+  assert.equal(
+    resolveExternalUrl({ OPTLINK_URL: 'https://mybot.optlink.app' }),
+    'https://mybot.optlink.app/health'
+  );
+  assert.equal(
+    resolveExternalUrl({ PANEL_URL: 'https://panel.example.com/custom' }),
+    'https://panel.example.com/custom'
+  );
+  assert.equal(
+    resolveExternalUrl({ SERVER_IP: '192.168.1.100', SERVER_PORT: '8080' }),
+    'http://192.168.1.100:8080/health'
+  );
+});
+
+test('isPanelEnvironment detects Optlink and Pterodactyl variables', () => {
+  const { isPanelEnvironment } = require('../lib/keepAlive.cjs');
+  assert.equal(isPanelEnvironment({ OPTLINK: 'true' }), true);
+  assert.equal(isPanelEnvironment({ P_SERVER_UUID: 'abc-123' }), true);
+  assert.equal(isPanelEnvironment({ SERVER_PORT: '25565' }), true);
+  assert.equal(isPanelEnvironment({ PANEL_MODE: '1' }), true);
+  assert.equal(isPanelEnvironment({}), false);
+});

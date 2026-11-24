@@ -78,3 +78,10 @@ test('without the preload the same server hits the busy port', async () => {
     blocker.close();
   }
 });
+
+test('Optlink and panel variables enable the web port', () => {
+  assert.equal(resolveHttpServerMode({ OPTLINK: 'true' }).enabled, true);
+  assert.equal(resolveHttpServerMode({ P_SERVER_UUID: 'test-uuid' }).enabled, true);
+  assert.equal(resolveHttpServerMode({ SERVER_PORT: '8080' }).enabled, true);
+  assert.equal(resolveHttpServerMode({ SERVER_PORT: '8080' }).port, 8080);
+});
