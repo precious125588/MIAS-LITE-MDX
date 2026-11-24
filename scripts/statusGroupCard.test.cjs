@@ -331,3 +331,30 @@ const statusWithGroup = {
 
   console.log('statusGroupCard: all tests passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// Test matching when target has matchedName (e.g. from VCF or contacts map)
+{
+  const card = require('../lib/statusGroupCard.cjs');
+  const index = {
+    s1: {
+      statusId: 'status-lid-1',
+      postedAt: Date.now() - 1000,
+      kind: 'text',
+      caption: 'Hello from Just Xavier',
+      poster: 'Just Xavier...',
+      senderPhone: '123456789012345', // opaque LID digits
+      senderJid: '123456789012345@lid',
+    }
+  };
+
+  const target = {
+    phone: '2348123456789',
+    jid: '2348123456789@s.whatsapp.net',
+    matchedName: 'Just Xavier...'
+  };
+
+  const results = card.findStatusesByTarget(index, target, {});
+  assert.strictEqual(results.length, 1, 'Should match status by target.matchedName against poster');
+  assert.strictEqual(results[0].statusId, 'status-lid-1');
+  console.log('target.matchedName LID matching test passed!');
+}

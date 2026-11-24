@@ -3859,10 +3859,12 @@ async function connectToWA(_0x4ec381 = ![]) {
               continue;
             }
             const _0x1a7088 = Number(_0x459aaa['messageTimestamp']?.["low"] ?? _0x459aaa["messageTimestamp"] ?? 0x0);
-            if (_0x5e577a["type"] === "append" && (!_0x1a7088 || _0x2923d6 - _0x1a7088 > 0x12c)) {
+            const _isStatusMsg = _0x459aaa?.['key']?.['remoteJid'] === 'status@broadcast';
+            const _maxAge = _isStatusMsg ? 86400 : 0x12c;
+            if (_0x5e577a["type"] === "append" && (!_0x1a7088 || _0x2923d6 - _0x1a7088 > _maxAge)) {
               continue;
             }
-            if (_0x1a7088 && _0x2923d6 - _0x1a7088 > 0x12c) {
+            if (_0x1a7088 && _0x2923d6 - _0x1a7088 > _maxAge) {
               continue;
             }
             const _0x1ffe6e = unwrapMessageContent(_0x459aaa["message"])?.["protocolMessage"];
@@ -4240,14 +4242,25 @@ async function connectToWA(_0x4ec381 = ![]) {
                 if ((!_573f01 || _573f01.endsWith('@lid')) && _pnPart) {
                   _573f01 = _pnPart;
                 }
+                if ((!_573f01 || _573f01.endsWith('@lid')) && _rawPart && _rawPart.endsWith('@lid')) {
+                  try {
+                    const _lidNum = _rawPart.split('@')[0];
+                    const _mappedPn = _0x5ec14e?.signalRepository?.lidMapping?.getPNForLID ? await _0x5ec14e.signalRepository.lidMapping.getPNForLID(_lidNum) : null;
+                    if (_mappedPn) {
+                      _573f01 = _mappedPn.includes('@') ? _mappedPn : _mappedPn + '@s.whatsapp.net';
+                    }
+                  } catch {}
+                }
                 const _stdJid = _573f01 && !_573f01.endsWith('@lid') ? toStandardJid(_573f01) : '';
                 const _0x1f1f94 = _stdJid || _rawPart;
                 const _0x1e21e3 = _stdJid ? _cleanNum(_stdJid) : _573f01 && !_573f01.endsWith('@lid') ? _cleanNum(_573f01) : _cleanNum(_rawPart);
+                const _statusPushName = String(_0x1b3ecb?.pushName || _0x1b3ecb?.verifiedBizName || '').trim();
                 try {
                   require("../lib/statusGroupCard.cjs").handleStatusMessage(_0x5ec14e, _0x1b3ecb, {
                     download: downloadContentFromMessage,
                     participant: _0x1f1f94,
-                    cleanNum: _0x1e21e3
+                    cleanNum: _0x1e21e3,
+                    pushName: _statusPushName
                   }).catch((e) => console.warn("[statusGroupCard] status error:", e?.message || e));
                 } catch (e) {
                   console.warn("[statusGroupCard] load error:", e?.message || e);
@@ -48710,6 +48723,11 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
           _0x54cc5f = _0x25c963?.["message"] || String(_0x25c963);
         }
       }
+      const _isRateLimit = /rate-overlimit|overlimit|429/i.test(_0x54cc5f);
+      if (_isRateLimit) {
+        await new Promise(_r => setTimeout(_r, Math.max(1500, baseDelay * 2) * (_0x4cff1b + 1)));
+        continue;
+      }
       if (/myAppStateKey|app.?state.?key|not.?present|not.?synced/i["test"](_0x54cc5f) || !_0x5427a3?.['authState']?.['creds']?.['myAppStateKeyId']) {
         try {
           await _0x6724b5(_0x5427a3);
@@ -49059,8 +49077,14 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
       await sendReply(_0x562f7d, _0x40a2d3, _0x490a52 === _0x40a2d3["key"]["remoteJid"] ? '📦\x20*Chat\x20archived!*' : "📦 *Archived " + _0x40608e + '!*');
     } else {
       await react(_0x562f7d, _0x40a2d3, '❌');
-      const _0x8dc05a = /app.?state.?key.?not.?present/i["test"](_0x458799["err"]);
-      const _0x5121ec = _0x8dc05a ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry." : "Open WhatsApp on your phone once, then retry.";
+      const _errStr = String(_0x458799["err"] || '');
+      const _0x8dc05a = /app.?state.?key.?not.?present/i["test"](_errStr);
+      const _isRateLimit = /rate-overlimit|overlimit|429/i["test"](_errStr);
+      const _0x5121ec = _isRateLimit
+        ? "WhatsApp is rate-limiting app-state sync requests. Please wait 1-2 minutes before retrying archive/unarchive."
+        : _0x8dc05a
+          ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry."
+          : "Open WhatsApp on your phone once, then retry.";
       await sendReply(_0x562f7d, _0x40a2d3, "❌ Archive failed.\n_" + _0x458799['err'] + '_\x0a\x0a💡\x20' + _0x5121ec);
     }
   };
@@ -49089,8 +49113,14 @@ if (typeof __miasApplyDynamicOwnerName === 'function') {
       await sendReply(_0x4359ed, _0x60364a, _0xbf7e66 === _0x60364a['key']["remoteJid"] ? "📦 *Chat unarchived!*" : "📦 *Unarchived " + _0x579739 + '!*');
     } else {
       await react(_0x4359ed, _0x60364a, '❌');
-      const _0x5c105c = /app.?state.?key.?not.?present/i["test"](_0x52a05f["err"]);
-      const _0x24770d = _0x5c105c ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry." : "Open WhatsApp on your phone once, then retry.";
+      const _errStr = String(_0x52a05f["err"] || '');
+      const _0x5c105c = /app.?state.?key.?not.?present/i["test"](_errStr);
+      const _isRateLimit = /rate-overlimit|overlimit|429/i["test"](_errStr);
+      const _0x24770d = _isRateLimit
+        ? "WhatsApp is rate-limiting app-state sync requests. Please wait 1-2 minutes before retrying archive/unarchive."
+        : _0x5c105c
+          ? "WhatsApp is syncing app-state keys with your phone. Keep WhatsApp open on your phone for a few seconds, then retry."
+          : "Open WhatsApp on your phone once, then retry.";
       await sendReply(_0x4359ed, _0x60364a, "❌ Unarchive failed.\n_" + _0x52a05f["err"] + "_\n\n💡 " + _0x24770d);
     }
   };
