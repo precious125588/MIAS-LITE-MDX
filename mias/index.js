@@ -683,6 +683,11 @@ const {
   jidNormalizedUser,
   delay
 } = Baileys;
+globalThis.Baileys = Baileys;
+globalThis.downloadContentFromMessage = downloadContentFromMessage;
+if (Baileys?.downloadMediaMessage) {
+  globalThis.downloadMediaMessage = Baileys.downloadMediaMessage;
+}
 require("../lib/pinCommand.cjs")["configurePinCommand"]({
   'generateWAMessageFromContent': generateWAMessageFromContent
 });
@@ -9571,6 +9576,12 @@ function storeMessage(_0x444373) {
   }
 }
 async function downloadStoredMediaBuffer(_0x28af97, _0x242590) {
+  if (_0x28af97?.mediaKey) {
+    try {
+      const { normalizeMediaKey } = require('../lib/viewOnceCommand.cjs');
+      _0x28af97.mediaKey = normalizeMediaKey(_0x28af97.mediaKey);
+    } catch {}
+  }
   const _0x5d8203 = AbortSignal["timeout"](0x7530);
   const _0x1b0a2a = await downloadContentFromMessage(_0x28af97, _0x242590, {
     'options': {
@@ -9602,6 +9613,7 @@ async function downloadStoredMediaBuffer(_0x28af97, _0x242590) {
     }
   }
 }
+globalThis.downloadStoredMediaBuffer = downloadStoredMediaBuffer;
 const __voQueues = new WeakMap();
 function __queueViewOnce(_0x6e1a06, _0x3925e7, _0x413c5f) {
   let _0x1fde34 = __voQueues["get"](_0x6e1a06);
@@ -9819,9 +9831,13 @@ async function handleViewOnce(_0x5b7e75, _0x3fdc92, _0x5d36c6 = null) {
             _buf = await downloadStoredMediaBuffer(_0x408a3f, _0x4ca33a);
           } catch (dlErr) {
             _0x44998a = dlErr;
-            if (_0x5b7e75 && typeof _0x5b7e75.downloadMediaMessage === 'function') {
+            const _dlMediaFn = Baileys?.downloadMediaMessage || _0x5b7e75?.downloadMediaMessage;
+            if (typeof _dlMediaFn === 'function') {
               try {
-                _buf = await _0x5b7e75.downloadMediaMessage({ key: _0x3fdc92.key, message: { [_0x4ca33a + "Message"]: _0x408a3f } });
+                _buf = await _dlMediaFn({ key: _0x3fdc92.key, message: { [_0x4ca33a + "Message"]: _0x408a3f } }, 'buffer', {}, {
+                  reuploadRequest: typeof _0x5b7e75?.updateMediaMessage === 'function' ? _0x5b7e75.updateMediaMessage.bind(_0x5b7e75) : undefined,
+                  logger
+                });
               } catch {}
             }
           }
@@ -21116,7 +21132,16 @@ cmd(['vv', 'viewonce'], {
   'category': "TOOLS"
 }, async (_sock, _msg, _args) => {
   const { handleViewOnceCommand } = require('../lib/viewOnceCommand.cjs');
-  return handleViewOnceCommand(_sock, _msg, _args, { cmdName: 'vv', sendToDm: false });
+  return handleViewOnceCommand(_sock, _msg, _args, { cmdName: 'vv', sendToDm: false }, {
+    downloadContentFromMessage,
+    downloadMediaMessage: Baileys?.downloadMediaMessage,
+    react,
+    sendReply,
+    isOwner,
+    getSender,
+    CONFIG,
+    updateMediaMessage: typeof _sock?.updateMediaMessage === 'function' ? _sock.updateMediaMessage.bind(_sock) : null,
+  });
 });
 cmd(["vv2", "lol", "wow", "hehe", '😂', '🙂', 'omor', "chai", '🥀'], {
   'desc': "Save replied view-once media silently to OWNER DM",
@@ -21125,7 +21150,16 @@ cmd(["vv2", "lol", "wow", "hehe", '😂', '🙂', 'omor', "chai", '🥀'], {
   'silent': !![]
 }, async (_sock, _msg, _args) => {
   const { handleViewOnceCommand } = require('../lib/viewOnceCommand.cjs');
-  return handleViewOnceCommand(_sock, _msg, _args, { cmdName: 'vv2', sendToDm: true, silent: true });
+  return handleViewOnceCommand(_sock, _msg, _args, { cmdName: 'vv2', sendToDm: true, silent: true }, {
+    downloadContentFromMessage,
+    downloadMediaMessage: Baileys?.downloadMediaMessage,
+    react,
+    sendReply,
+    isOwner,
+    getSender,
+    CONFIG,
+    updateMediaMessage: typeof _sock?.updateMediaMessage === 'function' ? _sock.updateMediaMessage.bind(_sock) : null,
+  });
 });
 cmd(['chat'], {
   'desc': "Send a message to a WhatsApp number: .chat <number> <message>",
@@ -63233,6 +63267,16 @@ async function handleReaction(_0x3c65bb, _0x13d4bc) {
           'key': _0x16e282
         }
       });
+      setTimeout(async () => {
+        try {
+          await _0x3c65bb['sendMessage'](_0x16e282["remoteJid"], {
+            'react': {
+              'text': '',
+              'key': _0x16e282
+            }
+          });
+        } catch {}
+      }, 1200);
     } catch (_0x5416a0) {}
   } catch (_0x50155c) {
     console['error']("[handleReaction-viewonce]", _0x50155c?.["message"] || _0x50155c);

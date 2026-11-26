@@ -719,3 +719,98 @@ test('handleViewOnceCommand: recovers from _msgRetryStore using remoteJid|stanza
     delete globalThis._msgRetryStore;
   }
 });
+
+
+test('handleViewOnceCommand: unreacts after successful delivery', async () => {
+  const sock = createMockSocket();
+  const fakeBytes = Buffer.from('unreact-test-bytes');
+  const reactionsList = [];
+  const deps = {
+    react: async (s, m, r) => {
+      reactionsList.push(r);
+      return sock.sendMessage(m.key.remoteJid, { react: { text: r, key: m.key } });
+    },
+    sendReply: async () => {},
+    downloadContentFromMessage: async () => (async function* () { yield fakeBytes; })(),
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = {
+    key: { remoteJid: 'testchat@s.whatsapp.net', id: 'UNREACT_MSG' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          quotedMessage: {
+            viewOnceMessageV2: {
+              message: {
+                imageMessage: {
+                  url: 'https://wa.net/img',
+                  mediaKey: 'key123',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv', unreactDelayMs: 10 }, deps);
+  assert.equal(res.ok, true);
+  assert.equal(sock.sent.some(s => s.content.image), true);
+
+  // Wait for unreact delay
+  await new Promise(r => setTimeout(r, 50));
+
+  const unreacted = sock.reactions.some(r => r.text === '');
+  assert.equal(unreacted, true, 'reaction must be cleared (unreact) after delivery');
+});
+
+test('handleViewOnceCommand (.vv2): delivers to authorized owner DM when sender is owner', async () => {
+  const sock = createMockSocket();
+  sock.user = { id: '1111111111:1@s.whatsapp.net' }; // bot number
+  const fakeBytes = Buffer.from('owner-dm-bytes');
+  const deps = {
+    react: async () => {},
+    sendReply: async () => {},
+    downloadContentFromMessage: async () => (async function* () { yield fakeBytes; })(),
+    isOwner: (jid) => jid.includes('2348123456789'),
+    CONFIG: { PREFIX: '.', OWNER_NUMBER: '2348123456789' },
+  };
+  const msg = {
+    key: {
+      remoteJid: 'group123@g.us',
+      fromMe: false,
+      participant: '2348123456789:2@s.whatsapp.net',
+      id: 'VV2_GROUP_CMD',
+    },
+    message: {
+      extendedTextMessage: {
+        text: '.vv2',
+        contextInfo: {
+          quotedMessage: {
+            viewOnceMessageV2: {
+              message: {
+                imageMessage: {
+                  url: 'https://wa.net/img',
+                  mediaKey: 'key456',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
+  assert.equal(res.ok, true);
+
+  // Must deliver directly to the owner's DM (2348123456789@s.whatsapp.net), not to the group!
+  const groupSent = sock.sent.find(s => s.to === 'group123@g.us');
+  assert.equal(groupSent, undefined, 'Must not send media or message into the group');
+
+  const ownerSent = sock.sent.find(s => s.to === '2348123456789@s.whatsapp.net');
+  assert.ok(ownerSent, 'Media must be delivered to the invoking owner DM');
+  assert.deepEqual(ownerSent.content.image, fakeBytes);
+});
