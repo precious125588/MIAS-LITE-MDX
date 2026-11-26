@@ -35,10 +35,11 @@ const NO_REENCODE_TOPICS = new Set([
   "cruise", "cruzz", "techcruzz",
   "feeling",
   "discipline", "discip", "mindset", "motivation",
+  "peak",
   "loveme",
   "mood",
   "lyrics", "lyric",
-  "babe", "baby", "bby",
+  "babe", "baby", "bby"
 ]);
 let tikwmQueue = Promise.resolve();
 const QUALITY_QUERY_TERMS = [

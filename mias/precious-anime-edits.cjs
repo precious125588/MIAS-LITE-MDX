@@ -165,34 +165,22 @@ const CATEGORIES = {
                    aliases: ['peak'],
                    usernames: ['ridley_edit','haykalrz','norx.ae','drxpz.aepp'],
                    tags: ['peak','edit','edits','viral','fyp'] },
-  loveme:        { files: ['loveme.txt'],                           label: 'Love Me',
+  loveme:        { files: ['loveme.txt'],                          label: 'Love Me',
                    aliases: ['loveme'],
-                   usernames: [],
-                   tags: ['loveme','lovemeedit','lovemedit','love','loveedit','viral','fyp','edit','edits'],
-                   hashtags: ['#lovemeedit', '#loveme'],
-                   searchQueries: [...Array(50).fill('#lovemeedit'), ...Array(3).fill('#loveme')],
-                   minLikes: 1000 },
-  mood:          { files: ['mood.txt'],                             label: 'Mood',
+                   searchQuery: ['#lovemeedit', '#loveme'],
+                   tags: ['lovemeedit','loveme','lovemeedits'] },
+  mood:          { files: ['mood.txt'],                            label: 'Mood',
                    aliases: ['mood'],
-                   usernames: [],
-                   tags: ['mood','moodedit','moodedits','vibes','feeling','relatable','viral','fyp','edit'],
-                   hashtags: ['#mood', '#moodedit'],
-                   searchQueries: ['#mood', '#moodedit'],
-                   minLikes: 1000 },
-  lyrics:        { files: ['lyrics.txt'],                           label: 'Lyrics',
+                   searchQuery: '#mood',
+                   tags: ['mood','moodedits','moodedit'] },
+  lyrics:        { files: ['lyrics.txt'],                          label: 'Lyrics',
                    aliases: ['lyrics','lyric'],
-                   usernames: [],
-                   tags: ['lyricsedit','lyricsedits','lyrics','lyric','lyricedit','songlyrics','songs','music','viral','fyp','edit'],
-                   hashtags: ['#lyricsedit', '#lyrics'],
-                   searchQueries: ['#lyricsedit', '#lyrics'],
-                   minLikes: 1000 },
-  babe:          { files: ['babe.txt'],                             label: 'Babe',
+                   searchQuery: '#lyricsedit',
+                   tags: ['lyricsedit','lyricsedits','lyrics','lyricedit','lyric'] },
+  babe:          { files: ['babe.txt'],                            label: 'Babe',
                    aliases: ['babe','baby','bby'],
-                   usernames: [],
-                   tags: ['caredit','caredits','cars','car','supercar','bmw','drift','automotive','viral','fyp','edit'],
-                   hashtags: ['#caredit', '#caredits'],
-                   searchQueries: ['#caredit', '#caredits'],
-                   minLikes: 1000 },
+                   searchQuery: '#caredit',
+                   tags: ['caredit','caredits','car'] },
 };
 
 // ── tiny fs helpers ───────────────────────────────────────────────────────
@@ -360,15 +348,6 @@ async function prexzySearch(keywords) {
 }
 
 async function animeStatusSearch(keywords) {
-  // If query starts with hashtag, TikWM feed search provides the most accurate and reliable results
-  if (keywords && keywords.startsWith('#') && require('./lib/tikwmGate.cjs').isTikwmEnabled()) {
-    try {
-      const d = await getJson('https://www.tikwm.com/api/feed/search/?keywords=' + encodeURIComponent(keywords) + '&count=30&hd=1', 15000);
-      const arr = d && d.data && d.data.videos;
-      if (Array.isArray(arr) && arr.length) return arr;
-    } catch {}
-  }
-
   // Anime status categories: Prexzy first, NexRay second
   const pxList = await prexzySearch(keywords).catch(() => []);
   if (pxList && pxList.length) return pxList;
@@ -378,7 +357,7 @@ async function animeStatusSearch(keywords) {
 
   if (!require('./lib/tikwmGate.cjs').isTikwmEnabled()) return [];
   try {
-    const d = await getJson('https://www.tikwm.com/api/feed/search/?keywords=' + encodeURIComponent(keywords) + '&count=30&hd=1', 15000);
+    const d = await getJson('https://www.tikwm.com/api/feed/search?keywords=' + encodeURIComponent(keywords) + '&count=20&hd=1', 15000);
     const arr = d && d.data && d.data.videos;
     return Array.isArray(arr) ? arr : [];
   } catch { return []; }
@@ -403,15 +382,23 @@ const FRANCHISE_EXCLUSIVE_MARKERS = {
 function matchesCat(item, cat) {
   return EM.matchesCategory(item, cat, FRANCHISE_EXCLUSIVE_MARKERS);
 }
-function qualityOk(v, catOrMinLikes) {
-  const digg = Number(v.digg_count || v.digg || (v.stats && v.stats.likes) || 0);
-  const plays = Number(v.play_count || v.plays || (v.stats && v.stats.views) || 0);
-  const minLikes = typeof catOrMinLikes === 'number' ? catOrMinLikes : (catOrMinLikes && catOrMinLikes.minLikes) || 1000;
-  if (!digg && !plays) {
-    if (catOrMinLikes && catOrMinLikes.minLikes) return false;
-    return true;               // no stats → don't judge
-  }
-  return digg >= minLikes || (plays >= 10000 && !catOrMinLikes?.minLikes);
+function parseStatNum(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const str = String(val).trim().toLowerCase();
+  const m = str.match(/^([\d.,]+)\s*([kmb])?$/);
+  if (!m) return Number(str) || 0;
+  const n = parseFloat(m[1].replace(/,/g, ''));
+  if (isNaN(n)) return 0;
+  const mult = m[2] === 'k' ? 1000 : (m[2] === 'm' ? 1000000 : (m[2] === 'b' ? 1000000000 : 1));
+  return Math.round(n * mult);
+}
+
+function qualityOk(v) {
+  const digg = parseStatNum(v.digg_count || v.digg || (v.stats && (v.stats.likes || v.stats.digg_count)) || 0);
+  const plays = parseStatNum(v.play_count || v.plays || (v.stats && (v.stats.views || v.stats.play_count)) || 0);
+  if (!digg && !plays) return true;               // no stats → don't judge
+  return digg >= 1000 || plays >= 10000;          // no low-life videos: >= 1k likes or >= 10k views
 }
 
 // ── routes ────────────────────────────────────────────────────────────────
@@ -455,17 +442,22 @@ async function routePages(cat) {
 }
 async function routeSearch(cat) {
   let kw;
-  if (cat.searchQueries && cat.searchQueries.length) {
-    kw = cat.searchQueries[Math.floor(Math.random() * cat.searchQueries.length)];
-  } else if (cat.hashtags && cat.hashtags.length) {
-    kw = cat.hashtags[Math.floor(Math.random() * cat.hashtags.length)];
+  if (cat.key === 'loveme') {
+    // 50:3 ratio for #lovemeedit vs #loveme
+    kw = (Math.random() < (50 / 53)) ? '#lovemeedit' : '#loveme';
+  } else if (cat.searchQuery) {
+    if (Array.isArray(cat.searchQuery)) {
+      kw = cat.searchQuery[Math.floor(Math.random() * cat.searchQuery.length)];
+    } else {
+      kw = cat.searchQuery;
+    }
   } else {
     const words = cat.aliases.filter(a => a.length > 2);
     kw = (words[Math.floor(Math.random() * words.length)] || cat.label) + ' edit';
   }
   try {
     const vids = await nexraySearch(kw);
-    return vids.filter(v => qualityOk(v, cat)).map(v => {
+    return vids.filter(v => qualityOk(v)).map(v => {
       const author = v.author?.nickname || (v.author && v.author.unique_id) || 'tiktok';
       const vidId = v.id || v.video_id;
       return {
@@ -640,10 +632,11 @@ const NO_REENCODE_CATEGORIES = new Set([
   "cruise", "cruzz", "techcruzz",
   "feeling",
   "discipline", "discip", "mindset", "motivation",
+  "peak",
   "loveme",
   "mood",
   "lyrics", "lyric",
-  "babe", "baby", "bby",
+  "babe", "baby", "bby"
 ]);
 
 function shouldSkipReencode(catKey, item) {
@@ -760,14 +753,14 @@ function creatorOf(item) {
   const m = String((item && item.url) || '').match(/tiktok\.com\/@([^/?#\s]+)/i);
   return m ? m[1].toLowerCase() : '';
 }
-function makeDeliveryPlan(fresh) {
+function makeDeliveryPlan(fresh, initialSeen = []) {
   const buckets = new Map();
   for (const it of fresh) {
     const s = it.src || 'other';
     if (!buckets.has(s)) buckets.set(s, []);
     buckets.get(s).push(it);
   }
-  const usedKeys = new Set();
+  const usedKeys = new Set(initialSeen);
   const usedSrc = new Set();
   const failedSrc = new Set();
   const usedCreators = new Set();
@@ -1014,20 +1007,31 @@ module.exports = {
           new Promise((resolve) => setTimeout(resolve, 8000)),
         ]);
       }
-      const seen = loadSeen();
-      const userSeen = new Set(((seen[user] || {})[catKey]) || []);
-      const leases = _statusQueue
-        ? _statusQueue.reserve(catKey, 2, (item) => !userSeen.has(contentKeyOf(item)) && !userSeen.has('v:' + item.id))
-        : [];
+      const leases = _statusQueue ? _statusQueue.reserve(catKey, 2) : [];
       if (!leases.length) {
         await doReact(sock, msg, '❌', P);
         clearReactDelayed(sock, msg, 3000, P);
         return P.sendReply(sock, msg, `❌ ${cat.label} edits are being refreshed in the background. Please try again shortly.`);
       }
 
-      const reserved = leases.map(({ token, ...item }) => ({ ...item, _queueToken: token }));
+      const seen = loadSeen();
+      const userSeen = new Set(((seen[user] || {})[catKey]) || []);
+      const reserved = [];
+      for (const lease of leases) {
+        const item = { ...lease, _queueToken: lease.token };
+        if (!userSeen.has(contentKeyOf(item))) {
+          reserved.push(item);
+        } else {
+          _statusQueue?.settle(lease.token, true);
+        }
+      }
+      if (reserved.length < 2) {
+        const pool = [...routeZip(cat), ...loadLastGood(catKey)];
+        const extra = pickUnseen(user, catKey, pool, 2 - reserved.length);
+        reserved.push(...extra);
+      }
       if (_statusQueue && _queueRefillFn) void _statusQueue.refill(catKey, _queueRefillFn);
-      const plan = makeDeliveryPlan(reserved);
+      const plan = makeDeliveryPlan(reserved, userSeen);
       const sent = [];
       const attempted = new Set();
       let fourKError = null;

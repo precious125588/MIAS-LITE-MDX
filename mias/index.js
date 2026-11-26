@@ -11518,11 +11518,11 @@ const MENU_CATEGORIES = [{
 }, {
   'name': "STATUS",
   'emoji': '🎬',
-  'cmds': ['naruto', "jjk", "demonslayer", 'onepiece', "bleach", 'dragonball', "attackontitan", "sololeveling", 'myheroacademia', "onepunchman", "blackclover", "chainsawman", "tokyorevengers", "bluelock", "cruise", 'discipline', "freefire", "fyp", 'feeling', 'peak', 'loveme', 'mood', 'lyrics', 'babe']
+  'cmds': ['naruto', "jjk", "demonslayer", 'onepiece', "bleach", 'dragonball', "attackontitan", "sololeveling", 'myheroacademia', "onepunchman", "blackclover", "chainsawman", "tokyorevengers", "bluelock", "cruise", 'discipline', "freefire", "fyp", 'feeling', "peak", "loveme", "mood", "lyrics", "babe"]
 }, {
   'name': "AUDIO",
   'emoji': '🎵',
-  'cmds': ["deep", "smooth", "fat", "tupai", 'blown', "radio", "robot", "chipmunk", 'nightcore', 'earrape', 'bass', "reverse", "slow", "fast", "baby", 'deamon', "freesound", "fsounddl", "nonstick", "freesounddl", "fsearch", "nonsticksound", "sounddl", 'soundsearch']
+  'cmds': ["deep", "smooth", "fat", "tupai", 'blown', "radio", "robot", "chipmunk", 'nightcore', 'earrape', 'bass', "reverse", "slow", "fast", 'deamon', "freesound", "fsounddl", "nonstick", "freesounddl", "fsearch", "nonsticksound", "sounddl", 'soundsearch']
 }, {
   'name': 'CONFIG',
   'emoji': '⚙️',
