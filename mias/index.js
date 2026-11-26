@@ -3988,6 +3988,14 @@ async function connectToWA(_0x4ec381 = ![]) {
             try {
               storeMessage(_0x459aaa);
             } catch {}
+            // Xylo daemon: Placeholder resend request if view-once stub has no payload
+            if (_0x459aaa?.key?.isViewOnce && !_0x459aaa?.message && typeof _0x5ec14e?.requestPlaceholderResend === "function") {
+              const _rKey = _0x459aaa?.key?.id;
+              if (_rKey && !(globalThis.__requestedResendIds ||= new Set()).has(_rKey)) {
+                globalThis.__requestedResendIds.add(_rKey);
+                _0x5ec14e.requestPlaceholderResend(_0x459aaa.key).catch(() => {});
+              }
+            }
             const _0x3107f0 = __extractViewOncePayload(_0x459aaa["message"]);
             if (_0x3107f0) {
               const _0x7efc22 = {
@@ -3998,6 +4006,36 @@ async function connectToWA(_0x4ec381 = ![]) {
                 'message': _0x459aaa["message"]
               };
               __queueViewOnce(_0x5ec14e, _0x7efc22, _0x3107f0);
+            } else {
+              // Xylo daemon: Quoted/Reply view-once interception
+              const _qMsg = _0x459aaa?.message?.extendedTextMessage?.contextInfo?.quotedMessage
+                || _0x459aaa?.message?.imageMessage?.contextInfo?.quotedMessage
+                || _0x459aaa?.message?.videoMessage?.contextInfo?.quotedMessage
+                || _0x459aaa?.message?.audioMessage?.contextInfo?.quotedMessage;
+              if (_qMsg) {
+                const _qVo = __extractViewOncePayload(_qMsg);
+                if (_qVo) {
+                  const _qCtx = _0x459aaa?.message?.extendedTextMessage?.contextInfo
+                    || _0x459aaa?.message?.imageMessage?.contextInfo
+                    || _0x459aaa?.message?.videoMessage?.contextInfo
+                    || _0x459aaa?.message?.audioMessage?.contextInfo;
+                  const _qStanzaId = _qCtx?.stanzaId;
+                  const _qParticipant = _qCtx?.participant;
+                  if (_qStanzaId) {
+                    const _qWrapped = {
+                      key: {
+                        remoteJid: _0x459aaa.key?.remoteJid,
+                        id: _qStanzaId,
+                        participant: _qParticipant,
+                        fromMe: false,
+                      },
+                      message: _qMsg,
+                      pushName: "",
+                    };
+                    __queueViewOnce(_0x5ec14e, _qWrapped, _qVo);
+                  }
+                }
+              }
             }
           }
         }
@@ -9599,7 +9637,7 @@ function __queueViewOnce(_0x6e1a06, _0x3925e7, _0x413c5f) {
   };
   _0xa8342c();
 }
-const __VO_MEDIA_KEYS = ["imageMessage", "videoMessage", "audioMessage"];
+const __VO_MEDIA_KEYS = ["imageMessage", "videoMessage", "audioMessage", "ptvMessage", "documentMessage"];
 function __extractViewOncePayload(_0x2e0d0d, _0x136a09 = 0x0) {
   if (!_0x2e0d0d || typeof _0x2e0d0d !== 'object' || _0x136a09 > 0x6) {
     return null;
@@ -9650,7 +9688,7 @@ async function handleViewOnce(_0x5b7e75, _0x3fdc92, _0x5d36c6 = null) {
     'done': new Set()
   };
   try {
-    if (!_0x3fdc92 || !_0x3fdc92['message'] && !_0x5d36c6 || _0x3fdc92["__voHandled"]) {
+    if (!_0x3fdc92 || (!_0x3fdc92['message'] && !_0x5d36c6) || _0x3fdc92["__voHandled"]) {
       return;
     }
     if (_0x3fdc92["key"] && _0x3fdc92['key']["fromMe"] && (globalThis["__miasBotViewOnceIds"] || new Set())["has"](_0x3fdc92["key"]['id'])) {
@@ -9664,16 +9702,32 @@ async function handleViewOnce(_0x5b7e75, _0x3fdc92, _0x5d36c6 = null) {
     if (!_0x3a9633) {
       return;
     }
+
+    // Xylo scope filtering: all, group/only_group, pm/only_inbox
+    const _isGroup = Boolean(_0xc7badd && _0xc7badd.endsWith('@g.us'));
+    const _rawScope = String(_0x5ee739?.antiViewOnceScope || _0x2a902d?.antiViewOnceScope || 'all').toLowerCase();
+    if ((_rawScope === 'pm' || _rawScope === 'only_inbox') && _isGroup) {
+      return;
+    }
+    if ((_rawScope === 'group' || _rawScope === 'only_group') && !_isGroup) {
+      return;
+    }
+
     _0x4701a0 = _0xc7badd + '|' + (_0x3fdc92["key"]?.["participant"] || '') + '|' + (_0x3fdc92["key"]?.['id'] || '');
-    if (_0x5e45a5['done']['has'](_0x4701a0) || _0x5e45a5["pending"]["has"](_0x4701a0)) {
+    if (_0x5e45a5['done']['has'](_0x4701a0) || _0x5e45a5["pending"]["has"](_0x4701a0) || (globalThis["__voCapturedIds"] && globalThis["__voCapturedIds"].has(_0x4701a0))) {
       return;
     }
     _0x5e45a5["pending"]["add"](_0x4701a0);
     _0x370b2b = !![];
     globalThis["__voCapturedIds"] ||= new Set();
+
     let _0x54b187 = _0x5d36c6 || _0x3fdc92['message'];
     for (let _0x4307fd = 0x0; _0x4307fd < 0x5; _0x4307fd++) {
-      const _0x19cc49 = _0x54b187?.["viewOnceMessage"]?.['message'] || _0x54b187?.["viewOnceMessageV2"]?.['message'] || _0x54b187?.["viewOnceMessageV2Extension"]?.["message"] || _0x54b187?.["ephemeralMessage"]?.["message"] || _0x54b187?.["documentWithCaptionMessage"]?.['message'];
+      const _0x19cc49 = _0x54b187?.["viewOnceMessage"]?.['message']
+        || _0x54b187?.["viewOnceMessageV2"]?.['message']
+        || _0x54b187?.["viewOnceMessageV2Extension"]?.["message"]
+        || _0x54b187?.["ephemeralMessage"]?.["message"]
+        || _0x54b187?.["documentWithCaptionMessage"]?.['message'];
       if (!_0x19cc49 || _0x19cc49 === _0x54b187) {
         break;
       }
@@ -9682,18 +9736,52 @@ async function handleViewOnce(_0x5b7e75, _0x3fdc92, _0x5d36c6 = null) {
     if (!_0x54b187) {
       return;
     }
-    const _0x1d8361 = _0x54b187["imageMessage"];
-    const _0x25f612 = _0x54b187["videoMessage"];
-    const _0x5c64f1 = _0x54b187['audioMessage'];
-    if (!_0x1d8361 && !_0x25f612 && !_0x5c64f1) {
+
+    let _1d8361 = _0x54b187["imageMessage"];
+    let _25f612 = _0x54b187["videoMessage"] || _0x54b187["ptvMessage"];
+    let _5c64f1 = _0x54b187['audioMessage'];
+    let _docMsg = _0x54b187['documentMessage'];
+
+    // If mediaKey was stripped on open, lookup stored arrival copy
+    if ((_1d8361 && !_1d8361.mediaKey) || (_25f612 && !_25f612.mediaKey) || (_5c64f1 && !_5c64f1.mediaKey) || (_docMsg && !_docMsg.mediaKey)) {
+      try {
+        const _viewOnceCmd = require('../lib/viewOnceCommand.cjs');
+        const _stored = _viewOnceCmd.lookupStoredViewOnceMedia(_0x3fdc92["key"]?.['id'], _0xc7badd);
+        if (_stored && _stored.content && _stored.content.mediaKey) {
+          if (_stored.type === 'image') _1d8361 = _stored.content;
+          else if (_stored.type === 'video' || _stored.type === 'ptv') _25f612 = _stored.content;
+          else if (_stored.type === 'audio') _5c64f1 = _stored.content;
+          else if (_stored.type === 'document') _docMsg = _stored.content;
+        }
+      } catch {}
+    }
+
+    if (!_1d8361 && !_25f612 && !_5c64f1 && !_docMsg) {
       return;
     }
-    const _0x5ee22b = String((_0x2a902d?.["antiViewOnce"] ? _0x2a902d["antiViewOnceMode"] : _0x5ee739?.['antiViewOnceMode']) || "private")["toLowerCase"]()['trim']();
-    const _0x3cf660 = _0x5ee22b === "chat";
-    const _0x341ae5 = _0x3cf660 ? _0xc7badd : _0xeed238;
-    if (!_0x341ae5) {
+
+    // MODE GATEWAY INTEGRATION
+    const _workMode = String(_0x5ee739?.["workMode"] || 'public').toLowerCase();
+    const _isPrivateMode = Boolean(_0x5ee739?.["privateMode"] || _0x5ee739?.["forcePrivate"] || _workMode === "private" || (typeof isBotPrivateModeActive === "function" && isBotPrivateModeActive()));
+    const _rawDestMode = String((_0x2a902d?.["antiViewOnce"] ? _0x2a902d["antiViewOnceMode"] : _0x5ee739?.['antiViewOnceMode']) || "private").toLowerCase().trim();
+
+    // Mode gateway routing:
+    // If bot is in private mode, NEVER post to public groups or non-owner chats! Always route to ownerJid.
+    // If workMode is only_group and PM received, send to owner.
+    // If workMode is inbox and group received, send to owner.
+    let _3cf660 = _rawDestMode === "chat";
+    if (_isPrivateMode) {
+      _3cf660 = false;
+    } else if (_workMode === 'only_group' && !_isGroup) {
+      _3cf660 = false;
+    } else if (_workMode === 'inbox' && _isGroup) {
+      _3cf660 = false;
+    }
+    const _341ae5 = _3cf660 ? _0xc7badd : _0xeed238;
+    if (!_341ae5) {
       return;
     }
+
     const _0xe93d5d = _0x3fdc92['key']?.["participantAlt"] || _0x3fdc92["key"]?.["participant"] || _0x3fdc92["participant"] || (_0x3fdc92['key']?.["fromMe"] ? _0x5b7e75["user"]?.['id'] : _0x3fdc92['key']?.["remoteJid"]) || '';
     const _0x22f786 = (typeof resolveLid === "function" ? resolveLid(_0xe93d5d) : _0xe93d5d) || _0xe93d5d;
     const _0x2924df = String(_0x22f786)["split"]('@')[0x0]["split"](':')[0x0]["replace"](/[^0-9]/g, '');
@@ -9709,24 +9797,38 @@ async function handleViewOnce(_0x5b7e75, _0x3fdc92, _0x5d36c6 = null) {
         clearTimeout(_0x18bf79);
       }
     }
-    _0x1dffe1 = String(_0x1dffe1 || _0x2924df || 'Unknown\x20sender')["replace"](/[\r\n]/g, '\x20');
+    _0x1dffe1 = String(_0x1dffe1 || _0x2924df || 'Unknown sender')["replace"](/[\r\n]/g, ' ');
     if (_0x38dd65 && _0x2924df) {
       pushNameCache["set"](_0x2924df, _0x38dd65);
     }
     const _0x43d36a = _0xc7badd["endsWith"]("@g.us") ? "Group" : _0xc7badd === "status@broadcast" ? 'Status' : "Private Chat";
-    const _0x48a770 = _0x1d8361?.["caption"] || _0x25f612?.["caption"] || '';
-    const _0x57da13 = "*Anti-ViewOnce Captured*\n\n*Sender:* @" + (_0x2924df || 'unknown') + '\x20(' + _0x1dffe1 + ")\n\n*Chat:* " + _0x43d36a + (_0x48a770 ? "\n\n*Caption:* " + _0x48a770 : '');
+    const _0x48a770 = _1d8361?.["caption"] || _25f612?.["caption"] || _docMsg?.["caption"] || '';
+    const _0x57da13 = "*Anti-ViewOnce Captured*\n\n*Sender:* @" + (_0x2924df || 'unknown') + ' (' + _0x1dffe1 + ")\n\n*Chat:* " + _0x43d36a + (_0x48a770 ? "\n\n*Caption:* " + _0x48a770 : '');
+
     let _0x3de737 = null;
     let _0x1c69bb = '';
+    let _relaySuccess = false;
+
+    // Multi-strategy download helper (Prince + Xylo)
     const _0x594c9b = async (_0x408a3f, _0x4ca33a) => {
       let _0x44998a;
       for (let _0x3c5dbe = 0x0; _0x3c5dbe < 0x3; _0x3c5dbe++) {
         try {
-          const _0x47b4f0 = await downloadStoredMediaBuffer(_0x408a3f, _0x4ca33a);
-          if (!_0x47b4f0?.['length']) {
-            throw new Error("Empty media download");
+          let _buf = null;
+          try {
+            _buf = await downloadStoredMediaBuffer(_0x408a3f, _0x4ca33a);
+          } catch (dlErr) {
+            _0x44998a = dlErr;
+            if (_0x5b7e75 && typeof _0x5b7e75.downloadMediaMessage === 'function') {
+              try {
+                _buf = await _0x5b7e75.downloadMediaMessage({ key: _0x3fdc92.key, message: { [_0x4ca33a + "Message"]: _0x408a3f } });
+              } catch {}
+            }
           }
-          return _0x47b4f0;
+          if (_buf?.length) {
+            return _buf;
+          }
+          throw _0x44998a || new Error("Empty media download");
         } catch (_0x32fc33) {
           _0x44998a = _0x32fc33;
           if (_0x3c5dbe < 0x2 && typeof _0x5b7e75["updateMediaMessage"] === "function") {
@@ -9745,66 +9847,93 @@ async function handleViewOnce(_0x5b7e75, _0x3fdc92, _0x5d36c6 = null) {
       }
       throw _0x44998a;
     };
-    if (_0x1d8361) {
+
+    if (_1d8361) {
       _0x1c69bb = "image";
-      _0x3de737 = await _0x594c9b(_0x1d8361, 'image')["catch"](_0x51ba0c => {
-        console["log"]("[antivo] image download failed:", _0x51ba0c?.['message'] || _0x51ba0c);
-        return null;
-      });
-    } else {
-      if (_0x25f612) {
-        _0x1c69bb = "video";
-        _0x3de737 = await _0x594c9b(_0x25f612, "video")["catch"](_0x3f4350 => {
-          console["log"]("[antivo] video download failed:", _0x3f4350?.["message"] || _0x3f4350);
-          return null;
-        });
-      } else {
-        _0x5c64f1 && (_0x1c69bb = "audio", _0x3de737 = await _0x594c9b(_0x5c64f1, "audio")['catch'](_0x1b267a => {
-          console["log"]("[antivo] audio download failed:", _0x1b267a?.["message"] || _0x1b267a);
-          return null;
-        }));
+      _0x3de737 = await _0x594c9b(_1d8361, 'image').catch(() => null);
+    } else if (_25f612) {
+      _0x1c69bb = "video";
+      _0x3de737 = await _0x594c9b(_25f612, "video").catch(() => null);
+    } else if (_5c64f1) {
+      _0x1c69bb = "audio";
+      _0x3de737 = await _0x594c9b(_5c64f1, "audio").catch(() => null);
+    } else if (_docMsg) {
+      _0x1c69bb = "document";
+      _0x3de737 = await _0x594c9b(_docMsg, "document").catch(() => null);
+    }
+
+    // Levanter Relay Fallback: If buffer download failed, attempt rebroadcast without viewOnce
+    if ((!_0x3de737 || !_0x3de737.length) && typeof _0x5b7e75?.relayMessage === 'function' && _0x54b187) {
+      try {
+        const _cloned = JSON.parse(JSON.stringify(_0x54b187));
+        for (const _k of ['imageMessage', 'videoMessage', 'audioMessage', 'ptvMessage', 'documentMessage']) {
+          if (_cloned[_k]) {
+            _cloned[_k].viewOnce = false;
+          }
+        }
+        const _relayTag = (typeof _0x5b7e75.generateMessageTag === 'function' ? _0x5b7e75.generateMessageTag() : null) || ('vo_relay_' + Date.now());
+        await _0x5b7e75.relayMessage(_341ae5, _cloned, { messageId: _relayTag });
+        _relaySuccess = true;
+      } catch (rErr) {
+        console.log('[antivo] Levanter relay fallback failed:', rErr?.message || rErr);
       }
     }
-    if (!_0x3de737 || !_0x3de737["length"]) {
+
+    if (!_relaySuccess && (!_0x3de737 || !_0x3de737["length"])) {
       await _0x5b7e75["sendMessage"](_0xeed238, {
-        'text': '⚠️\x20Anti-ViewOnce\x20couldn\x27t\x20capture\x20the\x20' + _0x1c69bb + " from " + _0x1dffe1 + " in " + _0x43d36a + ". WhatsApp didn't return the media."
-      })["catch"](() => {});
+        'text': "⚠️ Anti-ViewOnce couldn't capture the " + _0x1c69bb + " from " + _0x1dffe1 + " in " + _0x43d36a + ". WhatsApp didn't return the media."
+      }).catch(() => {});
       return;
     }
+
     const _0x3aa4f7 = _0x22f786 ? [_0x22f786] : [];
-    if (_0x1c69bb === "image") {
-      await _0x5b7e75["sendMessage"](_0x341ae5, {
-        'image': _0x3de737,
-        'caption': _0x57da13,
-        'mentions': _0x3aa4f7
-      }, {
-        'quoted': _0x3cf660 ? _0x3fdc92 : undefined
-      });
-    } else {
-      if (_0x1c69bb === 'video') {
-        await _0x5b7e75["sendMessage"](_0x341ae5, {
+    if (_0x3de737 && _0x3de737.length) {
+      if (_0x1c69bb === "image") {
+        await __voTrackSend(_0x5b7e75["sendMessage"](_341ae5, {
+          'image': _0x3de737,
+          'caption': _0x57da13,
+          'mentions': _0x3aa4f7
+        }, {
+          'quoted': _3cf660 ? _0x3fdc92 : undefined
+        }));
+      } else if (_0x1c69bb === 'video') {
+        await __voTrackSend(_0x5b7e75["sendMessage"](_341ae5, {
           'video': _0x3de737,
           'caption': _0x57da13,
           'mentions': _0x3aa4f7
         }, {
-          'quoted': _0x3cf660 ? _0x3fdc92 : undefined
-        });
-      } else {
-        _0x1c69bb === "audio" && (await _0x5b7e75["sendMessage"](_0x341ae5, {
+          'quoted': _3cf660 ? _0x3fdc92 : undefined
+        }));
+      } else if (_0x1c69bb === 'audio') {
+        await __voTrackSend(_0x5b7e75["sendMessage"](_341ae5, {
           'audio': _0x3de737,
-          'mimetype': _0x5c64f1?.["mimetype"] || "audio/mp4",
-          'ptt': !!_0x5c64f1?.["ptt"],
+          'mimetype': _5c64f1?.["mimetype"] || "audio/mp4",
+          'ptt': !!_5c64f1?.["ptt"],
           'mentions': _0x3aa4f7
         }, {
-          'quoted': _0x3cf660 ? _0x3fdc92 : undefined
-        }), _0x57da13 && (await _0x5b7e75["sendMessage"](_0x341ae5, {
-          'text': _0x57da13,
+          'quoted': _3cf660 ? _0x3fdc92 : undefined
+        }));
+        if (_0x57da13) {
+          await __voTrackSend(_0x5b7e75["sendMessage"](_341ae5, {
+            'text': _0x57da13,
+            'mentions': _0x3aa4f7
+          }, {
+            'quoted': _3cf660 ? _0x3fdc92 : undefined
+          }));
+        }
+      } else if (_0x1c69bb === 'document') {
+        await __voTrackSend(_0x5b7e75["sendMessage"](_341ae5, {
+          'document': _0x3de737,
+          'mimetype': _docMsg?.["mimetype"] || "application/octet-stream",
+          'fileName': _docMsg?.["fileName"] || "viewonce_document",
+          'caption': _0x57da13,
           'mentions': _0x3aa4f7
         }, {
-          'quoted': _0x3cf660 ? _0x3fdc92 : undefined
-        })));
+          'quoted': _3cf660 ? _0x3fdc92 : undefined
+        }));
       }
     }
+
     _0x463779 = !![];
     _0x3fdc92["__voHandled"] = !![];
     _0x5e45a5['done']["add"](_0x4701a0);

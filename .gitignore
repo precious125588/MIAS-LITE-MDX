@@ -31,3 +31,4 @@ nexstore/status-cards/
 # Persistent status-video ID queues (runtime metadata only)
 nexstore/status-edit-queue.json
 nexstore/status-edit-queue.json.*.tmp
+nexstore/rollback-state.json

@@ -62,13 +62,9 @@ export function readLocalCommit() {
     }
   } catch {}
 
-  // 2. Platform environment variable
-  const envSha = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.COMMIT_SHA || process.env.GIT_COMMIT_SHA;
-  if (envSha && /^[0-9a-f]{7,40}$/i.test(String(envSha).trim())) {
-    return { sha: String(envSha).trim().toLowerCase(), source: "env" };
-  }
-
-  // 3. Build stamp written at build/update time
+  // 2. Build stamp written at build/update time (on Railway / Docker without .git,
+  // this reflects the ACTUAL code on disk, especially after an in-place runtime update
+  // where process.env.RAILWAY_GIT_COMMIT_SHA remains stuck on the deployment commit).
   try {
     const stampPath = path.join(REPO_ROOT, "lib", "precious-build-stamp.json");
     if (fs.existsSync(stampPath)) {
@@ -79,6 +75,12 @@ export function readLocalCommit() {
       }
     }
   } catch {}
+
+  // 3. Platform environment variable fallback if no stamp or .git
+  const envSha = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.COMMIT_SHA || process.env.GIT_COMMIT_SHA;
+  if (envSha && /^[0-9a-f]{7,40}$/i.test(String(envSha).trim())) {
+    return { sha: String(envSha).trim().toLowerCase(), source: "env" };
+  }
 
   return { sha: null, source: "none" };
 }
@@ -390,6 +392,10 @@ export function setRollbackEnvFlag(enable) {
 
 function writeBuildStamp(sha, message = "Rollback", author = "MIAS LITE MDX") {
   try {
+    const cleanSha = String(sha).toLowerCase();
+    process.env.RAILWAY_GIT_COMMIT_SHA = cleanSha;
+    process.env.COMMIT_SHA = cleanSha;
+    process.env.GIT_COMMIT_SHA = cleanSha;
     const stampDir = path.join(REPO_ROOT, "lib");
     const stampFile = path.join(stampDir, "precious-build-stamp.json");
     if (!fs.existsSync(stampDir)) fs.mkdirSync(stampDir, { recursive: true });
