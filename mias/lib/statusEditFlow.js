@@ -34,7 +34,11 @@ const NO_REENCODE_TOPICS = new Set([
   "fyp", "foryou", "foryoupage",
   "cruise", "cruzz", "techcruzz",
   "feeling",
-  "discipline", "discip",
+  "discipline", "discip", "mindset", "motivation",
+  "loveme",
+  "mood",
+  "lyrics", "lyric",
+  "babe", "baby", "bby",
 ]);
 let tikwmQueue = Promise.resolve();
 const QUALITY_QUERY_TERMS = [

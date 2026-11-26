@@ -143,28 +143,56 @@ const CATEGORIES = {
                    tags: ['fireforce','shinra','arthur','benimaru','joker','tamaki','shinrabanshoman'] },
   cruise:        { files: ['cruise.txt'],                           label: 'Cruise',
                    aliases: ['cruise','cruzz','techcruzz'],
-                   usernames: ['kingoftechcruzz','mr_vawulencee','kellyreacts02','mrdonduke'],
+                   usernames: ['kingoftechcruzz','mr_vawulencee','kellyreacts02','mrdonduke','gigidroid001'],
                    tags: ['cruise','cruzz','vawulence','kelly','comedy','funny','viral','cruisevideo','cruisetime'] },
   discipline:    { files: ['discipline.txt'],                       label: 'Discipline',
-                   aliases: ['discipline','discip'],
-                   usernames: ['rude_advice','jesse.serna.02','fam0us.mikeey','marcushullaster','breakuptoresilience','aidenheaney','risenexx','churchill___._','quietauthority.exe','mindful_mo','big.body485','relentless__mentality'],
+                   aliases: ['discipline','discip','mindset','motivation'],
+                   usernames: ['rude_advice','jesse.serna.02','fam0us.mikeey','marcushullaster','breakuptoresilience','aidenheaney','risenexx','churchill___._','quietauthority.exe','mindful_mo','big.body485','relentless__mentality','drleonkessel'],
                    tags: ['discipline','motivation','mindset','grind','focus','mentality','resilience','hardwork','growth','sigma'] },
   freefire:      { files: ['freefire.txt'],                         label: 'Free Fire',
                    aliases: ['freefire','ff','freef'],
-                   usernames: ['nexus.120fps_','zoya.120fps','.nur._ff','o1zhik_19','e_s_t_ff','prince.aep5','tik_ff_n','demi_ae1','iamnasboyff','mrvawulencefff','chris_dline4','lyonnn3d_','otc4mena'],
+                   usernames: ['nexus.120fps_','zoya.120fps','.nur._ff','o1zhik_19','e_s_t_ff','prince.aep5','tik_ff_n','demi_ae1','iamnasboyff','mrvawulencefff','chris_dline4','lyonnn3d_','otc4mena','arnaud.freefire.dancer','nexuss_44'],
                    tags: ['freefire','ff','ffedit','garenafreefire','freefireedit','ffhighlights','120fps'] },
   fyp:           { files: ['fyp.txt'],                              label: 'FYP',
                    aliases: ['fyp','foryou','foryoupage'],
-                   usernames: ['undead.aep','mentalistfilms','kitostunna','edits.moral','stizzy.mac4','interestingdiscoveriesus','dyuo1200','ragzfr','elyasclaire','patrickjane.viral.videos','factdrop_01','ductuvu8','noisy.neighbor.en','vlados_adventure','mxtn65','maven.stark','mrpio_','solosurvivalking'],
+                   usernames: ['undead.aep','mentalistfilms','kitostunna','edits.moral','stizzy.mac4','interestingdiscoveriesus','dyuo1200','ragzfr','elyasclaire','patrickjane.viral.videos','factdrop_01','ductuvu8','noisy.neighbor.en','vlados_adventure','mxtn65','maven.stark','mrpio_','solosurvivalking','loveishere36'],
                    tags: ['fyp','foryou','foryoupage','viral','edit','edits','trending','aep','4kedit'] },
   feeling:       { files: ['feeling.txt'],                           label: 'Feeling',
                    aliases: ['feeling'],
-                   usernames: ['sandip_sayzz','stevenyeun.intl','doom_yywk'],
+                   usernames: ['sandip_sayzz','stevenyeun.intl','doom_yywk','gfx19386'],
                    tags: ['feeling','feelings','emotional','mood','sad','heartbreak','vibes','quotes'] },
   peak:          { files: ['peak.txt'],                            label: 'Peak',
                    aliases: ['peak'],
-                   usernames: ['ridley_edit'],
+                   usernames: ['ridley_edit','haykalrz','norx.ae','drxpz.aepp'],
                    tags: ['peak','edit','edits','viral','fyp'] },
+  loveme:        { files: ['loveme.txt'],                           label: 'Love Me',
+                   aliases: ['loveme'],
+                   usernames: [],
+                   tags: ['loveme','lovemeedit','lovemedit','love','loveedit','viral','fyp','edit','edits'],
+                   hashtags: ['#lovemeedit', '#loveme'],
+                   searchQueries: [...Array(50).fill('#lovemeedit'), ...Array(3).fill('#loveme')],
+                   minLikes: 1000 },
+  mood:          { files: ['mood.txt'],                             label: 'Mood',
+                   aliases: ['mood'],
+                   usernames: [],
+                   tags: ['mood','moodedit','moodedits','vibes','feeling','relatable','viral','fyp','edit'],
+                   hashtags: ['#mood', '#moodedit'],
+                   searchQueries: ['#mood', '#moodedit'],
+                   minLikes: 1000 },
+  lyrics:        { files: ['lyrics.txt'],                           label: 'Lyrics',
+                   aliases: ['lyrics','lyric'],
+                   usernames: [],
+                   tags: ['lyricsedit','lyricsedits','lyrics','lyric','lyricedit','songlyrics','songs','music','viral','fyp','edit'],
+                   hashtags: ['#lyricsedit', '#lyrics'],
+                   searchQueries: ['#lyricsedit', '#lyrics'],
+                   minLikes: 1000 },
+  babe:          { files: ['babe.txt'],                             label: 'Babe',
+                   aliases: ['babe','baby','bby'],
+                   usernames: [],
+                   tags: ['caredit','caredits','cars','car','supercar','bmw','drift','automotive','viral','fyp','edit'],
+                   hashtags: ['#caredit', '#caredits'],
+                   searchQueries: ['#caredit', '#caredits'],
+                   minLikes: 1000 },
 };
 
 // ── tiny fs helpers ───────────────────────────────────────────────────────
@@ -332,6 +360,15 @@ async function prexzySearch(keywords) {
 }
 
 async function animeStatusSearch(keywords) {
+  // If query starts with hashtag, TikWM feed search provides the most accurate and reliable results
+  if (keywords && keywords.startsWith('#') && require('./lib/tikwmGate.cjs').isTikwmEnabled()) {
+    try {
+      const d = await getJson('https://www.tikwm.com/api/feed/search/?keywords=' + encodeURIComponent(keywords) + '&count=30&hd=1', 15000);
+      const arr = d && d.data && d.data.videos;
+      if (Array.isArray(arr) && arr.length) return arr;
+    } catch {}
+  }
+
   // Anime status categories: Prexzy first, NexRay second
   const pxList = await prexzySearch(keywords).catch(() => []);
   if (pxList && pxList.length) return pxList;
@@ -341,7 +378,7 @@ async function animeStatusSearch(keywords) {
 
   if (!require('./lib/tikwmGate.cjs').isTikwmEnabled()) return [];
   try {
-    const d = await getJson('https://www.tikwm.com/api/feed/search?keywords=' + encodeURIComponent(keywords) + '&count=20&hd=1', 15000);
+    const d = await getJson('https://www.tikwm.com/api/feed/search/?keywords=' + encodeURIComponent(keywords) + '&count=30&hd=1', 15000);
     const arr = d && d.data && d.data.videos;
     return Array.isArray(arr) ? arr : [];
   } catch { return []; }
@@ -366,11 +403,15 @@ const FRANCHISE_EXCLUSIVE_MARKERS = {
 function matchesCat(item, cat) {
   return EM.matchesCategory(item, cat, FRANCHISE_EXCLUSIVE_MARKERS);
 }
-function qualityOk(v) {
-  const digg = Number(v.digg_count || v.digg || 0);
-  const plays = Number(v.play_count || v.plays || 0);
-  if (!digg && !plays) return true;               // no stats → don't judge
-  return digg >= 1000 || plays >= 10000;          // no low-life videos
+function qualityOk(v, catOrMinLikes) {
+  const digg = Number(v.digg_count || v.digg || (v.stats && v.stats.likes) || 0);
+  const plays = Number(v.play_count || v.plays || (v.stats && v.stats.views) || 0);
+  const minLikes = typeof catOrMinLikes === 'number' ? catOrMinLikes : (catOrMinLikes && catOrMinLikes.minLikes) || 1000;
+  if (!digg && !plays) {
+    if (catOrMinLikes && catOrMinLikes.minLikes) return false;
+    return true;               // no stats → don't judge
+  }
+  return digg >= minLikes || (plays >= 10000 && !catOrMinLikes?.minLikes);
 }
 
 // ── routes ────────────────────────────────────────────────────────────────
@@ -380,7 +421,7 @@ function routeZip(cat) {
   return out.filter(i => categoryCreators(cat).length ? true : matchesCat(i, cat))
     .map(i => ({ ...i, src: 'zip', cid: 'zip_' + i.url }));
 }
-const NO_SHARED_CREATOR_FILES = new Set(['cruise.txt', 'discipline.txt', 'fyp.txt', 'freefire.txt', 'feeling.txt', 'peak.txt']);
+const NO_SHARED_CREATOR_FILES = new Set(['cruise.txt', 'discipline.txt', 'fyp.txt', 'freefire.txt', 'feeling.txt', 'peak.txt', 'loveme.txt', 'mood.txt', 'lyrics.txt', 'babe.txt']);
 async function routePages(cat) {
   if (!CVS) return [];
   // Creator categories keep their own creator list exactly as before (no tag filter).
@@ -413,11 +454,18 @@ async function routePages(cat) {
   return [...fromCat, ...fromFile];
 }
 async function routeSearch(cat) {
-  const words = cat.aliases.filter(a => a.length > 2);
-  const kw = (words[Math.floor(Math.random() * words.length)] || cat.label) + ' edit';
+  let kw;
+  if (cat.searchQueries && cat.searchQueries.length) {
+    kw = cat.searchQueries[Math.floor(Math.random() * cat.searchQueries.length)];
+  } else if (cat.hashtags && cat.hashtags.length) {
+    kw = cat.hashtags[Math.floor(Math.random() * cat.hashtags.length)];
+  } else {
+    const words = cat.aliases.filter(a => a.length > 2);
+    kw = (words[Math.floor(Math.random() * words.length)] || cat.label) + ' edit';
+  }
   try {
     const vids = await nexraySearch(kw);
-    return vids.filter(v => qualityOk(v)).map(v => {
+    return vids.filter(v => qualityOk(v, cat)).map(v => {
       const author = v.author?.nickname || (v.author && v.author.unique_id) || 'tiktok';
       const vidId = v.id || v.video_id;
       return {
@@ -591,7 +639,11 @@ const NO_REENCODE_CATEGORIES = new Set([
   "fyp", "foryou", "foryoupage",
   "cruise", "cruzz", "techcruzz",
   "feeling",
-  "discipline", "discip",
+  "discipline", "discip", "mindset", "motivation",
+  "loveme",
+  "mood",
+  "lyrics", "lyric",
+  "babe", "baby", "bby",
 ]);
 
 function shouldSkipReencode(catKey, item) {
@@ -962,7 +1014,11 @@ module.exports = {
           new Promise((resolve) => setTimeout(resolve, 8000)),
         ]);
       }
-      const leases = _statusQueue ? _statusQueue.reserve(catKey, 2) : [];
+      const seen = loadSeen();
+      const userSeen = new Set(((seen[user] || {})[catKey]) || []);
+      const leases = _statusQueue
+        ? _statusQueue.reserve(catKey, 2, (item) => !userSeen.has(contentKeyOf(item)) && !userSeen.has('v:' + item.id))
+        : [];
       if (!leases.length) {
         await doReact(sock, msg, '❌', P);
         clearReactDelayed(sock, msg, 3000, P);

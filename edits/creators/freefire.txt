@@ -19,3 +19,5 @@ creeperwm
 sa_smoker
 jadu.aep
 miaou_ff
+arnaud.freefire.dancer
+nexuss_44

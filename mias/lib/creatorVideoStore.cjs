@@ -74,13 +74,28 @@ async function fetchCreatorPosts(axios, uniqueId, timeout = 5000) {
   }
   let body = r ? r.data : null;
   if (typeof body === 'string') {
-    try { body = JSON.parse(body); } catch { return { status: 'blocked', videos: [], error: `HTTP ${r?.status} non-JSON reply` }; }
+    try { body = JSON.parse(body); } catch { body = null; }
+  }
+  let arr = (body && typeof body === 'object' && body.data && Array.isArray(body.data.videos)) ? body.data.videos : [];
+  if (!arr.length && !isTestMock) {
+    try {
+      const searchUrl = 'https://www.tikwm.com/api/feed/search/?keywords=' + encodeURIComponent(cleanId) + '&count=35&hd=1';
+      let sr;
+      if (typeof axios.get === 'function') {
+        sr = await axios.get(searchUrl, {
+          headers: HEADERS, timeout, validateStatus: () => true, responseType: 'text', transformResponse: [s => s],
+        });
+      }
+      let sBody = sr ? sr.data : null;
+      if (typeof sBody === 'string') { try { sBody = JSON.parse(sBody); } catch {} }
+      const sArr = (sBody && typeof sBody === 'object' && sBody.data && Array.isArray(sBody.data.videos)) ? sBody.data.videos : [];
+      if (sArr.length) return { status: 'ok', videos: sArr, error: null };
+    } catch {}
   }
   if (!body || typeof body !== 'object') return { status: 'blocked', videos: [], error: 'empty reply' };
   if (body.code !== undefined && Number(body.code) !== 0) {
     return { status: 'error', videos: [], error: String(body.msg || `code ${body.code}`).slice(0, 120) };
   }
-  const arr = body.data && Array.isArray(body.data.videos) ? body.data.videos : [];
   return { status: arr.length ? 'ok' : 'empty', videos: arr, error: null };
 }
 

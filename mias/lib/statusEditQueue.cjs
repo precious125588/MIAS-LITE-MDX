@@ -103,15 +103,29 @@ class StatusEditQueue {
   count(category) { return (this.queues.get(category) || []).length; }
   snapshot() { return Object.fromEntries([...this.queues].map(([k, v]) => [k, v.length])); }
 
-  reserve(category, count = 1) {
+  reserve(category, count = 1, predicate = null) {
     const list = this.queues.get(category);
     if (!list) return [];
     const out = [];
-    while (list.length && out.length < count) {
-      const item = list.shift();
+    let idx = 0;
+    while (idx < list.length && out.length < count) {
+      const item = list[idx];
+      if (typeof predicate === 'function' && !predicate(item)) {
+        idx++;
+        continue;
+      }
+      list.splice(idx, 1);
       const token = `${category}:${item.id}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
       this.inflight.set(token, { token, category, item });
       out.push({ token, ...item });
+    }
+    if (!out.length && list.length && typeof predicate === 'function') {
+      while (list.length && out.length < count) {
+        const item = list.shift();
+        const token = `${category}:${item.id}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+        this.inflight.set(token, { token, category, item });
+        out.push({ token, ...item });
+      }
     }
     if (out.length) this.persist();
     return out;
