@@ -8,6 +8,7 @@
 
 import os from "os";
 import hostMemory from "./hostMemory.cjs";
+import { cleanupAllTempDirs, startPeriodicTempCleanup } from "./diskGuard.js";
 
 const isLowMemory = (() => {
   try {
@@ -163,6 +164,30 @@ export function runCleanup(force = false) {
     }
   }
 
+  // Global cache bounds for high-contact / high-traffic accounts
+  for (const [globalKey, name, cap] of [
+    ['__CONTACTS_STORE__', 'contactsStore', 1000],
+    ['__PUSH_NAME_CACHE__', 'pushNameCache', 1000],
+    ['__GROUP_META_CACHE__', 'groupMetaCache', 500],
+    ['__SAVED_NAME_CACHE__', 'savedNameCache', 1000],
+  ]) {
+    try {
+      const target = globalThis[globalKey];
+      if (target instanceof Map) {
+        const removed = cleanMap(target, name, STALE_TTL_MS, underPressure ? Math.floor(cap / 2) : cap);
+        totalRemoved += removed;
+      }
+    } catch (_) {}
+  }
+
+  // Disk temporary storage cleanup
+  try {
+    const diskRemoved = cleanupAllTempDirs({ olderThanMs: underPressure ? 10 * 60 * 1000 : 20 * 60 * 1000 });
+    if (diskRemoved > 0) {
+      console.log(`[ResourceManager] Removed ${diskRemoved} stale temporary files from disk`);
+    }
+  } catch (_) {}
+
   // GC on high heap or low-memory profile
   if (isLowMemory || heapPct >= MEMORY_WARN_PCT) {
     if (typeof global.gc === "function") {
@@ -189,6 +214,7 @@ export function startResourceManager() {
   if (_cleanupTimer) clearInterval(_cleanupTimer);
   _cleanupTimer = setInterval(() => runCleanup(), CLEANUP_INTERVAL_MS);
   if (_cleanupTimer.unref) _cleanupTimer.unref();
+  try { startPeriodicTempCleanup({ intervalMs: 5 * 60 * 1000, olderThanMs: 15 * 60 * 1000 }); } catch (_) {}
   console.log(`[ResourceManager] Started (cleanup every ${Math.round(CLEANUP_INTERVAL_MS / 60000)} min, lowMemoryMode: ${isLowMemory})`);
 }
 

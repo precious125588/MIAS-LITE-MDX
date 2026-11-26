@@ -31,6 +31,14 @@ const KNOWN_TEMP_PREFIXES = [
   "_wm_",
   "stk_",
   "stk2_",
+  "mais_vd_",
+  "dl_",
+  "temp_",
+  "tmp_",
+  "vcf_",
+  "contacts_idx_",
+  "baileys-",
+  "ffmpeg-",
 ];
 
 function envBytes(name, fallbackMb) {
@@ -115,10 +123,47 @@ export function isNoSpaceError(error) {
     || /ENOSPC|no space left on device|not enough temporary storage/i.test(String(error?.message || error));
 }
 
+
+export function cleanupAllTempDirs({ olderThanMs = 20 * 60 * 1000 } = {}) {
+  const dirs = [
+    os.tmpdir(),
+    path.join(process.cwd(), "pipeline-work", "tmp"),
+    path.join(process.cwd(), "tmp"),
+    path.join(process.cwd(), ".tmp"),
+    path.join(process.cwd(), "mias", "tmp"),
+    path.join(process.cwd(), "mias", ".cache"),
+    path.join(process.cwd(), ".cache"),
+    path.join(os.tmpdir(), "mias_stream_dl"),
+  ];
+
+  let totalRemoved = 0;
+  for (const dir of dirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        totalRemoved += cleanupKnownTempFiles({ directory: dir, olderThanMs });
+      }
+    } catch (_) {}
+  }
+  return totalRemoved;
+}
+
+let _periodicTimer = null;
+export function startPeriodicTempCleanup({ intervalMs = 5 * 60 * 1000, olderThanMs = 15 * 60 * 1000 } = {}) {
+  if (_periodicTimer) clearInterval(_periodicTimer);
+  _periodicTimer = setInterval(() => {
+    try {
+      cleanupAllTempDirs({ olderThanMs });
+    } catch (_) {}
+  }, intervalMs);
+  if (_periodicTimer.unref) _periodicTimer.unref();
+}
+
 export default {
   getMediaLimitBytes,
   getDiskSpace,
   cleanupKnownTempFiles,
   ensureDiskSpace,
   isNoSpaceError,
+  cleanupAllTempDirs,
+  startPeriodicTempCleanup,
 };

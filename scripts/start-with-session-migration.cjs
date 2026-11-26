@@ -386,19 +386,27 @@ async function main() {
   const httpMode = resolveHttpServerMode(process.env);
   const port = httpMode.enabled ? httpMode.port : null;
   console.log('[http-mode] ' + (httpMode.enabled ? 'web port ' + port : 'no fixed web port') + ' (' + httpMode.reason + ')');
+  // Auto-detect optimal memory settings from host and persist into environment / .env
+  try {
+    const hostMemory = require('../mias/lib/hostMemory.cjs');
+    hostMemory.applyAutoMemoryEnv({ root: path.join(__dirname, '..') });
+  } catch (err) {
+    console.warn('[session-startup] Auto memory configuration warning:', err && err.message);
+  }
+
   const childEnv = {
     DOTENV_CONFIG_QUIET: 'true',
     KEEP_ALIVE_SUPERVISOR_ACTIVE: 'true',
     ...process.env,
     BOT_HTTP_SERVER_OFF: httpMode.enabled ? 'false' : 'true',
-    BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB || '220',
-    BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB || '320',
+    BOT_CHILD_HEAP_MB: process.env.BOT_CHILD_HEAP_MB,
+    BOT_MEMORY_LIMIT_MB: process.env.BOT_MEMORY_LIMIT_MB,
     // node:sqlite prints an experimental-feature warning on every start; it is expected here.
     NODE_OPTIONS: [
       process.env.NODE_OPTIONS,
       '--disable-warning=ExperimentalWarning',
       '--expose-gc',
-      '--max-old-space-size=' + (process.env.SERVER_HEAP_MB || '220')
+      '--max-old-space-size=' + (process.env.SERVER_HEAP_MB || '512')
     ].filter(Boolean).join(' '),
   };
 

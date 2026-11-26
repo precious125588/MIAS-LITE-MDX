@@ -2112,6 +2112,27 @@ globalThis['__UPDATE_GROUP_META_CACHE__'] = (_0x50c780, _0x59e403) => {
   } catch {}
 };
 const _contactsStore = new Map();
+globalThis['__PUSH_NAME_CACHE__'] = pushNameCache;
+globalThis['__GROUP_META_CACHE__'] = _groupMetaCache;
+globalThis['__CONTACTS_STORE__'] = _contactsStore;
+
+const _origContactsSet = _contactsStore['set']['bind'](_contactsStore);
+_contactsStore['set'] = function (_k, _v) {
+  if (_contactsStore.size >= 1000 && !_contactsStore.has(_k)) {
+    const _first = _contactsStore.keys().next().value;
+    if (_first !== undefined) _contactsStore.delete(_first);
+  }
+  return _origContactsSet(_k, _v);
+};
+
+const _origGroupMetaSet = _groupMetaCache['set']['bind'](_groupMetaCache);
+_groupMetaCache['set'] = function (_k, _v) {
+  if (_groupMetaCache.size >= 500 && !_groupMetaCache.has(_k)) {
+    const _first = _groupMetaCache.keys().next().value;
+    if (_first !== undefined) _groupMetaCache.delete(_first);
+  }
+  return _origGroupMetaSet(_k, _v);
+};
 const _unresolvedNameCache = new Set();
 function saveContact(_0x5ac890, _0x513109) {
   try {
@@ -2149,6 +2170,10 @@ let _namesSaveTimer = null;
 function _saveNamesSoon() {}
 const _origPushSet = pushNameCache["set"]['bind'](pushNameCache);
 pushNameCache["set"] = function (_0x4ec48c, _0x188ff3) {
+  if (pushNameCache.size >= 1000 && !pushNameCache.has(_0x4ec48c)) {
+    const _first = pushNameCache.keys().next().value;
+    if (_first !== undefined) pushNameCache.delete(_first);
+  }
   const _0x98c75 = pushNameCache["get"](_0x4ec48c);
   const _0xb46522 = _origPushSet(_0x4ec48c, _0x188ff3);
   if (_0x98c75 !== _0x188ff3) {
@@ -6446,6 +6471,15 @@ const isMeaningfulName = (_0x4b341c = '') => {
 };
 const CONTACTS_FILE = _0xf9fd94['join'](__dirname, "contacts.vcf");
 const savedNameCache = new Map();
+globalThis['__SAVED_NAME_CACHE__'] = savedNameCache;
+const _origSavedNameSet = savedNameCache['set']['bind'](savedNameCache);
+savedNameCache['set'] = function (_k, _v) {
+  if (savedNameCache.size >= 1000 && !savedNameCache.has(_k)) {
+    const _first = savedNameCache.keys().next().value;
+    if (_first !== undefined) savedNameCache.delete(_first);
+  }
+  return _origSavedNameSet(_k, _v);
+};
 function getSavedContactName(_0x2d3075) {
   const _0x37c704 = (_0x2d3075 || '')["replace"](/[^0-9]/g, '');
   if (!_0x37c704) {
