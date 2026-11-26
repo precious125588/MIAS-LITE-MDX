@@ -54,7 +54,9 @@ function hasTag(tokens, tag) {
 function matchesCategory(item, cat, franchiseMarkers = {}) {
   const tokens = tokensOf(item);
   if (!cat.tags.some(tag => hasTag(tokens, tag))) return false;
-  const targetKey = Object.keys(franchiseMarkers).find(k => cat.tags.some(tg => tg.includes(k)));
+  const targetKey = (cat && cat.key && franchiseMarkers[cat.key])
+    ? cat.key
+    : Object.keys(franchiseMarkers).find(k => (cat.tags || []).some(tg => tg === k || tg.includes(k)));
   if (targetKey) {
     const targetMarkers = franchiseMarkers[targetKey];
     for (const [otherKey, otherMarkers] of Object.entries(franchiseMarkers)) {
