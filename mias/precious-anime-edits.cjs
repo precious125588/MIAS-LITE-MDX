@@ -394,19 +394,36 @@ function parseStatNum(val) {
   return Math.round(n * mult);
 }
 
+function isPhotoSlider(v) {
+  if (!v || typeof v !== 'object') return false;
+  if (v.is_slider || v.type === 'image' || v.type === 'slider') return true;
+  if (Array.isArray(v.images) && v.images.length > 0) return true;
+  if (Array.isArray(v.image_post_info?.images) && v.image_post_info.images.length > 0) return true;
+  if (Array.isArray(v.photos) && v.photos.length > 0) return true;
+  const playUrl = String(v.data || v.hdplay || v.play || v.url || '');
+  if (/\.(?:mp3|m4a|aac)(\?|$)/i.test(playUrl)) return true;
+  return false;
+}
+
 function qualityOk(v) {
-  const digg = parseStatNum(v.digg_count || v.digg || (v.stats && (v.stats.likes || v.stats.digg_count)) || 0);
-  const plays = parseStatNum(v.play_count || v.plays || (v.stats && (v.stats.views || v.stats.play_count)) || 0);
+  if (isPhotoSlider(v)) return false;
+  const digg = parseStatNum(v.digg_count || v.digg || (v.stats && (v.stats.likes || v.stats.digg_count)) || v.likes || 0);
+  const plays = parseStatNum(v.play_count || v.plays || (v.stats && (v.stats.views || v.stats.play_count)) || v.views || 0);
+  if (digg > 0 && digg < 1000) return false;      // strictly avoid any videos below 1k likes
   if (!digg && !plays) return true;               // no stats → don't judge
   return digg >= 1000 || plays >= 10000;          // no low-life videos: >= 1k likes or >= 10k views
 }
+
+const TIKTOK_SEARCH_CATS = new Set(['loveme', 'mood', 'lyrics', 'lyric', 'babe', 'baby', 'bby']);
 
 // ── routes ────────────────────────────────────────────────────────────────
 function routeZip(cat) {
   const out = [];
   for (const f of cat.files || []) out.push(...loadLinkFile(f));
-  return out.filter(i => categoryCreators(cat).length ? true : matchesCat(i, cat))
-    .map(i => ({ ...i, src: 'zip', cid: 'zip_' + i.url }));
+  return out.filter(i => {
+    if (TIKTOK_SEARCH_CATS.has(cat.key)) return true;
+    return categoryCreators(cat).length ? true : matchesCat(i, cat);
+  }).map(i => ({ ...i, src: 'zip', cid: 'zip_' + i.url }));
 }
 const NO_SHARED_CREATOR_FILES = new Set(['cruise.txt', 'discipline.txt', 'fyp.txt', 'freefire.txt', 'feeling.txt', 'peak.txt', 'loveme.txt', 'mood.txt', 'lyrics.txt', 'babe.txt']);
 async function routePages(cat) {
@@ -457,7 +474,7 @@ async function routeSearch(cat) {
   }
   try {
     const vids = await nexraySearch(kw);
-    return vids.filter(v => qualityOk(v)).map(v => {
+    return vids.filter(v => qualityOk(v) && !isPhotoSlider(v)).map(v => {
       const author = v.author?.nickname || (v.author && v.author.unique_id) || 'tiktok';
       const vidId = v.id || v.video_id;
       return {
@@ -466,10 +483,14 @@ async function routeSearch(cat) {
         play: v.data || v.hdplay || v.play || '',
         cid: 'search_' + vidId,
         src: 'search',
-        digg_count: v.stats?.likes || v.digg_count,
-        play_count: v.stats?.views || v.play_count,
+        digg_count: v.stats?.likes || v.digg_count || v.likes || 0,
+        play_count: v.stats?.views || v.play_count || v.views || 0,
       };
-    }).filter(i => i.url.includes('/video/') && matchesCat(i, cat));   // keyword search must match the category for every category
+    }).filter(i => {
+      if (!i.url.includes('/video/')) return false;
+      if (TIKTOK_SEARCH_CATS.has(cat.key)) return true;
+      return matchesCat(i, cat);
+    });
   } catch { return []; }
 }
 
@@ -485,6 +506,19 @@ function contentKeyOf(item) {
   }
   return (item.src || 'other') + ':' + (item.cid || item.url);
 }
+const _recentCategoryDelivered = new Map();
+function getRecentDelivered(catKey) {
+  if (!_recentCategoryDelivered.has(catKey)) _recentCategoryDelivered.set(catKey, []);
+  return _recentCategoryDelivered.get(catKey);
+}
+function recordRecentDelivered(catKey, keys) {
+  const list = getRecentDelivered(catKey);
+  for (const k of keys) {
+    if (!list.includes(k)) list.push(k);
+  }
+  if (list.length > 30) list.splice(0, list.length - 30);
+}
+
 function pickUnseen(userJid, catKey, pool, n) {
   const seen = loadSeen();
   const mine = new Set(((seen[userJid] || {})[catKey]) || []);
@@ -503,12 +537,37 @@ function pickUnseen(userJid, catKey, pool, n) {
       deduplicated.push(item);
     }
   }
-  // shuffle
-  for (let i = deduplicated.length - 1; i > 0; i--) {
+
+  // Filter out photo sliders and videos below 1k likes
+  const qualified = deduplicated.filter(item => {
+    if (isPhotoSlider(item)) return false;
+    const digg = parseStatNum(item.digg_count || item.digg || (item.stats && (item.stats.likes || item.stats.digg_count)) || item.likes || 0);
+    if (digg > 0 && digg < 1000) return false;
+    return true;
+  });
+  const candidates = qualified.length >= n ? qualified : deduplicated;
+
+  // Filter out items recently delivered to other users (so user 1 and user 2 don't drop same video)
+  const recentDelivered = getRecentDelivered(catKey);
+  let available = candidates.filter(i => !recentDelivered.includes(contentKeyOf(i)));
+  if (available.length < n) available = candidates;
+
+  // "fetch shuffles from tops rateds one to down":
+  // Sort candidates by rating (likes and views)
+  available.sort((a, b) => {
+    const scoreA = parseStatNum(a.digg_count || 0) * 3 + parseStatNum(a.play_count || 0);
+    const scoreB = parseStatNum(b.digg_count || 0) * 3 + parseStatNum(b.play_count || 0);
+    return scoreB - scoreA;
+  });
+
+  // Top tier window (top 8-10 candidates) shuffled to give users varied top-tier content
+  const windowSize = Math.max(n * 4, 8);
+  const topTier = available.slice(0, windowSize);
+  for (let i = topTier.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [deduplicated[i], deduplicated[j]] = [deduplicated[j], deduplicated[i]];
+    [topTier[i], topTier[j]] = [topTier[j], topTier[i]];
   }
-  return deduplicated.slice(0, n);
+  return topTier.slice(0, n);
 }
 function markSeen(userJid, catKey, keys) {
   const seen = loadSeen();
@@ -632,11 +691,7 @@ const NO_REENCODE_CATEGORIES = new Set([
   "cruise", "cruzz", "techcruzz",
   "feeling",
   "discipline", "discip", "mindset", "motivation",
-  "peak",
-  "loveme",
-  "mood",
-  "lyrics", "lyric",
-  "babe", "baby", "bby"
+  "peak"
 ]);
 
 function shouldSkipReencode(catKey, item) {
@@ -969,7 +1024,12 @@ module.exports = {
       // Rehydrate immediately from repository links and the last-good cache, then
       // let bounded background workers top each category up from live sources.
       for (const [key, cat] of Object.entries(CATEGORIES)) {
-        for (const candidate of [...routeZip(cat), ...loadLastGood(key)]) {
+        const initialCandidates = [...routeZip(cat), ...loadLastGood(key)];
+        for (let i = initialCandidates.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [initialCandidates[i], initialCandidates[j]] = [initialCandidates[j], initialCandidates[i]];
+        }
+        for (const candidate of initialCandidates) {
           _statusQueue.enqueue(key, candidate, false);
         }
       }
@@ -1007,7 +1067,15 @@ module.exports = {
           new Promise((resolve) => setTimeout(resolve, 8000)),
         ]);
       }
-      const leases = _statusQueue ? _statusQueue.reserve(catKey, 2) : [];
+      const recentDelivered = getRecentDelivered(catKey);
+      const leases = _statusQueue ? _statusQueue.reserve(catKey, 2, (item) => {
+        const k = contentKeyOf(item);
+        if (recentDelivered.includes(k)) return false;
+        if (isPhotoSlider(item)) return false;
+        const digg = parseStatNum(item.digg_count || item.digg || 0);
+        if (digg > 0 && digg < 1000) return false;
+        return true;
+      }) : [];
       if (!leases.length) {
         await doReact(sock, msg, '❌', P);
         clearReactDelayed(sock, msg, 3000, P);
@@ -1058,6 +1126,7 @@ module.exports = {
       }
       if (sent.length) {
         markSeen(user, catKey, sent);
+        recordRecentDelivered(catKey, sent);
         const username = msg.pushName || (user ? user.split('@')[0] : 'User');
         const rawText = String(msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.body || '').trim();
         const cmd = (rawText.startsWith('.') || rawText.startsWith('/') || rawText.startsWith('!')) ? rawText.split(/\s+/)[0] : ('.' + catKey);
@@ -1105,4 +1174,9 @@ module.exports = {
   routePages,
   makeDeliveryPlan,
   creatorOf,
+  isPhotoSlider,
+  qualityOk,
+  TIKTOK_SEARCH_CATS,
+  getRecentDelivered,
+  recordRecentDelivered,
 };
