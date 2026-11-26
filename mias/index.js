@@ -1945,6 +1945,9 @@ const triviaActive = new Map();
 const hangmanGames = new Map();
 const wordleGames = new Map();
 const viewonceStore = new Map();
+try {
+  globalThis._viewOnceStore = viewonceStore;
+} catch {}
 const _botSentMsgIds = new Set();
 const afkUsers = new Map();
 const senderProfileNames = new Map();
@@ -6991,15 +6994,29 @@ function __miasSaveViewOnceArrival(msg) {
     const raw = msg && msg.message;
     if (!raw || typeof raw !== 'object' || !msg.key || !msg.key.id) return false;
     const eph = raw.ephemeralMessage?.message;
-    const isVo = Boolean(raw.viewOnceMessage || raw.viewOnceMessageV2 || raw.viewOnceMessageV2Extension
-      || eph?.viewOnceMessage || eph?.viewOnceMessageV2 || eph?.viewOnceMessageV2Extension);
+    const dev = raw.deviceSentMessage?.message;
+    const doc = raw.documentWithCaptionMessage?.message;
+    const isVo = Boolean(
+      raw.viewOnceMessage || raw.viewOnceMessageV2 || raw.viewOnceMessageV2Extension
+      || eph?.viewOnceMessage || eph?.viewOnceMessageV2 || eph?.viewOnceMessageV2Extension
+      || dev?.viewOnceMessage || dev?.viewOnceMessageV2 || dev?.viewOnceMessageV2Extension
+      || doc?.viewOnceMessage || doc?.viewOnceMessageV2 || doc?.viewOnceMessageV2Extension
+      || raw.imageMessage?.viewOnce || raw.videoMessage?.viewOnce || raw.audioMessage?.viewOnce
+      || eph?.imageMessage?.viewOnce || eph?.videoMessage?.viewOnce || eph?.audioMessage?.viewOnce
+      || dev?.imageMessage?.viewOnce || dev?.videoMessage?.viewOnce || dev?.audioMessage?.viewOnce
+      || doc?.imageMessage?.viewOnce || doc?.videoMessage?.viewOnce || doc?.audioMessage?.viewOnce
+    );
     if (!isVo) return false;
     if (!globalThis._viewOnceStore) globalThis._viewOnceStore = new Map();
-    globalThis._viewOnceStore.set(msg.key.id, {
+    const entry = {
       key: msg.key, message: raw, chat: msg.key.remoteJid, ts: Date.now(),
       sender: msg.key.participant || msg.participant || msg.key.remoteJid,
-    });
-    if (globalThis._viewOnceStore.size > 1000) {
+    };
+    globalThis._viewOnceStore.set(msg.key.id, entry);
+    if (msg.key.remoteJid) {
+      globalThis._viewOnceStore.set(msg.key.remoteJid + '|' + msg.key.id, entry);
+    }
+    if (globalThis._viewOnceStore.size > 2000) {
       globalThis._viewOnceStore.delete(globalThis._viewOnceStore.keys().next().value);
     }
     return require('../lib/viewOnceCommand.cjs').rememberViewOnceArrival({ key: msg.key, message: raw });
@@ -9476,6 +9493,10 @@ const notifyOwnerError = async (_0x4a26dd, _0x5721ed, _0x3edcb1, _0x324804) => {
 };
 const processedMessages = new Set();
 const _msgRetryStore = new Map();
+try {
+  globalThis._msgRetryStore = _msgRetryStore;
+  globalThis._msgStore = _msgRetryStore;
+} catch {}
 function storeMessage(_0x444373) {
   if (_0x444373?.["key"]?.['id'] && _0x444373?.["message"]) {
     const _0x2af622 = unwrapMessageContent(_0x444373["message"]) || _0x444373["message"];
@@ -20964,188 +20985,25 @@ cmd('remind', {
 cmd(['vv', 'viewonce'], {
   'desc': "Reveal view-once message (reply to it)",
   'category': "TOOLS"
-}, async (_0xd66992, _0x1b83f9) => {
-  const _0x43bbd8 = _0x1b83f9["message"]?.["extendedTextMessage"]?.["contextInfo"] || _0x1b83f9["message"]?.["imageMessage"]?.["contextInfo"] || _0x1b83f9["message"]?.["videoMessage"]?.["contextInfo"] || _0x1b83f9['message']?.["documentMessage"]?.['contextInfo'] || null;
-  if (!_0x43bbd8?.["quotedMessage"]) {
-    await react(_0xd66992, _0x1b83f9, '❌');
-    return;
-  }
-  await react(_0xd66992, _0x1b83f9, '🌀');
-  let _0x4f1b2a = _0x43bbd8["quotedMessage"];
-  for (let _0x1c0c58 = 0x0; _0x1c0c58 < 0x5; _0x1c0c58++) {
-    const _0x1673c1 = _0x4f1b2a?.["viewOnceMessage"]?.['message'] || _0x4f1b2a?.["viewOnceMessageV2"]?.['message'] || _0x4f1b2a?.["viewOnceMessageV2Extension"]?.['message'] || _0x4f1b2a?.["ephemeralMessage"]?.['message'] || _0x4f1b2a?.["documentWithCaptionMessage"]?.["message"];
-    if (!_0x1673c1 || _0x1673c1 === _0x4f1b2a) {
-      break;
-    }
-    _0x4f1b2a = _0x1673c1;
-  }
-  const _0x3f8e2a = _0x1b83f9['key']["remoteJid"];
-  let _0xa4941a = ![];
-  try {
-    if (_0x4f1b2a["imageMessage"]) {
-      const _0x47b50d = await downloadContentFromMessage(_0x4f1b2a["imageMessage"], "image");
-      let _0x3c083f = Buffer["from"]([]);
-      for await (const _0x509aed of _0x47b50d) {
-        _0x3c083f = Buffer['concat']([_0x3c083f, _0x509aed]);
-      }
-      await _0xd66992['sendMessage'](_0x1b83f9["key"]["remoteJid"], {
-        'image': _0x3c083f,
-        'caption': _0x4f1b2a["imageMessage"]["caption"] || undefined
-      }, {
-        'quoted': _0x1b83f9
-      });
-      _0xa4941a = !![];
-    } else {
-      if (_0x4f1b2a['videoMessage']) {
-        const _0x1ab7d9 = await downloadContentFromMessage(_0x4f1b2a['videoMessage'], 'video');
-        let _0x203e06 = Buffer['from']([]);
-        for await (const _0x2274b8 of _0x1ab7d9) {
-          _0x203e06 = Buffer['concat']([_0x203e06, _0x2274b8]);
-        }
-        await _0xd66992["sendMessage"](_0x1b83f9["key"]['remoteJid'], {
-          'video': _0x203e06,
-          'caption': _0x4f1b2a["videoMessage"]["caption"] || undefined
-        }, {
-          'quoted': _0x1b83f9
-        });
-        _0xa4941a = !![];
-      } else {
-        if (_0x4f1b2a["audioMessage"]) {
-          const _0x153395 = await downloadContentFromMessage(_0x4f1b2a['audioMessage'], 'audio');
-          let _0x2d2003 = Buffer["from"]([]);
-          for await (const _0x34b74e of _0x153395) {
-            _0x2d2003 = Buffer["concat"]([_0x2d2003, _0x34b74e]);
-          }
-          await _0xd66992["sendMessage"](_0x1b83f9['key']["remoteJid"], {
-            'audio': _0x2d2003,
-            'mimetype': _0x4f1b2a['audioMessage']["mimetype"] || "audio/mp4",
-            'ptt': !!_0x4f1b2a['audioMessage']["ptt"]
-          }, {
-            'quoted': _0x1b83f9
-          });
-          _0xa4941a = !![];
-        } else {
-          await react(_0xd66992, _0x1b83f9, '❌');
-        }
-      }
-    }
-    _0xa4941a && (await react(_0xd66992, _0x1b83f9, '✅'));
-  } catch (_0x31766e) {
-    await react(_0xd66992, _0x1b83f9, '❌');
-  }
+}, async (_sock, _msg, _args) => {
+  const { handleViewOnceCommand } = require('../lib/viewOnceCommand.cjs');
+  return handleViewOnceCommand(_sock, _msg, _args, { cmdName: 'vv', sendToDm: false });
 });
 cmd(["vv2", "lol", "wow", "hehe", '😂', '🙂', 'omor', "chai", '🥀'], {
   'desc': "Save replied view-once media silently to OWNER DM",
   'category': "TOOLS",
   'ownerOnly': !![],
   'silent': !![]
-}, async (_0x196684, _0xf69d2d) => {
-  const _0x39e45f = getContextInfo(_0xf69d2d);
-  if (!_0x39e45f?.["quotedMessage"]) {
-    return;
-  }
-  let _0x5087f0 = _0x39e45f["quotedMessage"];
-  for (let _0x99a051 = 0x0; _0x99a051 < 0x5; _0x99a051++) {
-    const _0xbd662f = _0x5087f0?.['viewOnceMessage']?.['message'] || _0x5087f0?.["viewOnceMessageV2"]?.["message"] || _0x5087f0?.["viewOnceMessageV2Extension"]?.["message"] || _0x5087f0?.["ephemeralMessage"]?.['message'] || _0x5087f0?.['documentWithCaptionMessage']?.["message"];
-    if (!_0xbd662f || _0xbd662f === _0x5087f0) {
-      break;
-    }
-    _0x5087f0 = _0xbd662f;
-  }
-  const _0x1d3029 = !!(_0x5087f0?.["imageMessage"]?.["viewOnce"] || _0x5087f0?.['videoMessage']?.['viewOnce'] || _0x5087f0?.["audioMessage"]?.['viewOnce']);
-  const _0x57a3df = /viewOnceMessage/["test"](JSON["stringify"](_0x39e45f["quotedMessage"])) || _0x1d3029;
-  if (!_0x5087f0 || !(_0x5087f0["imageMessage"] || _0x5087f0["videoMessage"] || _0x5087f0["audioMessage"]) || !_0x57a3df) {
-    return;
-  }
-  let _0x300d54 = resolveLid(_0x39e45f["participant"] || _0x39e45f["remoteJid"] || _0xf69d2d["key"]["participant"] || _0xf69d2d["participant"] || _0xf69d2d["key"]["remoteJid"] || '');
-  if (_0x300d54["endsWith"]('@lid') && isGroup(_0xf69d2d)) {
-    try {
-      const _0x5ec399 = _groupMetaCache["get"](_0xf69d2d["key"]["remoteJid"]) || (await _0x196684["groupMetadata"](_0xf69d2d["key"]["remoteJid"])["catch"](() => null));
-      _0x5ec399 && (updateLidMappingsFromMeta(_0x5ec399), _0x300d54 = resolveLid(_0x300d54));
-    } catch {}
-  }
-  const _0x1ce391 = _0x300d54['endsWith']("@s.whatsapp.net") ? _0x300d54 : '';
-  const _0x52af75 = _cleanNum(_0x300d54) || "unknown";
-  let _0x536ca5 = '';
-  const _0xeeba5e = String(CONFIG['OWNER_JID'] || '')['trim']();
-  const _0x41ec0a = String(CONFIG["OWNER_NUMBER"] || '')["replace"](/[^0-9]/g, '');
-  const _0x48447e = _cleanNum(_0x196684["user"]?.['id'] || _botJid || '');
-  if (_0xeeba5e['includes']('@')) {
-    _0x536ca5 = toStandardJid(_0xeeba5e);
-  } else {
-    if (_0x41ec0a) {
-      _0x536ca5 = _0x41ec0a + "@s.whatsapp.net";
-    } else {
-      if (_0x48447e) {
-        _0x536ca5 = _0x48447e + "@s.whatsapp.net";
-      }
-    }
-  }
-  if (!_0x536ca5) {
-    return;
-  }
-  const _0x1fe4aa = _0xf69d2d["key"]['remoteJid']?.["endsWith"]("@g.us") ? "Group: " + _0xf69d2d['key']["remoteJid"] : "Chat: " + _0xf69d2d['key']["remoteJid"];
-  const _0x35f175 = '👤\x20From:\x20@' + _0x52af75 + "\n🕐 " + new Date()["toLocaleString"]();
-  const _0x10ec04 = _0x1ce391 ? [_0x1ce391] : [];
-  try {
-    let _0x5c6658 = null;
-    if (_0x5087f0['imageMessage']) {
-      const _0x2c5c7 = await downloadContentFromMessage(_0x5087f0["imageMessage"], 'image');
-      let _0x42a5eb = Buffer["from"]([]);
-      for await (const _0x51794d of _0x2c5c7) {
-        _0x42a5eb = Buffer["concat"]([_0x42a5eb, _0x51794d]);
-      }
-      _0x5c6658 = {
-        'image': _0x42a5eb,
-        'caption': _0x35f175,
-        ...(_0x10ec04['length'] ? {
-          'mentions': _0x10ec04
-        } : {})
-      };
-    } else {
-      if (_0x5087f0["videoMessage"]) {
-        const _0x433a91 = await downloadContentFromMessage(_0x5087f0["videoMessage"], "video");
-        let _0x161051 = Buffer["from"]([]);
-        for await (const _0x33d450 of _0x433a91) {
-          _0x161051 = Buffer["concat"]([_0x161051, _0x33d450]);
-        }
-        _0x5c6658 = {
-          'video': _0x161051,
-          'mimetype': 'video/mp4',
-          'caption': _0x35f175,
-          ...(_0x10ec04["length"] ? {
-            'mentions': _0x10ec04
-          } : {})
-        };
-      } else {
-        if (_0x5087f0["audioMessage"]) {
-          const _0x3ad395 = await downloadContentFromMessage(_0x5087f0["audioMessage"], 'audio');
-          let _0xc9cc10 = Buffer["from"]([]);
-          for await (const _0x14e47f of _0x3ad395) {
-            _0xc9cc10 = Buffer["concat"]([_0xc9cc10, _0x14e47f]);
-          }
-          await _0x196684["sendMessage"](_0x536ca5, {
-            'text': _0x35f175,
-            ...(_0x10ec04['length'] ? {
-              'mentions': _0x10ec04
-            } : {})
-          })["catch"](() => {});
-          _0x5c6658 = {
-            'audio': _0xc9cc10,
-            'mimetype': 'audio/mp4',
-            'ptt': !!_0x5087f0["audioMessage"]['ptt']
-          };
-        } else {
-          return;
-        }
-      }
-    }
-    await _0x196684['sendMessage'](_0x536ca5, _0x5c6658);
-  } catch (_0xf72d5f) {
-    try {
-      console["error"]("[vv2]", _0xf72d5f?.["message"] || _0xf72d5f);
-    } catch {}
-  }
+}, async (_sock, _msg, _args) => {
+  const { handleViewOnceCommand } = require('../lib/viewOnceCommand.cjs');
+  return handleViewOnceCommand(_sock, _msg, _args, { cmdName: 'vv2', sendToDm: true, silent: true });
+});
+cmd(['chat'], {
+  'desc': "Send a message to a WhatsApp number: .chat <number> <message>",
+  'category': "TOOLS"
+}, async (_sock, _msg, _args) => {
+  const { handleChatCommand } = require('../lib/chatCommand.cjs');
+  return handleChatCommand(_sock, _msg, _args);
 });
 cmd("note", {
   'desc': "Save a note",

@@ -646,3 +646,76 @@ test('.vv2 reveals view-once media flagged with viewOnce on the inner node', asy
   assert.ok(ownerMsg, 'owner must receive the revealed media');
   assert.deepEqual(ownerMsg.content.video, bytes);
 });
+
+test('handleViewOnceCommand: recovers from _msgRetryStore when entry has no .message wrapper', async () => {
+  const sock = createMockSocket();
+  const fakeBytes = Buffer.from('retry-store-bytes');
+  // In mias/index.js, _msgRetryStore stores unwrapped messages directly: { imageMessage: { ... } }
+  globalThis._msgRetryStore = new Map([
+    ['RETRY1', { imageMessage: { url: 'https://wa.net/img', mediaKey: 'k', caption: 'from retry store' } }],
+  ]);
+  const deps = {
+    react: async () => {},
+    sendReply: async () => {},
+    downloadContentFromMessage: async (node) => {
+      assert.equal(node.mediaKey, 'k');
+      return (async function* () { yield fakeBytes; })();
+    },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          stanzaId: 'RETRY1',
+          quotedMessage: { viewOnceMessageV2: { message: { imageMessage: { url: 'https://wa.net/img' } } } },
+        },
+      },
+    },
+  };
+  try {
+    const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+    assert.equal(res.ok, true);
+    assert.deepEqual(sock.sent[0].content.image, fakeBytes);
+  } finally {
+    delete globalThis._msgRetryStore;
+  }
+});
+
+test('handleViewOnceCommand: recovers from _msgRetryStore using remoteJid|stanzaId compound key', async () => {
+  const sock = createMockSocket();
+  const fakeBytes = Buffer.from('retry-compound-bytes');
+  globalThis._msgRetryStore = new Map([
+    ['chat123@s.whatsapp.net|COMP1', { videoMessage: { url: 'https://wa.net/vid', mediaKey: 'k', caption: 'compound key' } }],
+  ]);
+  const deps = {
+    react: async () => {},
+    sendReply: async () => {},
+    downloadContentFromMessage: async (node) => {
+      assert.equal(node.mediaKey, 'k');
+      return (async function* () { yield fakeBytes; })();
+    },
+    CONFIG: { PREFIX: '.' },
+  };
+  const msg = {
+    key: { remoteJid: 'chat123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          stanzaId: 'COMP1',
+          quotedMessage: { viewOnceMessageV2: { message: { videoMessage: { url: 'https://wa.net/vid' } } } },
+        },
+      },
+    },
+  };
+  try {
+    const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+    assert.equal(res.ok, true);
+    assert.deepEqual(sock.sent[0].content.video, fakeBytes);
+  } finally {
+    delete globalThis._msgRetryStore;
+  }
+});
