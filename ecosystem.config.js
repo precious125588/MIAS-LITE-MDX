@@ -10,8 +10,8 @@ module.exports = {
     script: "./index.js",
     watch: false,
     autorestart: true,
-    max_memory_restart: restartLimitMb + "M",
-    node_args: "--max-old-space-size=" + botHeapMb + " --expose-gc",
+    max_memory_restart: Math.max(1024, restartLimitMb) + "M",
+    node_args: "--max-old-space-size=" + Math.max(1024, botHeapMb) + " --expose-gc",
     env: {
       NODE_ENV: "production",
       RESTART_COUNT: "0",

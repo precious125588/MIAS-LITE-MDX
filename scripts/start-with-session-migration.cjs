@@ -406,7 +406,7 @@ async function main() {
       process.env.NODE_OPTIONS,
       '--disable-warning=ExperimentalWarning',
       '--expose-gc',
-      '--max-old-space-size=' + (process.env.SERVER_HEAP_MB || '512')
+      '--max-old-space-size=' + (process.env.BOT_CHILD_HEAP_MB || process.env.NODE_HEAP_MB || process.env.SERVER_HEAP_MB || '1536')
     ].filter(Boolean).join(' '),
   };
 

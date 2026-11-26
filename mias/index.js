@@ -1170,6 +1170,30 @@ function readBotPrefixOverride() {
     return null;
   }
 }
+function readRawBotPrefixOverride() {
+  try {
+    const _p = botConfigPath();
+    if (!_0x2a74f2["existsSync"](_p)) return null;
+    const _cfg = JSON["parse"](_0x2a74f2["readFileSync"](_p, 'utf8'));
+    return Object["prototype"]['hasOwnProperty']["call"](_cfg, 'prefix') ? String(_cfg["prefix"]).trim() : null;
+  } catch {
+    return null;
+  }
+}
+function getInitialRawPrefix() {
+  const _file = readRawBotPrefixOverride();
+  if (_file !== null) return _file;
+  if (Object["prototype"]["hasOwnProperty"]["call"](process.env, "PREFIX")) return String(process.env.PREFIX).trim();
+  if (Object["prototype"]["hasOwnProperty"]["call"](process.env, "PREFIXES")) return String(process.env.PREFIXES).split(/\s*\|\s*|\s*,\s*/)[0].trim();
+  return '.';
+}
+function getPrefixDisplay() {
+  if (CONFIG && CONFIG["PREFIX"]) return CONFIG["PREFIX"];
+  const raw = String((CONFIG && CONFIG["RAW_PREFIX"]) || getInitialRawPrefix() || '').trim().toLowerCase();
+  if (raw === 'null') return 'null';
+  if (raw === 'none') return 'none';
+  return 'none';
+}
 function parseConfiguredPrefixes() {
   const _0x40d67f = readBotPrefixOverride();
   if (_0x40d67f !== null) {
@@ -11732,7 +11756,7 @@ function buildMenu(_0x5ebc28, _0x52e682, _0x1dd454, _0x55227c = {}) {
   let _0x268ed5 = formatBotIdentityHeader({ ..._0x55227c, 'menuType': 'allmenu' }) + '\x0a\x0a';
   _0x268ed5 += quoteSection(_0x495a05);
   _0x268ed5 += "*BOT INFORMATION*\n";
-  _0x268ed5 += "HOST: " + _0x52d46d + "\nPREFIX: " + CONFIG["PREFIX"] + "\nMODE: " + _0x215913 + "\nVERSION: " + CONFIG["VERSION"] + '\x0a';
+  _0x268ed5 += "HOST: " + _0x52d46d + "\nPREFIX: " + getPrefixDisplay() + "\nMODE: " + _0x215913 + "\nVERSION: " + CONFIG["VERSION"] + '\x0a';
   _0x268ed5 += "UPTIME: " + fmtUptime(process['uptime']()) + "\nMEMORY: " + (process["memoryUsage"]()["rss"] / 0x100000)['toFixed'](0x1) + " MB\n";
   _0x268ed5 += "COMMANDS  →  " + _0xdc5d30 + '\x0a\x0a';
   _0x268ed5 += 'COMMAND\x20CATEGORIES\x0a';
@@ -11883,7 +11907,7 @@ function buildMenuOverview(_0x5ef4f8, _0x21bc21, _0x4e6864 = {}) {
   let _0x32bfc6 = formatBotIdentityHeader({ ..._0x4e6864, 'menuType': 'menu' }) + '\x0a\x0a';
   _0x32bfc6 += quoteSection(_0x19dd22);
   _0x32bfc6 += "*BOT INFORMATION*\n";
-  _0x32bfc6 += "HOST: " + _0x1c224b + "\nPREFIX: " + CONFIG["PREFIX"] + "\nMODE: " + _0x318d16 + "\nVERSION: " + CONFIG['VERSION'] + '\x0a';
+  _0x32bfc6 += "HOST: " + _0x1c224b + "\nPREFIX: " + getPrefixDisplay() + "\nMODE: " + _0x318d16 + "\nVERSION: " + CONFIG['VERSION'] + '\x0a';
   _0x32bfc6 += "UPTIME: " + fmtUptime(process["uptime"]()) + "\nMEMORY: " + (process["memoryUsage"]()["rss"] / 0x100000)["toFixed"](0x1) + " MB\n";
   _0x32bfc6 += "COMMANDS  →  " + _0x391751 + '\x0a\x0a';
   _0x32bfc6 += 'COMMAND\x20CATEGORIES\x0a';
@@ -13148,7 +13172,7 @@ cmd(["debug", "logs", 'console'], {
   if (_0x3d001c["length"] > 0xaf0) {
     _0x3d001c = '```\x0a' + _0x10fab1["slice"](-0xaf0) + "\n```";
   }
-  const _0x155fec = "🧪 *" + CONFIG["BOT_NAME"] + " — DEBUG SNAPSHOT*\n\n╭───「 *RUNTIME* 」───\n│ " + _0x53d04b + " Connection: *" + _0x1bfa38 + "*\n│ 🤖 Bot: *" + (_0x3153f5["botName"] || CONFIG["BOT_NAME"]) + "* v" + (_0x3153f5["version"] || CONFIG["VERSION"]) + "\n│ 👑 Owner: " + (_0x3153f5["ownerNumber"] || "(auto-detect)") + '\x0a│\x20⚙️\x20\x20Mode:\x20*' + (_0x3153f5["workMode"] || "public") + '*' + (_0x3153f5["privateMode"] ? " / private gate" : '') + "\n│ 🗂️  Menu: " + (_0x3153f5["buttonsMode"] ? "interactive" : 'plain\x20text') + "\n│ 🔣 Prefix: `" + (_0x3153f5["prefix"] || CONFIG["PREFIX"] || '.') + "`\n│ 📦 Commands: *" + (_0x3153f5["commandCount"] || getPrimaryCommandCount()) + "*\n│ 🧠 Memory: " + (_0x3153f5["memoryMb"] || Math['round'](process["memoryUsage"]()["rss"] / 0x100000)) + " MB\n│ ⏱️  Uptime: " + _0x3ae8a5 + '\x0a│\x20🔑\x20Session:\x20' + (_0x3153f5["credsExists"] ? 'creds.json\x20found' : "❌ missing creds.json") + "\n╰─────────────────\n\n📜 *Recent logs* (last " + _0x51a065["length"] + ')\x0a' + _0x3d001c + "\n\n🌐 Web: " + _0x26dfe6 + "\n🧾 JSON: " + _0x2408d4 + '\x0a\x0a_Tip:\x20`' + CONFIG["PREFIX"] + "debug 50` shows the last 50 log lines._";
+  const _0x155fec = "🧪 *" + CONFIG["BOT_NAME"] + " — DEBUG SNAPSHOT*\n\n╭───「 *RUNTIME* 」───\n│ " + _0x53d04b + " Connection: *" + _0x1bfa38 + "*\n│ 🤖 Bot: *" + (_0x3153f5["botName"] || CONFIG["BOT_NAME"]) + "* v" + (_0x3153f5["version"] || CONFIG["VERSION"]) + "\n│ 👑 Owner: " + (_0x3153f5["ownerNumber"] || "(auto-detect)") + '\x0a│\x20⚙️\x20\x20Mode:\x20*' + (_0x3153f5["workMode"] || "public") + '*' + (_0x3153f5["privateMode"] ? " / private gate" : '') + "\n│ 🗂️  Menu: " + (_0x3153f5["buttonsMode"] ? "interactive" : 'plain\x20text') + "\n│ 🔣 Prefix: `" + (_0x3153f5["prefix"] || getPrefixDisplay() || '.') + "`\n│ 📦 Commands: *" + (_0x3153f5["commandCount"] || getPrimaryCommandCount()) + "*\n│ 🧠 Memory: " + (_0x3153f5["memoryMb"] || Math['round'](process["memoryUsage"]()["rss"] / 0x100000)) + " MB\n│ ⏱️  Uptime: " + _0x3ae8a5 + '\x0a│\x20🔑\x20Session:\x20' + (_0x3153f5["credsExists"] ? 'creds.json\x20found' : "❌ missing creds.json") + "\n╰─────────────────\n\n📜 *Recent logs* (last " + _0x51a065["length"] + ')\x0a' + _0x3d001c + "\n\n🌐 Web: " + _0x26dfe6 + "\n🧾 JSON: " + _0x2408d4 + '\x0a\x0a_Tip:\x20`' + CONFIG["PREFIX"] + "debug 50` shows the last 50 log lines._";
   await _sendPlainReply(_0x16bd51, _0x4a2238, _0x155fec);
 });
 cmd(["alive", "runtime", "uptime"], {
@@ -13266,6 +13290,10 @@ const {
   forwardRawArg,
   groupVcfFileName
 } = require("../lib/forwardDestination.cjs");
+const {
+  sendChatMediaOrText,
+  unwrapQuotedMessage
+} = require("../lib/chatCommand.cjs");
 cmd(["forward", "fwd"], {
   'desc': "Forward quoted or marked messages fast — .forward <number | JID | group link>",
   'category': "WHATSAPP"
@@ -13275,26 +13303,16 @@ cmd(["forward", "fwd"], {
     const _0x105287 = _0xc42502["key"]["remoteJid"];
     const _0x3d59f3 = getContextInfo(_0xc42502);
     const _0x201653 = typeof _fwdMarks !== "undefined" && _fwdMarks["get"](_0x474b4e) || [];
-    const _0x46ecdb = _0x5640f1 => {
-      let _0x4f68d0 = _0x5640f1;
-      for (let _0x3454be = 0x0; _0x3454be < 0x6 && _0x4f68d0 && typeof _0x4f68d0 === "object"; _0x3454be++) {
-        const _0x34e9fc = _0x4f68d0["ephemeralMessage"]?.["message"] || _0x4f68d0["viewOnceMessage"]?.["message"] || _0x4f68d0["viewOnceMessageV2"]?.["message"] || _0x4f68d0["viewOnceMessageV2Extension"]?.["message"] || _0x4f68d0['documentWithCaptionMessage']?.["message"] || _0x4f68d0["editedMessage"]?.["message"] || null;
-        if (!_0x34e9fc) {
-          break;
-        }
-        _0x4f68d0 = _0x34e9fc;
-      }
-      return _0x4f68d0;
-    };
+    const _0x46ecdb = (m) => (typeof unwrapQuotedMessage === "function" ? unwrapQuotedMessage(m) : m);
     let _0x81e28a = _0x46ecdb(_0x3d59f3?.["quotedMessage"]);
     if (!_0x201653["length"] && !_0x81e28a) {
       await react(_0x4bb398, _0xc42502, '❌')["catch"](() => {});
-      return sendReply(_0x4bb398, _0xc42502, '↩️\x20*Please\x20quote/reply\x20to\x20a\x20message\x20first*,\x20then\x20type:\x0a*' + CONFIG["PREFIX"] + "forward <phone number | group JID | group link>*\n\nExample: *" + CONFIG["PREFIX"] + "forward 2348012345678*");
+      return sendReply(_0x4bb398, _0xc42502, '↩️ *Please quote/reply to a message first*, then type:\n*' + (CONFIG["PREFIX"] || '') + "forward <phone number | group JID | group link>*\n\nExample: *" + (CONFIG["PREFIX"] || '') + "forward 2348012345678*");
     }
     const _0x548b35 = forwardRawArg(_0x2477b2);
     if (!_0x548b35) {
       await react(_0x4bb398, _0xc42502, '❌')['catch'](() => {});
-      return sendReply(_0x4bb398, _0xc42502, "ℹ️ *Missing destination!*\nUsage: *" + CONFIG['PREFIX'] + "forward <number | JID | group link>*\nExample: *" + CONFIG['PREFIX'] + "forward 2348012345678*");
+      return sendReply(_0x4bb398, _0xc42502, "ℹ️ *Missing destination!*\nUsage: *" + (CONFIG['PREFIX'] || '') + "forward <number | JID | group link>*\nExample: *" + (CONFIG['PREFIX'] || '') + "forward 2348012345678*");
     }
     let _0x40912b = '';
     let _0x199bf4 = '';
@@ -13329,7 +13347,7 @@ cmd(["forward", "fwd"], {
     }
     if (!_0x40912b) {
       await react(_0x4bb398, _0xc42502, '❌')["catch"](() => {});
-      return sendReply(_0x4bb398, _0xc42502, '❌\x20Invalid\x20destination:\x20*' + _0x548b35 + "*. Please provide a valid phone number, JID, or group invite link.");
+      return sendReply(_0x4bb398, _0xc42502, '❌ Invalid destination: *' + _0x548b35 + "*. Please provide a valid phone number, JID, or group invite link.");
     }
     if (_0x40912b["endsWith"]("@g.us") && !_0x199bf4) {
       try {
@@ -13341,64 +13359,7 @@ cmd(["forward", "fwd"], {
     }
     !_0x199bf4 && (_0x199bf4 = _0x40912b["endsWith"]('@g.us') ? "group " + _0x40912b['split']('@')[0x0] : '+' + _0x40912b["split"]('@')[0x0]);
     await react(_0x4bb398, _0xc42502, '⚡')['catch'](() => {});
-    const _0x95089b = async (_0x2d78f5, _0x2faa98) => {
-      if (!_0x2d78f5 || !_0x2d78f5['length']) {
-        return null;
-      }
-      const _0x652a35 = require("form-data");
-      const _0x2e4a87 = require('axios');
-      try {
-        const _0x5a5593 = new _0x652a35();
-        _0x5a5593['append']("reqtype", "fileupload");
-        _0x5a5593['append']("fileToUpload", _0x2d78f5, {
-          'filename': "fwd_" + Date["now"]() + '.' + (_0x2faa98 || "bin")
-        });
-        const _0x649972 = await _0x2e4a87["post"]("https://catbox.moe/user/api.php", _0x5a5593, {
-          'headers': _0x5a5593["getHeaders"](),
-          'timeout': 0x1f40,
-          'maxBodyLength': Infinity
-        });
-        if (_0x649972["data"] && typeof _0x649972["data"] === 'string' && _0x649972["data"]['startsWith']("http")) {
-          return _0x649972["data"]["trim"]();
-        }
-      } catch (_0x303ce4) {}
-      try {
-        const _0x72663a = new _0x652a35();
-        _0x72663a["append"]("file", _0x2d78f5, {
-          'filename': "fwd_" + Date["now"]() + '.' + (_0x2faa98 || 'bin')
-        });
-        const _0x27b156 = await _0x2e4a87["post"]('https://tmpfiles.org/api/v1/upload', _0x72663a, {
-          'headers': _0x72663a["getHeaders"](),
-          'timeout': 0x1f40,
-          'maxBodyLength': Infinity
-        });
-        if (_0x27b156['data']?.['data']?.["url"]) {
-          return _0x27b156["data"]["data"]["url"]["replace"]("tmpfiles.org/", "tmpfiles.org/dl/");
-        }
-      } catch (_0x411af4) {}
-      return null;
-    };
-    const _0x3b6cec = async (_0x8038f3, _0x109ec3) => {
-      try {
-        const _0x36ddb8 = await downloadContentFromMessage(_0x8038f3, _0x109ec3);
-        let _0x62e6ad = Buffer['alloc'](0x0);
-        for await (const _0x517286 of _0x36ddb8) {
-          _0x62e6ad = Buffer["concat"]([_0x62e6ad, _0x517286]);
-        }
-        if (_0x62e6ad && _0x62e6ad["length"] > 0x0) {
-          return _0x62e6ad;
-        }
-      } catch (_0x22a6d4) {}
-      if (typeof globalThis["__miasRobustDownload"] === "function") {
-        try {
-          const _0x381c55 = await globalThis['__miasRobustDownload'](_0x4bb398, _0x8038f3, _0x109ec3);
-          if (_0x381c55 && _0x381c55["length"] > 0x0) {
-            return _0x381c55;
-          }
-        } catch (_0xf90f58) {}
-      }
-      return null;
-    };
+
     let _0x37aa31 = "MESSAGE";
     const _0x295f17 = _0x201653["length"] ? _0x201653 : [{
       'jid': _0x105287,
@@ -13416,168 +13377,16 @@ cmd(["forward", "fwd"], {
         continue;
       }
       let _0x41d20b = ![];
-      let _tmpDiskFile = null;
-      const _downloadToDisk = async (_mediaMsg, _type, _ext = 'bin') => {
-        if (!_mediaMsg) return null;
-        const _rnd = require('crypto').randomBytes(6).toString('hex');
-        const _tmpPath = require('path').join(require('os').tmpdir(), `fwd_${Date.now()}_${_rnd}.${_ext}`);
-        _tmpDiskFile = _tmpPath;
-        try {
-          if (typeof _3b6cec === 'function') {
-            const _buf = await _3b6cec(_mediaMsg, _type);
-            if (_buf && _buf.length > 0) {
-              require('fs').writeFileSync(_tmpPath, _buf);
-              return _tmpPath;
-            }
-          }
-          if (typeof downloadContentFromMessage === 'function') {
-            const _stream = await downloadContentFromMessage(_mediaMsg, _type);
-            const _chunks = [];
-            for await (const _chunk of _stream) _chunks.push(_chunk);
-            const _buf = Buffer.concat(_chunks);
-            if (_buf && _buf.length > 0) {
-              require('fs').writeFileSync(_tmpPath, _buf);
-              return _tmpPath;
-            }
-          }
-        } catch (_e) {}
-        return null;
-      };
-
       try {
-        if (_0x3ee4e2["imageMessage"]) {
-          _0x37aa31 = "IMAGE";
-          const _tmp = await _downloadToDisk(_0x3ee4e2['imageMessage'], "image", "jpg");
-          if (_tmp && require('fs').existsSync(_tmp)) {
-            const _buf = require('fs').readFileSync(_tmp);
-            const _sent = await _0x4bb398["sendMessage"](_0x40912b, {
-              'image': _buf,
-              'caption': _0x3ee4e2["imageMessage"]["caption"] || ''
-            });
-            if (_sent?.key || _sent) _0x41d20b = !![];
-          }
-        } else if (_0x3ee4e2['videoMessage'] || _0x3ee4e2["ptvMessage"]) {
-          _0x37aa31 = "VIDEO";
-          const _4c310e = _0x3ee4e2["videoMessage"] || _0x3ee4e2['ptvMessage'];
-          const _tmp = await _downloadToDisk(_4c310e, "video", "mp4");
-          if (_tmp && require('fs').existsSync(_tmp)) {
-            const _buf = require('fs').readFileSync(_tmp);
-            const _sent = await _0x4bb398["sendMessage"](_0x40912b, {
-              'video': _buf,
-              'caption': _4c310e["caption"] || '',
-              'mimetype': _4c310e["mimetype"] || "video/mp4",
-              'gifPlayback': ![],
-              'ptv': !!_0x3ee4e2["ptvMessage"]
-            });
-            if (_sent?.key || _sent) _0x41d20b = !![];
-          }
-        } else if (_0x3ee4e2["audioMessage"]) {
-          _0x37aa31 = 'AUDIO';
-          const _tmp = await _downloadToDisk(_0x3ee4e2['audioMessage'], "audio", "ogg");
-          if (_tmp && require('fs').existsSync(_tmp)) {
-            const _buf = require('fs').readFileSync(_tmp);
-            const _sent = await _0x4bb398["sendMessage"](_0x40912b, {
-              'audio': _buf,
-              'mimetype': _0x3ee4e2["audioMessage"]["mimetype"] || "audio/ogg; codecs=opus",
-              'ptt': !!_0x3ee4e2["audioMessage"]["ptt"]
-            });
-            if (_sent?.key || _sent) _0x41d20b = !![];
-          }
-        } else if (_0x3ee4e2["stickerMessage"]) {
-          _0x37aa31 = "STICKER";
-          const _tmp = await _downloadToDisk(_0x3ee4e2['stickerMessage'], "sticker", "webp");
-          if (_tmp && require('fs').existsSync(_tmp)) {
-            const _buf = require('fs').readFileSync(_tmp);
-            const _sent = await _0x4bb398['sendMessage'](_0x40912b, {
-              'sticker': _buf,
-              'isAnimated': !!_0x3ee4e2["stickerMessage"]['isAnimated']
-            });
-            if (_sent?.key || _sent) _0x41d20b = !![];
-          }
-        } else if (_0x3ee4e2["documentMessage"]) {
-          _0x37aa31 = "DOCUMENT";
-          const _ext = String(_0x3ee4e2['documentMessage']["fileName"] || "doc.bin").split('.').pop() || "bin";
-          const _tmp = await _downloadToDisk(_0x3ee4e2["documentMessage"], "document", _ext);
-          if (_tmp && require('fs').existsSync(_tmp)) {
-            const _buf = require('fs').readFileSync(_tmp);
-            const _sent = await _0x4bb398['sendMessage'](_0x40912b, {
-              'document': _buf,
-              'mimetype': _0x3ee4e2['documentMessage']["mimetype"] || 'application/octet-stream',
-              'fileName': _0x3ee4e2['documentMessage']["fileName"] || "document",
-              'caption': _0x3ee4e2['documentMessage']["caption"] || ''
-            });
-            if (_sent?.key || _sent) _0x41d20b = !![];
-          }
-        } else {
-                  if (_0x3ee4e2["contactMessage"] || _0x3ee4e2['contactsArrayMessage']) {
-                    if (_0x3ee4e2["contactMessage"]) {
-                      await _0x4bb398["sendMessage"](_0x40912b, {
-                        'contacts': {
-                          'displayName': _0x3ee4e2["contactMessage"]['displayName'],
-                          'contacts': [{
-                            'vcard': _0x3ee4e2['contactMessage']["vcard"]
-                          }]
-                        }
-                      });
-                    } else {
-                      await _0x4bb398["sendMessage"](_0x40912b, {
-                        'contacts': {
-                          'contacts': _0x3ee4e2["contactsArrayMessage"]["contacts"]
-                        }
-                      });
-                    }
-                    _0x41d20b = !![];
-                  } else {
-                    if (_0x3ee4e2["locationMessage"] || _0x3ee4e2['liveLocationMessage']) {
-                      const _0x125ae5 = _0x3ee4e2["locationMessage"] || _0x3ee4e2["liveLocationMessage"];
-                      await _0x4bb398["sendMessage"](_0x40912b, {
-                        'location': {
-                          'degreesLatitude': _0x125ae5['degreesLatitude'],
-                          'degreesLongitude': _0x125ae5["degreesLongitude"],
-                          'name': _0x125ae5["name"] || _0x125ae5["address"] || ''
-                        }
-                      });
-                      _0x41d20b = !![];
-                    } else {
-                      const _0x403622 = _0x3ee4e2["conversation"] || _0x3ee4e2["extendedTextMessage"]?.["text"] || _0x3ee4e2["interactiveMessage"]?.['body']?.["text"] || _0x3ee4e2['buttonsMessage']?.["contentText"] || '';
-                      if (_0x403622) {
-                        await _0x4bb398['sendMessage'](_0x40912b, {
-                          'text': _0x403622
-                        });
-                        _0x41d20b = !![];
-                      } else {
-                        const _0xbcd644 = !!(_0x3ee4e2['videoMessage'] || _0x3ee4e2["ptvMessage"] || _0x3ee4e2["imageMessage"] || _0x3ee4e2["audioMessage"] || _0x3ee4e2['documentMessage'] || _0x3ee4e2["stickerMessage"]);
-                        if (!_0xbcd644) {
-                          try {
-                            await _0x4bb398["sendMessage"](_0x40912b, {
-                              'forward': {
-                                'key': {
-                                  'remoteJid': _0x570c15["jid"] || _0x105287,
-                                  'id': _0x570c15['id'] || _0x3d59f3?.["stanzaId"],
-                                  'fromMe': ![]
-                                },
-                                'message': _0x3ee4e2
-                              },
-                              'force': !![]
-                            });
-                            _0x41d20b = !![];
-                          } catch (_0x114313) {}
-                        } else {
-                          console["warn"]("[forward] Media download failed, skipping corrupt forward stub");
-                        }
-                      }
-                    }
-                  }
+        const _fwdRes = await sendChatMediaOrText(_0x4bb398, _0x40912b, _0x3ee4e2, '', {
+          downloadContentFromMessage: (typeof downloadContentFromMessage === 'function' ? downloadContentFromMessage : null)
+        });
+        if (_fwdRes && _fwdRes.success) {
+          _0x41d20b = !![];
+          _0x37aa31 = _fwdRes.type || _0x37aa31;
         }
       } catch (_0x502d30) {
-        console['error']("[fast-forward-err]", _0x502d30?.["message"] || _0x502d30);
-      } finally {
-        if (_tmpDiskFile) {
-          try {
-            if (require('fs').existsSync(_tmpDiskFile)) require('fs').unlinkSync(_tmpDiskFile);
-          } catch {}
-          _tmpDiskFile = null;
-        }
+        console['error']("[forward-send-err]", _0x502d30?.["message"] || _0x502d30);
       }
       if (_0x41d20b) {
         _0x1516c2++;
@@ -13588,26 +13397,29 @@ cmd(["forward", "fwd"], {
     _0x201653["length"] && typeof _fwdMarks !== "undefined" && _fwdMarks['delete'](_0x474b4e);
     if (_0x1516c2 > 0x0) {
       await react(_0x4bb398, _0xc42502, '✅')["catch"](() => {});
-      const _0x388159 = String(_0x199bf4 || '')["replace"](/^group\s+/i, '');
       const _0x45161f = await (async () => {
         try {
+          if (_0x40912b.endsWith('@g.us')) {
+            const meta = await _0x4bb398["groupMetadata"](_0x40912b).catch(() => null);
+            if (meta?.subject) return meta.subject.toUpperCase();
+          }
           const _0x308571 = await _0x4bb398["getName"](_0x40912b);
           if (_0x308571 && !_0x308571["includes"]('@') && !/^\d+$/["test"](_0x308571)) {
             return _0x308571["toUpperCase"]();
           }
         } catch (_0x71d361) {}
-        return "TARGET USER";
+        return _0x199bf4 ? String(_0x199bf4).replace(/^group\s+/i, '').toUpperCase() : "TARGET USER";
       })();
       const _0x30bca3 = _0x37aa31 ? _0x37aa31["toUpperCase"]() : "MESSAGE";
       return sendReply(_0x4bb398, _0xc42502, _0x30bca3 + " FORWARDED TO " + _0x45161f);
     } else {
       await react(_0x4bb398, _0xc42502, '❌')["catch"](() => {});
-      return sendReply(_0x4bb398, _0xc42502, '❌\x20*Forward\x20failed.*\x20Could\x20not\x20transfer\x20the\x20message\x20to\x20' + _0x199bf4 + '.');
+      return sendReply(_0x4bb398, _0xc42502, '❌ Forward failed. Could not transfer the message to ' + _0x199bf4 + '.');
     }
   } catch (_0x2ff4f5) {
     console["error"]("[fast-forward]", _0x2ff4f5?.["message"] || _0x2ff4f5);
     await react(_0x4bb398, _0xc42502, '❌')["catch"](() => {});
-    return sendReply(_0x4bb398, _0xc42502, '❌\x20Forward\x20error:\x20' + (_0x2ff4f5?.["message"] || "Unknown error"));
+    return sendReply(_0x4bb398, _0xc42502, '❌ Forward error: ' + (_0x2ff4f5?.["message"] || "Unknown error"));
   }
 });
 cmd(["wasted", 'drunk', "gtawasted"], {
@@ -13701,7 +13513,7 @@ cmd("owner", {
       _0x4be902 = null;
     }
     const _0x2590fe = "BEGIN:VCARD\nVERSION:3.0\nFN:" + _0x179a64 + "\nTEL;type=CELL;type=VOICE;waid=" + _0x968c5f + ':+' + _0x968c5f + '\x0aEND:VCARD';
-    const _0x55d836 = "👑 *BOT OWNER INFO*\n━━━━━━━━━━━━━━━━━━━━\n\n🧑 *Name:* " + _0x179a64 + "\n📱 *Number:* +" + _0x968c5f + '\x0a🤖\x20*Bot\x20Name:*\x20' + CONFIG["BOT_NAME"] + '\x0a🔖\x20*Version:*\x20v' + CONFIG["VERSION"] + '\x0a⌨️\x20*Commands:*\x20' + getPrimaryCommandCount() + "+\n🔑 *Prefix:* " + CONFIG["PREFIX"] + "\n👤 *Sudo Users:* " + (_0x3e84e5["length"] > 0x0 ? _0x3e84e5["length"] : "None") + "\n\n━━━━━━━━━━━━━━━━━━━━\n💬 *CONTACT OWNER*\n📲 Chat: wa.me/" + _0x968c5f + "\n📞 Number: +" + _0x968c5f + "\n\n━━━━━━━━━━━━━━━━━━━━\n_Contact owner for:_\n• Help & support\n• Sudo / admin access\n• Feature requests\n• Bot enquiries";
+    const _0x55d836 = "👑 *BOT OWNER INFO*\n━━━━━━━━━━━━━━━━━━━━\n\n🧑 *Name:* " + _0x179a64 + "\n📱 *Number:* +" + _0x968c5f + '\x0a🤖\x20*Bot\x20Name:*\x20' + CONFIG["BOT_NAME"] + '\x0a🔖\x20*Version:*\x20v' + CONFIG["VERSION"] + '\x0a⌨️\x20*Commands:*\x20' + getPrimaryCommandCount() + "+\n🔑 *Prefix:* " + getPrefixDisplay() + "\n👤 *Sudo Users:* " + (_0x3e84e5["length"] > 0x0 ? _0x3e84e5["length"] : "None") + "\n\n━━━━━━━━━━━━━━━━━━━━\n💬 *CONTACT OWNER*\n📲 Chat: wa.me/" + _0x968c5f + "\n📞 Number: +" + _0x968c5f + "\n\n━━━━━━━━━━━━━━━━━━━━\n_Contact owner for:_\n• Help & support\n• Sudo / admin access\n• Feature requests\n• Bot enquiries";
     if (_0x4be902) {
       const _0x31547e = await _0x4a8c7e["get"](_0x4be902, {
         'responseType': "arraybuffer",
@@ -19682,7 +19494,7 @@ cmd("botinfo", {
   const _0x4ee893 = activeMenuCategories(commands, aliases, MENU_CATEGORIES, _0x2772d8);
   const _0x4d804f = _0x4ee893["reduce"]((_0x574d80, _0x5c8487) => _0x574d80 + _0x5c8487['cmds']["length"], 0x0);
   const _0x59aac5 = [..._0x4ee893]["sort"]((_0x212bf4, _0x10173f) => _0x10173f["cmds"]["length"] - _0x212bf4['cmds']["length"])['slice'](0x0, 0x6)["map"](_0x3a5248 => '\x20\x20' + _0x3a5248['name'] + ':\x20' + _0x3a5248["cmds"]["length"])["join"]('\x0a');
-  const _0x3bcd1f = "🤖 *" + CONFIG["BOT_NAME"] + " — BOT INFO*\n━━━━━━━━━━━━━━━━━━━━\n\n👑 *Owner:* " + CONFIG["OWNER_NAME"] + "\n📌 *Version:* v" + CONFIG["VERSION"] + "\n🔑 *Prefix:* " + CONFIG["PREFIX"] + '\x0a⌨️\x20*Total\x20Commands:*\x20' + _0x4d804f + "\n⏱️ *Uptime:* " + _0x2d2250 + "\n👤 *Sudo Users:* " + (_0x2ed7bc || 'None') + "\n\n━━━━━━━━━━━━━━━━━━━━\n📂 *COMMAND CATEGORIES*\n" + _0x59aac5 + "\n\n━━━━━━━━━━━━━━━━━━━━\n🖥️ *HOST DETAILS*\n☁️ *Platform:* " + _0x35e258 + "\n🧱 *OS:* " + _0x49291b['type']() + '\x20' + _0x44a1ec + "\n⚙️ *CPU:* " + _0x46d855 + "\n🧠 *RAM:* " + _0x2e5260 + 'MB\x20/\x20' + _0x1816ea + "GB (" + _0x46775c + "%)\n💾 *Heap:* " + _0x139e2a + "MB used\n🟢 *Node.js:* " + _0x5edc8b;
+  const _0x3bcd1f = "🤖 *" + CONFIG["BOT_NAME"] + " — BOT INFO*\n━━━━━━━━━━━━━━━━━━━━\n\n👑 *Owner:* " + CONFIG["OWNER_NAME"] + "\n📌 *Version:* v" + CONFIG["VERSION"] + "\n🔑 *Prefix:* " + getPrefixDisplay() + '\x0a⌨️\x20*Total\x20Commands:*\x20' + _0x4d804f + "\n⏱️ *Uptime:* " + _0x2d2250 + "\n👤 *Sudo Users:* " + (_0x2ed7bc || 'None') + "\n\n━━━━━━━━━━━━━━━━━━━━\n📂 *COMMAND CATEGORIES*\n" + _0x59aac5 + "\n\n━━━━━━━━━━━━━━━━━━━━\n🖥️ *HOST DETAILS*\n☁️ *Platform:* " + _0x35e258 + "\n🧱 *OS:* " + _0x49291b['type']() + '\x20' + _0x44a1ec + "\n⚙️ *CPU:* " + _0x46d855 + "\n🧠 *RAM:* " + _0x2e5260 + 'MB\x20/\x20' + _0x1816ea + "GB (" + _0x46775c + "%)\n💾 *Heap:* " + _0x139e2a + "MB used\n🟢 *Node.js:* " + _0x5edc8b;
   const _0x231cb5 = await getBotPic();
   if (_0x231cb5) {
     try {
@@ -23843,7 +23655,7 @@ cmd(['setprefix', "prefix"], {
 }, async (_0x103982, _0x2248ba, _0x4bd3f4) => {
   if (!_0x4bd3f4[0x0]) {
     const _p = getEffectivePrefix();
-    await sendReply(_0x103982, _0x2248ba, "Usage: " + _p + "setprefix <new prefix>\nTip: *setprefix none* = commands work with no prefix. *setprefix .* = back to the dot.\nCurrent prefix: *" + (CONFIG['PREFIX'] || "(none)") + '*');
+    await sendReply(_0x103982, _0x2248ba, "Usage: " + _p + "setprefix <new prefix>\nTip: *setprefix none* = commands work with no prefix. *setprefix .* = back to the dot.\nCurrent prefix: *" + getPrefixDisplay() + '*');
     return;
   }
   const _0x2579ca = String(_0x4bd3f4["join"](' ')["trim"]()).replace(/^['"`]+|['"`]+$/g, '').trim();
@@ -23853,10 +23665,11 @@ cmd(['setprefix', "prefix"], {
     return;
   }
   CONFIG["PREFIX"] = _0x4df0f0;
+  CONFIG["RAW_PREFIX"] = _0x2579ca;
   CONFIG['PREFIXES'] = CONFIG["PREFIX"] ? [CONFIG["PREFIX"]] : [];
   process.env.PREFIX = CONFIG['PREFIX'];
   process.env.PREFIXES = CONFIG["PREFIX"];
-  const _0x51d36c = CONFIG["PREFIX"] || "(none — commands work without any prefix)";
+  const _0x51d36c = getPrefixDisplay();
   try {
     const _0x3b13b8 = botConfigPath();
     _0x2a74f2['mkdirSync'](_0xf9fd94["dirname"](_0x3b13b8), {
@@ -23871,7 +23684,7 @@ cmd(['setprefix', "prefix"], {
         }
       }
     } catch {}
-    _0x3d93ae['prefix'] = CONFIG["PREFIX"] ? CONFIG["PREFIX"] : 'none';
+    _0x3d93ae['prefix'] = CONFIG["PREFIX"] ? CONFIG["PREFIX"] : (_0x2579ca.toLowerCase() === 'null' ? 'null' : 'none');
     _0x2a74f2["writeFileSync"](_0x3b13b8, JSON["stringify"](_0x3d93ae, null, 0x2) + '\x0a', 'utf8');
   } catch (_0x495860) {
     console["error"]("[setprefix] failed to persist bot prefix:", _0x495860?.["message"] || _0x495860);
@@ -24062,7 +23875,7 @@ cmd(['eval', "shell", "sysinfo"], {
         const _0x549382 = _0x467b9b["cpus"]() || [];
         const _0x484de5 = (_0x549382[0x0]?.["model"] || "Unknown")["slice"](0x0, 0x2d);
         const _0x25f3ce = _0x467b9b["loadavg"]?.() || [0x0, 0x0, 0x0];
-        await sendReply(_0x5a5910, _0x305f89, '🖥️\x20*CREATOR\x20—\x20System\x20Info*\x0a━━━━━━━━━━━━━━━━━━━━\x0a\x0a💻\x20*Platform:*\x20' + _0x467b9b["platform"]() + '\x20(' + _0x467b9b["arch"]() + ")\n🧮 *CPU:* " + _0x484de5 + "\n🔢 *CPU Cores:* " + _0x549382["length"] + '\x0a📊\x20*Load\x20Avg:*\x20' + _0x25f3ce["map"](_0x12ff38 => _0x12ff38["toFixed"](0x2))["join"](" | ") + "\n\n🧠 *RAM:* " + _0x4ea4e2 + "MB used / " + _0x31309a + "MB total (" + _0x2f405c + "%)\n💾 *Bot Heap:* " + _0x323971 + "MB\n📦 *Node.js:* " + process['version'] + "\n🐧 *OS:* " + _0x467b9b["type"]() + '\x20' + (_0x467b9b["release"]?.() || '') + "\n\n⏱️ *System Uptime:* " + _0xbb8fe6 + "h\n🤖 *Bot Uptime:* " + _0x4fc0c6 + "\n⌨️ *Commands:* " + getPrimaryCommandCount() + "+\n🔑 *Prefix:* " + CONFIG["PREFIX"] + "\n📛 *Bot:* " + CONFIG["BOT_NAME"] + '\x20v' + CONFIG["VERSION"] + '\x0a\x0a>\x20👑\x20*CREATOR\x20ONLY*\x20—\x20');
+        await sendReply(_0x5a5910, _0x305f89, '🖥️\x20*CREATOR\x20—\x20System\x20Info*\x0a━━━━━━━━━━━━━━━━━━━━\x0a\x0a💻\x20*Platform:*\x20' + _0x467b9b["platform"]() + '\x20(' + _0x467b9b["arch"]() + ")\n🧮 *CPU:* " + _0x484de5 + "\n🔢 *CPU Cores:* " + _0x549382["length"] + '\x0a📊\x20*Load\x20Avg:*\x20' + _0x25f3ce["map"](_0x12ff38 => _0x12ff38["toFixed"](0x2))["join"](" | ") + "\n\n🧠 *RAM:* " + _0x4ea4e2 + "MB used / " + _0x31309a + "MB total (" + _0x2f405c + "%)\n💾 *Bot Heap:* " + _0x323971 + "MB\n📦 *Node.js:* " + process['version'] + "\n🐧 *OS:* " + _0x467b9b["type"]() + '\x20' + (_0x467b9b["release"]?.() || '') + "\n\n⏱️ *System Uptime:* " + _0xbb8fe6 + "h\n🤖 *Bot Uptime:* " + _0x4fc0c6 + "\n⌨️ *Commands:* " + getPrimaryCommandCount() + "+\n🔑 *Prefix:* " + getPrefixDisplay() + "\n📛 *Bot:* " + CONFIG["BOT_NAME"] + '\x20v' + CONFIG["VERSION"] + '\x0a\x0a>\x20👑\x20*CREATOR\x20ONLY*\x20—\x20');
       } else {
         await sendReply(_0x5a5910, _0x305f89, "⚙️ *" + _0x2c2c21 + '*\x20—\x20Use:\x20eval\x20<code>\x20|\x20shell\x20<cmd>\x20|\x20sysinfo');
       }

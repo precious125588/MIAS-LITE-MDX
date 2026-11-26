@@ -88,7 +88,9 @@ global.packname = 'Sticker By ' + botName;
 global.version = '2.0.0';
 
 // ── 3. Command Prefixes & Navigation ──────────────────────────────────────
-const configuredPrefix = (process.env.PREFIX || '.').trim();
+const rawEnvPrefix = process.env.PREFIX !== undefined ? String(process.env.PREFIX).trim() : '.';
+const isNoPrefix = ['none', 'null', 'empty', 'no', 'off', 'false', '0', '""', "''", 'noprefix', 'all'].includes(rawEnvPrefix.toLowerCase());
+const configuredPrefix = isNoPrefix ? (rawEnvPrefix.toLowerCase() === 'null' ? 'null' : 'none') : (rawEnvPrefix || '.');
 global.xprefix = configuredPrefix;
 global.prefa = ['', '!', '.', '#', '&'];
 

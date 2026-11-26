@@ -61,6 +61,9 @@ export function runCommandDetached(sock, msg, name, isOwnerish, fn) {
     .finally(() => {
       state.active--;
       state.lastCommandAt = Date.now();
+      if (typeof globalThis.gc === 'function' && state.active === 0) {
+        try { globalThis.gc(); } catch {}
+      }
     });
 }
 
