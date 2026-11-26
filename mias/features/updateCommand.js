@@ -90,7 +90,104 @@ export function readLocalCommit() {
  * { unknown: true } when the commits cannot be compared (treated as a code change),
  * or null on a transient failure (the poller retries on its next cycle).
  */
-export function fetchChangedFiles(baseSha, headSha, token = process.env.GITHUB_TOKEN || null) {
+/**
+ * Public GitHub Atom commits feed parser.
+ * Immune to GitHub REST API 60 req/hr 403 rate limits.
+ */
+export function fetchAtomCommits(slug = REPO_SLUG, branch = REPO_BRANCH, limit = 20) {
+  return new Promise((resolve) => {
+    const url = `https://github.com/${slug}/commits/${branch}.atom`;
+    const req = https.get(
+      url,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; mias-lite-mdx/1.0)",
+          "Accept": "application/atom+xml,application/xml,text/xml,*/*",
+        },
+        timeout: 10000,
+      },
+      (res) => {
+        if (res.statusCode !== 200) return resolve([]);
+        let body = "";
+        res.on("data", (chunk) => { body += chunk; });
+        res.on("end", () => {
+          try {
+            const list = [];
+            const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+            let match;
+            while ((match = entryRegex.exec(body)) !== null && list.length < limit) {
+              const block = match[1];
+              const idMatch =
+                block.match(/Commit\/([0-9a-f]{40})/i) ||
+                block.match(/\/commit\/([0-9a-f]{40})/i) ||
+                block.match(/<id>[^<]*?([0-9a-f]{40})[^<]*?<\/id>/i);
+              const sha = idMatch ? idMatch[1].toLowerCase() : null;
+              if (!sha) continue;
+
+              const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/);
+              let message = titleMatch ? titleMatch[1].trim() : "Latest commit";
+              message = message
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/&#x27;/g, "'")
+                .split("\n")[0]
+                .trim();
+
+              const authorMatch = block.match(/<author>[\s\S]*?<name>([\s\S]*?)<\/name>/);
+              const author = authorMatch ? authorMatch[1].trim() : "precious125588";
+
+              const dateMatch = block.match(/<updated>([\s\S]*?)<\/updated>/);
+              const date = dateMatch ? dateMatch[1].trim() : new Date().toISOString();
+
+              list.push({
+                sha,
+                shortSha: sha.slice(0, 7),
+                message,
+                author,
+                date,
+              });
+            }
+            resolve(list);
+          } catch {
+            resolve([]);
+          }
+        });
+      }
+    );
+    req.on("timeout", () => {
+      req.destroy();
+      resolve([]);
+    });
+    req.on("error", () => resolve([]));
+  });
+}
+
+/**
+ * Fetch remote head SHA using git ls-remote (smart HTTP, no REST API rate limit)
+ */
+export function fetchLsRemoteHead(slug = REPO_SLUG, branch = REPO_BRANCH) {
+  try {
+    const out = execSync(`git ls-remote https://github.com/${slug}.git refs/heads/${branch}`, {
+      encoding: "utf8",
+      timeout: 10000,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const m = out.match(/^([0-9a-f]{40})/i);
+    return m ? m[1].toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Files changed between two commits. Returns { files } when GitHub answered,
+ * { unknown: true } when the commits cannot be compared (treated as a code change),
+ * or null on a transient failure (the poller retries on its next cycle).
+ */
+export function fetchChangedFiles(baseSha, headSha, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null) {
   return new Promise((resolve) => {
     const req = https.request(
       {
@@ -108,7 +205,9 @@ export function fetchChangedFiles(baseSha, headSha, token = process.env.GITHUB_T
         let body = "";
         res.on("data", (chunk) => { body += chunk; });
         res.on("end", () => {
-          if (res.statusCode === 404 || res.statusCode === 422) return resolve({ unknown: true });
+          if (res.statusCode === 404 || res.statusCode === 422 || res.statusCode === 403 || res.statusCode === 429) {
+            return resolve({ unknown: true });
+          }
           if (res.statusCode !== 200) return resolve(null);
           try {
             const files = (JSON.parse(body)?.files || []).map((f) => f.filename);
@@ -116,22 +215,29 @@ export function fetchChangedFiles(baseSha, headSha, token = process.env.GITHUB_T
             if (files.length >= 300) return resolve({ unknown: true });
             resolve({ files });
           } catch {
-            resolve(null);
+            resolve({ unknown: true });
           }
         });
       }
     );
-    req.on("error", () => resolve(null));
-    req.on("timeout", () => req.destroy());
+    req.on("error", () => resolve({ unknown: true }));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve({ unknown: true });
+    });
     req.end();
   });
 }
 
 /**
- * Fetch latest commit details from GitHub REST API
+ * Fetch latest commit details with multi-tier fallback:
+ * 1. GitHub REST API (if available / within rate limits)
+ * 2. Public GitHub Atom feed (rate-limit immune)
+ * 3. Git ls-remote (smart HTTP)
  */
-export function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || null) {
-  return new Promise((resolve) => {
+export async function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null) {
+  // Tier 1: Try GitHub REST API
+  const restResult = await new Promise((resolve) => {
     const req = https.request(
       {
         host: "api.github.com",
@@ -161,7 +267,7 @@ export function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || null) {
             const message = String(real?.commit?.message || "").split("\n")[0].trim() || "Latest commit";
             const author = real?.commit?.author?.name || real?.author?.login || "Developer";
             const date = real?.commit?.author?.date || new Date().toISOString();
-            resolve({ sha, message, author, date });
+            resolve({ sha, message, author, date, source: "rest" });
           } catch {
             resolve({ sha: null, error: "Invalid JSON response from GitHub" });
           }
@@ -175,6 +281,38 @@ export function fetchRemoteCommit(token = process.env.GITHUB_TOKEN || null) {
     req.on("error", (e) => resolve({ sha: null, error: e.message || "Network error" }));
     req.end();
   });
+
+  if (restResult?.sha) return restResult;
+
+  // Tier 2: Fallback to GitHub public Atom feed (rate-limit immune, zero 403 errors)
+  try {
+    const feed = await fetchAtomCommits(REPO_SLUG, REPO_BRANCH, 10);
+    if (Array.isArray(feed) && feed.length > 0) {
+      const head = feed[0];
+      const real = feed.find((c) => !isStampCommitMessage(c.message)) || head;
+      return {
+        sha: head.sha,
+        message: real.message,
+        author: real.author,
+        date: real.date,
+        source: "atom-feed",
+      };
+    }
+  } catch {}
+
+  // Tier 3: Fallback to git ls-remote (smart HTTP)
+  const lsSha = fetchLsRemoteHead(REPO_SLUG, REPO_BRANCH);
+  if (lsSha) {
+    return {
+      sha: lsSha,
+      message: "Latest commit",
+      author: "precious125588",
+      date: new Date().toISOString(),
+      source: "git-ls-remote",
+    };
+  }
+
+  return restResult;
 }
 
 /** True for the automatic build-stamp commit, which carries no fix of its own. */
@@ -184,10 +322,10 @@ export function isStampCommitMessage(message) {
 
 /**
  * Every real commit message between two commits, newest first, build-stamp commits left out.
- * Returns [] when GitHub cannot compare them.
+ * Falls back to public Atom feed if GitHub compare hits 403 rate limits.
  */
-export function fetchFixes(baseSha, headSha, token = process.env.GITHUB_TOKEN || null) {
-  return new Promise((resolve) => {
+export async function fetchFixes(baseSha, headSha, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null) {
+  const restFixes = await new Promise((resolve) => {
     const req = https.request(
       {
         host: "api.github.com",
@@ -204,7 +342,7 @@ export function fetchFixes(baseSha, headSha, token = process.env.GITHUB_TOKEN ||
         let body = "";
         res.on("data", (chunk) => { body += chunk; });
         res.on("end", () => {
-          if (res.statusCode !== 200) return resolve([]);
+          if (res.statusCode !== 200) return resolve(null);
           try {
             const commits = JSON.parse(body)?.commits || [];
             const fixes = commits
@@ -214,22 +352,46 @@ export function fetchFixes(baseSha, headSha, token = process.env.GITHUB_TOKEN ||
               .filter((m) => m && !isStampCommitMessage(m));
             resolve([...new Set(fixes)].slice(0, 6));
           } catch {
-            resolve([]);
+            resolve(null);
           }
         });
       }
     );
-    req.on("error", () => resolve([]));
+    req.on("error", () => resolve(null));
     req.on("timeout", () => req.destroy());
     req.end();
   });
+
+  if (Array.isArray(restFixes)) return restFixes;
+
+  // Fallback: extract commit messages from Atom feed
+  try {
+    const feed = await fetchAtomCommits(REPO_SLUG, REPO_BRANCH, 20);
+    if (feed.length > 0) {
+      const fixes = [];
+      for (const entry of feed) {
+        if (baseSha && entry.sha.toLowerCase().startsWith(baseSha.slice(0, 7).toLowerCase())) {
+          break;
+        }
+        if (!isStampCommitMessage(entry.message)) {
+          fixes.push(entry.message);
+        }
+      }
+      if (fixes.length > 0) return [...new Set(fixes)].slice(0, 6);
+    }
+  } catch {}
+
+  return [];
 }
 
 /**
- * Fetch list of recent commits from GitHub REST API (fallback to local git log)
+ * Fetch list of recent commits:
+ * 1. GitHub REST API (if available)
+ * 2. GitHub public Atom feed (rate-limit immune)
+ * 3. Local git log / cache
  */
-export function fetchRecentCommits(count = 10, token = process.env.GITHUB_TOKEN || null) {
-  return new Promise((resolve) => {
+export async function fetchRecentCommits(count = 10, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null) {
+  const restCommits = await new Promise((resolve) => {
     const req = https.request(
       {
         host: "api.github.com",
@@ -247,12 +409,12 @@ export function fetchRecentCommits(count = 10, token = process.env.GITHUB_TOKEN 
         res.on("data", (chunk) => { body += chunk; });
         res.on("end", () => {
           if (res.statusCode !== 200) {
-            return resolve(fetchLocalCommits(count));
+            return resolve(null);
           }
           try {
             const data = JSON.parse(body) || [];
             if (!Array.isArray(data) || data.length === 0) {
-              return resolve(fetchLocalCommits(count));
+              return resolve(null);
             }
             const commits = data.map((item) => ({
               sha: (item.sha || "").toLowerCase(),
@@ -261,21 +423,37 @@ export function fetchRecentCommits(count = 10, token = process.env.GITHUB_TOKEN 
               author: item.commit?.author?.name || item.author?.login || "Developer",
               date: item.commit?.author?.date || "",
             }));
-            saveRecentCommitsCache(commits);
             resolve(commits);
           } catch {
-            resolve(fetchLocalCommits(count));
+            resolve(null);
           }
         });
       }
     );
     req.on("timeout", () => {
       req.destroy();
-      resolve(fetchLocalCommits(count));
+      resolve(null);
     });
-    req.on("error", () => resolve(fetchLocalCommits(count)));
+    req.on("error", () => resolve(null));
     req.end();
   });
+
+  if (Array.isArray(restCommits) && restCommits.length > 0) {
+    saveRecentCommitsCache(restCommits);
+    return restCommits;
+  }
+
+  // Fallback 1: GitHub Atom feed (rate-limit immune)
+  try {
+    const feed = await fetchAtomCommits(REPO_SLUG, REPO_BRANCH, count);
+    if (Array.isArray(feed) && feed.length > 0) {
+      saveRecentCommitsCache(feed);
+      return feed;
+    }
+  } catch {}
+
+  // Fallback 2: Local git log / cached commits
+  return fetchLocalCommits(count);
 }
 
 /**
