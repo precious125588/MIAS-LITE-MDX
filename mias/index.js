@@ -13415,114 +13415,100 @@ cmd(["forward", "fwd"], {
         _0x150af5++;
         continue;
       }
-      if (_0x3ee4e2["imageMessage"] || _0x3ee4e2["videoMessage"] || _0x3ee4e2["ptvMessage"] || _0x3ee4e2["audioMessage"] || _0x3ee4e2["documentMessage"] || _0x3ee4e2["stickerMessage"]) {
-        try {
-          const _0x4908b7 = _0x570c15["jid"] || _0x105287;
-          await _0x4bb398["sendMessage"](_0x40912b, {
-            'forward': {
-              'key': {
-                'remoteJid': _0x4908b7,
-                'id': _0x570c15['id'] || _0x3d59f3?.["stanzaId"],
-                'fromMe': ![],
-                'participant': _0x4908b7["endsWith"]('@g.us') ? _0x570c15["from"] || _0x3d59f3?.["participant"] || undefined : undefined
-              },
-              'message': _0x3ee4e2
-            }
-          });
-          _0x1516c2++;
-          continue;
-        } catch (_0x5f417f) {
-          console["warn"]("[forward] reference forward failed, falling back to download:", _0x5f417f?.["message"] || _0x5f417f);
-        }
-      }
       let _0x41d20b = ![];
+      let _tmpDiskFile = null;
+      const _downloadToDisk = async (_mediaMsg, _type, _ext = 'bin') => {
+        if (!_mediaMsg) return null;
+        const _rnd = require('crypto').randomBytes(6).toString('hex');
+        const _tmpPath = require('path').join(require('os').tmpdir(), `fwd_${Date.now()}_${_rnd}.${_ext}`);
+        _tmpDiskFile = _tmpPath;
+        try {
+          if (typeof _3b6cec === 'function') {
+            const _buf = await _3b6cec(_mediaMsg, _type);
+            if (_buf && _buf.length > 0) {
+              require('fs').writeFileSync(_tmpPath, _buf);
+              return _tmpPath;
+            }
+          }
+          if (typeof downloadContentFromMessage === 'function') {
+            const _stream = await downloadContentFromMessage(_mediaMsg, _type);
+            const _chunks = [];
+            for await (const _chunk of _stream) _chunks.push(_chunk);
+            const _buf = Buffer.concat(_chunks);
+            if (_buf && _buf.length > 0) {
+              require('fs').writeFileSync(_tmpPath, _buf);
+              return _tmpPath;
+            }
+          }
+        } catch (_e) {}
+        return null;
+      };
+
       try {
         if (_0x3ee4e2["imageMessage"]) {
-          const _0x3f0b10 = await _0x3b6cec(_0x3ee4e2['imageMessage'], "image");
-          if (_0x3f0b10) {
-            const _0x1bbe1a = await _0x95089b(_0x3f0b10, "jpg");
-            if (_0x1bbe1a) {
-              await _0x4bb398["sendMessage"](_0x40912b, {
-                'image': {
-                  'url': _0x1bbe1a
-                },
-                'caption': _0x3ee4e2["imageMessage"]['caption'] || ''
-              });
-            } else {
-              await _0x4bb398["sendMessage"](_0x40912b, {
-                'image': _0x3f0b10,
-                'caption': _0x3ee4e2["imageMessage"]["caption"] || ''
-              });
-            }
-            _0x41d20b = !![];
+          _0x37aa31 = "IMAGE";
+          const _tmp = await _downloadToDisk(_0x3ee4e2['imageMessage'], "image", "jpg");
+          if (_tmp && require('fs').existsSync(_tmp)) {
+            const _buf = require('fs').readFileSync(_tmp);
+            const _sent = await _0x4bb398["sendMessage"](_0x40912b, {
+              'image': _buf,
+              'caption': _0x3ee4e2["imageMessage"]["caption"] || ''
+            });
+            if (_sent?.key || _sent) _0x41d20b = !![];
+          }
+        } else if (_0x3ee4e2['videoMessage'] || _0x3ee4e2["ptvMessage"]) {
+          _0x37aa31 = "VIDEO";
+          const _4c310e = _0x3ee4e2["videoMessage"] || _0x3ee4e2['ptvMessage'];
+          const _tmp = await _downloadToDisk(_4c310e, "video", "mp4");
+          if (_tmp && require('fs').existsSync(_tmp)) {
+            const _buf = require('fs').readFileSync(_tmp);
+            const _sent = await _0x4bb398["sendMessage"](_0x40912b, {
+              'video': _buf,
+              'caption': _4c310e["caption"] || '',
+              'mimetype': _4c310e["mimetype"] || "video/mp4",
+              'gifPlayback': ![],
+              'ptv': !!_0x3ee4e2["ptvMessage"]
+            });
+            if (_sent?.key || _sent) _0x41d20b = !![];
+          }
+        } else if (_0x3ee4e2["audioMessage"]) {
+          _0x37aa31 = 'AUDIO';
+          const _tmp = await _downloadToDisk(_0x3ee4e2['audioMessage'], "audio", "ogg");
+          if (_tmp && require('fs').existsSync(_tmp)) {
+            const _buf = require('fs').readFileSync(_tmp);
+            const _sent = await _0x4bb398["sendMessage"](_0x40912b, {
+              'audio': _buf,
+              'mimetype': _0x3ee4e2["audioMessage"]["mimetype"] || "audio/ogg; codecs=opus",
+              'ptt': !!_0x3ee4e2["audioMessage"]["ptt"]
+            });
+            if (_sent?.key || _sent) _0x41d20b = !![];
+          }
+        } else if (_0x3ee4e2["stickerMessage"]) {
+          _0x37aa31 = "STICKER";
+          const _tmp = await _downloadToDisk(_0x3ee4e2['stickerMessage'], "sticker", "webp");
+          if (_tmp && require('fs').existsSync(_tmp)) {
+            const _buf = require('fs').readFileSync(_tmp);
+            const _sent = await _0x4bb398['sendMessage'](_0x40912b, {
+              'sticker': _buf,
+              'isAnimated': !!_0x3ee4e2["stickerMessage"]['isAnimated']
+            });
+            if (_sent?.key || _sent) _0x41d20b = !![];
+          }
+        } else if (_0x3ee4e2["documentMessage"]) {
+          _0x37aa31 = "DOCUMENT";
+          const _ext = String(_0x3ee4e2['documentMessage']["fileName"] || "doc.bin").split('.').pop() || "bin";
+          const _tmp = await _downloadToDisk(_0x3ee4e2["documentMessage"], "document", _ext);
+          if (_tmp && require('fs').existsSync(_tmp)) {
+            const _buf = require('fs').readFileSync(_tmp);
+            const _sent = await _0x4bb398['sendMessage'](_0x40912b, {
+              'document': _buf,
+              'mimetype': _0x3ee4e2['documentMessage']["mimetype"] || 'application/octet-stream',
+              'fileName': _0x3ee4e2['documentMessage']["fileName"] || "document",
+              'caption': _0x3ee4e2['documentMessage']["caption"] || ''
+            });
+            if (_sent?.key || _sent) _0x41d20b = !![];
           }
         } else {
-          if (_0x3ee4e2['videoMessage'] || _0x3ee4e2["ptvMessage"]) {
-            _0x37aa31 = "VIDEO";
-            const _0x4c310e = _0x3ee4e2["videoMessage"] || _0x3ee4e2['ptvMessage'];
-            const _0x32ce1f = await _0x3b6cec(_0x4c310e, "video");
-            _0x32ce1f && _0x32ce1f['length'] > 0x0 ? (await _0x4bb398["sendMessage"](_0x40912b, {
-              'video': _0x32ce1f,
-              'caption': _0x4c310e["caption"] || '',
-              'mimetype': _0x4c310e["mimetype"] || "video/mp4",
-              'ptv': !!_0x3ee4e2["ptvMessage"]
-            }), _0x41d20b = !![]) : console["error"]("[forward] Failed to download video bytes for forwarding");
-          } else {
-            if (_0x3ee4e2["audioMessage"]) {
-              _0x37aa31 = 'AUDIO';
-              const _0x149a23 = await _0x3b6cec(_0x3ee4e2['audioMessage'], "audio");
-              if (_0x149a23) {
-                const _0x519251 = await _0x95089b(_0x149a23, "mp3");
-                if (_0x519251) {
-                  await _0x4bb398["sendMessage"](_0x40912b, {
-                    'audio': {
-                      'url': _0x519251
-                    },
-                    'mimetype': _0x3ee4e2["audioMessage"]["mimetype"] || 'audio/ogg;\x20codecs=opus',
-                    'ptt': !!_0x3ee4e2["audioMessage"]["ptt"]
-                  });
-                } else {
-                  await _0x4bb398["sendMessage"](_0x40912b, {
-                    'audio': _0x149a23,
-                    'mimetype': _0x3ee4e2["audioMessage"]["mimetype"] || "audio/ogg; codecs=opus",
-                    'ptt': !!_0x3ee4e2["audioMessage"]["ptt"]
-                  });
-                }
-                _0x41d20b = !![];
-              }
-            } else {
-              if (_0x3ee4e2["stickerMessage"]) {
-                _0x37aa31 = "STICKER";
-                const _0x2cd9d3 = await _0x3b6cec(_0x3ee4e2['stickerMessage'], "sticker");
-                _0x2cd9d3 && (await _0x4bb398['sendMessage'](_0x40912b, {
-                  'sticker': _0x2cd9d3,
-                  'isAnimated': !!_0x3ee4e2["stickerMessage"]['isAnimated']
-                }), _0x41d20b = !![]);
-              } else {
-                if (_0x3ee4e2["documentMessage"]) {
-                  _0x37aa31 = "DOCUMENT";
-                  const _0x20277f = await _0x3b6cec(_0x3ee4e2["documentMessage"], "document");
-                  if (_0x20277f) {
-                    const _0x1037c1 = String(_0x3ee4e2['documentMessage']["fileName"] || "doc.bin")["split"]('.')["pop"]() || "bin";
-                    const _0x285459 = await _0x95089b(_0x20277f, _0x1037c1);
-                    if (_0x285459) {
-                      await _0x4bb398["sendMessage"](_0x40912b, {
-                        'document': {
-                          'url': _0x285459
-                        },
-                        'mimetype': _0x3ee4e2["documentMessage"]["mimetype"] || "application/octet-stream",
-                        'fileName': _0x3ee4e2["documentMessage"]["fileName"] || "document"
-                      });
-                    } else {
-                      await _0x4bb398['sendMessage'](_0x40912b, {
-                        'document': _0x20277f,
-                        'mimetype': _0x3ee4e2['documentMessage']["mimetype"] || 'application/octet-stream',
-                        'fileName': _0x3ee4e2['documentMessage']["fileName"] || "document"
-                      });
-                    }
-                    _0x41d20b = !![];
-                  }
-                } else {
                   if (_0x3ee4e2["contactMessage"] || _0x3ee4e2['contactsArrayMessage']) {
                     if (_0x3ee4e2["contactMessage"]) {
                       await _0x4bb398["sendMessage"](_0x40912b, {
@@ -13582,13 +13568,16 @@ cmd(["forward", "fwd"], {
                       }
                     }
                   }
-                }
-              }
-            }
-          }
         }
       } catch (_0x502d30) {
         console['error']("[fast-forward-err]", _0x502d30?.["message"] || _0x502d30);
+      } finally {
+        if (_tmpDiskFile) {
+          try {
+            if (require('fs').existsSync(_tmpDiskFile)) require('fs').unlinkSync(_tmpDiskFile);
+          } catch {}
+          _tmpDiskFile = null;
+        }
       }
       if (_0x41d20b) {
         _0x1516c2++;
@@ -37351,7 +37340,17 @@ cmd(["scstatus", "schedulestatus"], {
 }, async (_sock, _msg, _args) => {
   const jid = _msg?.key?.remoteJid;
   const input = (_args || []).join(' ').trim();
-  const quoted = _msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+  let quoted = _msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+  for (let i = 0; i < 5 && quoted; i++) {
+    const inner = quoted.viewOnceMessage?.message
+      || quoted.viewOnceMessageV2?.message
+      || quoted.viewOnceMessageV2Extension?.message
+      || quoted.ephemeralMessage?.message
+      || quoted.documentWithCaptionMessage?.message;
+    if (!inner || inner === quoted) break;
+    quoted = inner;
+  }
 
   if (input === 'list') {
     const { getScheduleStatus } = await import('./lib/eplugins/miasState.js');
@@ -37376,47 +37375,145 @@ cmd(["scstatus", "schedulestatus"], {
     return;
   }
 
-  if (quoted) {
-    const timeArg = input || 'now';
-    if (timeArg === 'now') {
-      try {
-        const mime = quoted?.imageMessage?.mimetype || quoted?.videoMessage?.mimetype || '';
-        const isVideo = mime.startsWith('video');
-        const isImg = mime.startsWith('image');
-        if (isVideo || isImg) {
-          const stream = await downloadContentFromMessage(quoted.imageMessage || quoted.videoMessage, isVideo ? 'video' : 'image');
-          let buffer = Buffer.from([]);
-          for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
-          if (isVideo) {
-            await _sock.sendMessage('status@broadcast', { video: buffer, caption: input || quoted?.videoMessage?.caption || '' });
-          } else {
-            await _sock.sendMessage('status@broadcast', { image: buffer, caption: input || quoted?.imageMessage?.caption || '' });
-          }
-          await sendReply(_sock, _msg, '_Status updated successfully._');
-          return;
-        } else {
-          const txt = quoted?.conversation || quoted?.extendedTextMessage?.text || input;
-          if (txt) {
-            await _sock.sendMessage('status@broadcast', { text: txt });
-            await sendReply(_sock, _msg, '_Status updated successfully._');
-            return;
-          }
-        }
-      } catch (err) {
-        console.error('[scstatus] direct status error:', err?.message || err);
-      }
-    }
+  const isScheduleTime = input.startsWith('at ') || input.startsWith('in ') || /^\d{1,2}:\d{2}/.test(input);
+
+  if (isScheduleTime) {
     const { createStatusSchedule } = await import('./lib/eplugins/miasState.js');
-    await createStatusSchedule(timeArg, 'media', [], jid || '0');
-    await sendReply(_sock, _msg, `_Status scheduled for ${timeArg}._`);
+    await createStatusSchedule(input, quoted ? 'media' : input, [], jid || '0');
+    await sendReply(_sock, _msg, `_Status scheduled for ${input}._`);
     return;
   }
 
-  if (input) {
-    const { createStatusSchedule } = await import('./lib/eplugins/miasState.js');
-    await createStatusSchedule(input, input, [], jid || '0');
-    await sendReply(_sock, _msg, `_Status scheduled for ${input}._`);
+  // ── Audience collection so status actually posts and reaches contacts ──
+  const jidSet = new Set();
+  try {
+    const contacts = _sock.store?.contacts || globalThis.store?.contacts || {};
+    for (const k of Object.keys(contacts)) {
+      if (k.endsWith('@s.whatsapp.net') && !k.includes(':')) jidSet.add(k);
+    }
+  } catch {}
+  try {
+    const chats = _sock.store?.chats || globalThis.store?.chats || _sock.chats || {};
+    for (const k of Object.keys(chats)) {
+      if (k.endsWith('@s.whatsapp.net') && !k.includes(':')) jidSet.add(k);
+    }
+  } catch {}
+  try {
+    if (typeof _knownContacts !== 'undefined' && _knownContacts) {
+      for (const k of _knownContacts) {
+        if (typeof k === 'string' && k.endsWith('@s.whatsapp.net') && !k.includes(':')) jidSet.add(k);
+      }
+    }
+  } catch {}
+  try {
+    const groups = await _sock.groupFetchAllParticipating().catch(() => ({}));
+    for (const g of Object.values(groups || {})) {
+      for (const p of g.participants || []) {
+        const pj = typeof p.id === 'string' ? p.id : String(p.id || '');
+        const clean = pj.includes(':') ? pj.split(':')[0] + '@s.whatsapp.net' : pj;
+        if (clean.endsWith('@s.whatsapp.net')) jidSet.add(clean);
+      }
+    }
+  } catch {}
+  const senderJid = typeof getSender === 'function' ? getSender(_msg) : (_msg?.key?.participant || _msg?.key?.remoteJid);
+  if (senderJid && senderJid.endsWith('@s.whatsapp.net')) jidSet.add(senderJid);
+  const _selfJid = _sock.user?.id ? (_sock.user.id.includes(':') ? _sock.user.id.split(':')[0] + '@s.whatsapp.net' : _sock.user.id) : null;
+  if (_selfJid) jidSet.add(_selfJid);
+  const statusJidList = Array.from(jidSet);
+
+  const imgMsg = quoted?.imageMessage || _msg?.message?.imageMessage;
+  const vidMsg = quoted?.videoMessage || quoted?.ptvMessage || _msg?.message?.videoMessage;
+  const audMsg = quoted?.audioMessage || _msg?.message?.audioMessage;
+  const textContent = input || quoted?.conversation || quoted?.extendedTextMessage?.text || '';
+
+  let tempStatusFile = null;
+  const _downloadStatusToDisk = async (mediaMsg, type, ext = 'bin') => {
+    if (!mediaMsg) return null;
+    const rnd = require('crypto').randomBytes(6).toString('hex');
+    const tmp = require('path').join(require('os').tmpdir(), `status_${Date.now()}_${rnd}.${ext}`);
+    tempStatusFile = tmp;
+    try {
+      if (typeof mediaMsg.download === 'function') {
+        const b = await mediaMsg.download();
+        if (b && b.length > 0) {
+          require('fs').writeFileSync(tmp, b);
+          return tmp;
+        }
+      }
+      if (typeof downloadContentFromMessage === 'function') {
+        const stream = await downloadContentFromMessage(mediaMsg, type);
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        const b = Buffer.concat(chunks);
+        if (b && b.length > 0) {
+          require('fs').writeFileSync(tmp, b);
+          return tmp;
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const _postStatus = async (payload) => {
+    let sent = null;
+    let lastErr = null;
+    if (statusJidList.length > 0) {
+      try {
+        sent = await _sock.sendMessage('status@broadcast', payload, { statusJidList });
+      } catch (e) { lastErr = e; }
+    }
+    if (!sent?.key?.id) {
+      try {
+        sent = await _sock.sendMessage('status@broadcast', payload);
+      } catch (e2) { lastErr = e2; }
+    }
+    if (!sent?.key?.id && lastErr) throw lastErr;
+    return sent;
+  };
+
+  try {
+    if (imgMsg) {
+      const tmp = await _downloadStatusToDisk(imgMsg, 'image', 'jpg');
+      if (!tmp || !require('fs').existsSync(tmp)) throw new Error('Could not download image');
+      const buffer = require('fs').readFileSync(tmp);
+      await _postStatus({ image: buffer, caption: input || imgMsg.caption || '' });
+      await react(_sock, _msg, '✅').catch(() => {});
+      await sendReply(_sock, _msg, '_Status updated successfully._');
+      return;
+    } else if (vidMsg) {
+      const tmp = await _downloadStatusToDisk(vidMsg, 'video', 'mp4');
+      if (!tmp || !require('fs').existsSync(tmp)) throw new Error('Could not download video');
+      const buffer = require('fs').readFileSync(tmp);
+      await _postStatus({ video: buffer, caption: input || vidMsg.caption || '', mimetype: vidMsg.mimetype || 'video/mp4', gifPlayback: false });
+      await react(_sock, _msg, '✅').catch(() => {});
+      await sendReply(_sock, _msg, '_Status updated successfully._');
+      return;
+    } else if (audMsg) {
+      const tmp = await _downloadStatusToDisk(audMsg, 'audio', 'ogg');
+      if (!tmp || !require('fs').existsSync(tmp)) throw new Error('Could not download audio');
+      const buffer = require('fs').readFileSync(tmp);
+      await _postStatus({ audio: buffer, mimetype: audMsg.mimetype || 'audio/ogg; codecs=opus', ptt: false });
+      await react(_sock, _msg, '✅').catch(() => {});
+      await sendReply(_sock, _msg, '_Status updated successfully._');
+      return;
+    } else if (textContent) {
+      await _postStatus({ text: textContent, backgroundColor: '#075E54', font: 1 });
+      await react(_sock, _msg, '✅').catch(() => {});
+      await sendReply(_sock, _msg, '_Status updated successfully._');
+      return;
+    }
+  } catch (err) {
+    console.error('[scstatus] direct status error:', err?.message || err);
+    await react(_sock, _msg, '❌').catch(() => {});
+    await sendReply(_sock, _msg, '❌ Failed to post status: ' + (err?.message || err));
     return;
+  } finally {
+    if (tempStatusFile) {
+      try {
+        if (require('fs').existsSync(tempStatusFile)) require('fs').unlinkSync(tempStatusFile);
+      } catch {}
+      tempStatusFile = null;
+    }
   }
 
   await sendReply(_sock, _msg, 'Usage:\n' + CONFIG["PREFIX"] + 'scstatus list\n' + CONFIG["PREFIX"] + 'scstatus del <time>\n' + CONFIG["PREFIX"] + 'scstatus <time> (reply to media/text)\n' + CONFIG["PREFIX"] + 'scstatus (reply to media/text to set immediately)');

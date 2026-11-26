@@ -190,8 +190,13 @@ bot(
       }
     }
     if (trimmed) {
-      await createStatusSchedule(trimmed, trimmed, [], message.id)
-      return await message.send(`_Status scheduled for ${trimmed}._`)
+      const isScheduleTime = trimmed.startsWith('at ') || trimmed.startsWith('in ') || /^\d{1,2}:\d{2}/.test(trimmed);
+      if (isScheduleTime) {
+        await createStatusSchedule(trimmed, trimmed, [], message.id);
+        return await message.send(`_Status scheduled for ${trimmed}._`);
+      }
+      await message.setStatus(trimmed, { type: 'text' });
+      return await message.send('_Status updated successfully._');
     }
     return await message.send('Usage:\n.scstatus list\n.scstatus del <time>\n.scstatus <time> (reply to media/text)\n.scstatus (reply to media/text to set immediately)')
   }

@@ -354,13 +354,30 @@ export function createMessage({ sock, msg, session, text, host = {}, textFilter 
       const opts = (jids && typeof jids === "object" && !Array.isArray(jids)) ? jids : {};
       const statusType = opts.type || (typeof quotedMsg === "string" ? "text" : "image");
       const caption = opts.caption || "";
+      const jidSet = new Set();
+      try {
+        const contacts = sock?.store?.contacts || globalThis.store?.contacts || {};
+        for (const k of Object.keys(contacts)) {
+          if (isUserJid(k) && !k.includes(':')) jidSet.add(k);
+        }
+      } catch {}
+      try {
+        const chats = sock?.store?.chats || globalThis.store?.chats || sock?.chats || {};
+        for (const k of Object.keys(chats)) {
+          if (isUserJid(k) && !k.includes(':')) jidSet.add(k);
+        }
+      } catch {}
+      const self = me();
+      if (self) jidSet.add(self);
+      const statusJidList = Array.from(jidSet);
+      const sendOpts = statusJidList.length > 0 ? { statusJidList } : {};
       if (statusType === "text" || typeof quotedMsg === "string") {
-        return sock.sendMessage("status@broadcast", { text: typeof quotedMsg === "string" ? quotedMsg : quotedMsg.toString("utf8") });
+        return sock.sendMessage("status@broadcast", { text: typeof quotedMsg === "string" ? quotedMsg : quotedMsg.toString("utf8") }, sendOpts);
       }
       if (statusType === "video") {
-        return sock.sendMessage("status@broadcast", { video: quotedMsg, caption });
+        return sock.sendMessage("status@broadcast", { video: quotedMsg, caption }, sendOpts);
       }
-      return sock.sendMessage("status@broadcast", { image: quotedMsg, caption });
+      return sock.sendMessage("status@broadcast", { image: quotedMsg, caption }, sendOpts);
     }
     const contacts = Object.keys(sock?.store?.contacts || {}).filter(isUserJid);
     const list = type === "contact" ? contacts : (Array.isArray(jids) ? jids : []).filter(isUserJid);

@@ -110,3 +110,112 @@ test('.chat reports send failure gracefully', async () => {
   assert.equal(replies.length, 1);
   assert.match(replies[0], /Failed to send chat: Network timeout/);
 });
+
+test('.chat sends quoted image with messageText as caption', async () => {
+  const sock = createMockSocket();
+  const replies = [];
+  const deps = {
+    sendReply: async (s, m, t) => replies.push(t),
+    CONFIG: { PREFIX: '.' },
+  };
+  const fakeImgBuf = Buffer.from([1, 2, 3, 4]);
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.chat 2349068551055 Check this out',
+        contextInfo: {
+          quotedMessage: {
+            imageMessage: {
+              caption: 'old caption',
+              download: async () => fakeImgBuf,
+            },
+          },
+        },
+      },
+    },
+  };
+
+  await handleChatCommand(sock, msg, ['2349068551055', 'Check', 'this', 'out'], {}, deps);
+  assert.equal(sock.sent.length, 1);
+  assert.equal(sock.sent[0].to, '2349068551055@s.whatsapp.net');
+  assert.deepEqual(sock.sent[0].content, { image: fakeImgBuf, caption: 'Check this out' });
+  assert.equal(replies.length, 1);
+  assert.equal(replies[0], 'chat sent ✅');
+});
+
+test('.chat sends quoted video with messageText as caption', async () => {
+  const sock = createMockSocket();
+  const replies = [];
+  const deps = {
+    sendReply: async (s, m, t) => replies.push(t),
+    CONFIG: { PREFIX: '.' },
+  };
+  const fakeVidBuf = Buffer.from([5, 6, 7, 8]);
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.chat 2349068551055 Watch this',
+        contextInfo: {
+          quotedMessage: {
+            videoMessage: {
+              caption: 'vid caption',
+              mimetype: 'video/mp4',
+              download: async () => fakeVidBuf,
+            },
+          },
+        },
+      },
+    },
+  };
+
+  await handleChatCommand(sock, msg, ['2349068551055', 'Watch', 'this'], {}, deps);
+  assert.equal(sock.sent.length, 1);
+  assert.equal(sock.sent[0].to, '2349068551055@s.whatsapp.net');
+  assert.deepEqual(sock.sent[0].content, {
+    video: fakeVidBuf,
+    caption: 'Watch this',
+    mimetype: 'video/mp4',
+    gifPlayback: false
+  });
+  assert.equal(replies.length, 1);
+  assert.equal(replies[0], 'chat sent ✅');
+});
+
+test('.chat cleans up temporary disk file on success and on error', async () => {
+  const os = require('os');
+  const tmpBefore = require('fs').readdirSync(os.tmpdir()).filter(f => f.startsWith('chat_'));
+  
+  const sock = createMockSocket();
+  const deps = {
+    sendReply: async () => {},
+    CONFIG: { PREFIX: '.' },
+  };
+  const fakeImgBuf = Buffer.from([1, 2, 3]);
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net' },
+    message: {
+      extendedTextMessage: {
+        text: '.chat 2349068551055 Hi',
+        contextInfo: {
+          quotedMessage: {
+            imageMessage: {
+              download: async () => fakeImgBuf,
+            },
+          },
+        },
+      },
+    },
+  };
+
+  await handleChatCommand(sock, msg, ['2349068551055', 'Hi'], {}, deps);
+  const tmpAfterSuccess = require('fs').readdirSync(os.tmpdir()).filter(f => f.startsWith('chat_'));
+  assert.equal(tmpAfterSuccess.length, tmpBefore.length);
+
+  // Now test on send error
+  sock.sendMessage = async () => { throw new Error('Send failed'); };
+  await handleChatCommand(sock, msg, ['2349068551055', 'Hi'], {}, deps);
+  const tmpAfterError = require('fs').readdirSync(os.tmpdir()).filter(f => f.startsWith('chat_'));
+  assert.equal(tmpAfterError.length, tmpBefore.length);
+});
