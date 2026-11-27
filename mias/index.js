@@ -377,6 +377,180 @@ async function reencodeVideoFileHd13(filePath) {
   }
   return { path: filePath, cleanup: async () => {} };
 }
+
+// 1.3 HD delivery for Pinterest media (video, image, audio, or document).
+// Processes any media format with TT cmd 1.3 HD quality bloating:
+// - Videos: TT 1.3 HD encoder (1080p short side, 1.2 bitrate boost, 60fps, AAC audio)
+// - Images: 1080p Lanczos upscale, unsharp filter, high-quality JPEG (bloats output to crisp HD)
+// - Audio / Other: delivers with rate-limit retry and proper mime routing
+async function deliverPinterestMediaHd13(sock, jid, media, { caption = '', fileName = null, quoted = null, url = null, title = '', contentType = '' } = {}) {
+  const fs = require('fs');
+  const fsp = require('fs/promises');
+  const crypto = require('crypto');
+  const disk = require('./lib/tiktokDiskDelivery.cjs');
+  const mediaCache = require('./lib/mediaDeliveryCache.cjs');
+
+  const cleanUrl = url || (media && typeof media === 'object' && media.url ? String(media.url).trim() : null);
+  const typeStr = String(contentType || '').toLowerCase();
+
+  let isVideo = false;
+  let isAudio = false;
+  let isImage = false;
+
+  if (typeStr.includes('video') || (cleanUrl && /\.(mp4|mov|mkv|webm)(?:\?|$)/i.test(cleanUrl))) {
+    isVideo = true;
+  } else if (typeStr.includes('audio') || (cleanUrl && /\.(mp3|m4a|ogg|wav)(?:\?|$)/i.test(cleanUrl))) {
+    isAudio = true;
+  } else if (typeStr.includes('image') || (cleanUrl && (/\.(jpe?g|png|webp|bmp|gif)(?:\?|$)/i.test(cleanUrl) || /pinimg\.com/i.test(cleanUrl)))) {
+    isImage = true;
+  }
+
+  let peekBuf = null;
+  if (Buffer.isBuffer(media)) {
+    peekBuf = media;
+  } else if (media && Buffer.isBuffer(media.buffer)) {
+    peekBuf = media.buffer;
+  } else if (typeof media === 'string' && fs.existsSync(media)) {
+    try {
+      const fd = fs.openSync(media, 'r');
+      const b = Buffer.alloc(64);
+      fs.readSync(fd, b, 0, 64, 0);
+      fs.closeSync(fd);
+      peekBuf = b;
+    } catch {}
+  }
+
+  if (peekBuf && peekBuf.length >= 8) {
+    if (peekBuf.slice(4, 8).toString() === 'ftyp' || peekBuf.slice(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3])) || peekBuf.slice(0, 3).toString() === 'FLV') {
+      isVideo = true;
+      isImage = false;
+      isAudio = false;
+    } else if (peekBuf.slice(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])) || peekBuf.slice(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47])) || (peekBuf.slice(0, 4).toString() === 'RIFF' && peekBuf.slice(8, 12).toString() === 'WEBP') || peekBuf.slice(0, 3).toString() === 'GIF') {
+      isImage = true;
+      isVideo = false;
+      isAudio = false;
+    }
+  }
+
+  // 1. VIDEO: Route through TT cmd 1.3 HD encoder (1080p, 1.2 bitrate boost, 60fps)
+  if (isVideo) {
+    const vName = fileName || ('pinterest_' + Date.now() + '.mp4');
+    return await deliverVideoHd13(sock, jid, media, {
+      caption,
+      fileName: vName,
+      quoted,
+      url: cleanUrl,
+      title
+    });
+  }
+
+  // 2. IMAGE: Process with HD 1.3 image bloating (Lanczos upscaling & unsharp sharpening)
+  if (isImage || (!isAudio && !isVideo)) {
+    let rawBuf = null;
+
+    if (Buffer.isBuffer(media)) {
+      rawBuf = media;
+    } else if (typeof media === 'string' && fs.existsSync(media)) {
+      rawBuf = await fsp.readFile(media);
+    } else if (media && Buffer.isBuffer(media.buffer)) {
+      rawBuf = media.buffer;
+    } else if (media && typeof media.path === 'string' && fs.existsSync(media.path)) {
+      rawBuf = await fsp.readFile(media.path);
+    } else {
+      throw new Error('Invalid image media passed to deliverPinterestMediaHd13');
+    }
+
+    // Check media delivery cache for previously bloated image
+    const imgCacheKey = cleanUrl ? `hd13:${cleanUrl}:image` : null;
+    let cached = null;
+    if (imgCacheKey) cached = mediaCache.getCachedMedia(imgCacheKey);
+    if (!cached && rawBuf) {
+      try {
+        const h = crypto.createHash('sha256').update(rawBuf).digest('hex');
+        if (h) cached = mediaCache.getCachedMedia(`sha256:${h}`);
+      } catch {}
+    }
+
+    if (cached) {
+      try {
+        const res = await mediaCache.sendViaMediaKeys(sock, jid, cached, { caption, quoted, type: 'image' });
+        if (res?.key?.id) return res;
+      } catch {}
+      try {
+        const fwd = await mediaCache.sendViaForwardFallback(sock, jid, cached, { quoted });
+        if (fwd?.key?.id) return fwd;
+      } catch {}
+    }
+
+    // Bloat image with TT 1.3 / HD pipeline
+    let enhancedBuf = rawBuf;
+    try {
+      const { enhanceImageHd } = require('./features/mediaEnhance.cjs');
+      if (typeof enhanceImageHd === 'function' && rawBuf && rawBuf.length > 0) {
+        enhancedBuf = await enhanceImageHd(rawBuf);
+      }
+    } catch (e) {
+      console.warn('[pinterest hd13 image bloat fallback]', e?.message || e);
+    }
+
+    const imgName = fileName || ('pinterest_' + Date.now() + '.jpg');
+    const maxInlineImg = 15 * 1024 * 1024;
+    let sent = null;
+
+    if (enhancedBuf.length > maxInlineImg) {
+      sent = await disk.sendWithRateLimitRetry(async () => {
+        return await sock.sendMessage(jid, {
+          document: enhancedBuf,
+          mimetype: 'image/jpeg',
+          fileName: imgName,
+          caption
+        }, { quoted });
+      });
+    } else {
+      sent = await disk.sendWithRateLimitRetry(async () => {
+        return await sock.sendMessage(jid, {
+          image: enhancedBuf,
+          mimetype: 'image/jpeg',
+          caption
+        }, { quoted });
+      });
+    }
+
+    if (sent?.key?.id) {
+      if (imgCacheKey) try { mediaCache.recordSentMedia(imgCacheKey, sent); } catch {}
+      try {
+        const ph = crypto.createHash('sha256').update(enhancedBuf).digest('hex');
+        if (ph) mediaCache.recordSentMedia(`sha256:${ph}`, sent);
+      } catch {}
+    }
+
+    return sent;
+  }
+
+  // 3. AUDIO
+  let audioBuf = Buffer.isBuffer(media) ? media : (typeof media === 'string' && fs.existsSync(media) ? await fsp.readFile(media) : null);
+  if (isAudio && audioBuf) {
+    return await disk.sendWithRateLimitRetry(async () => {
+      return await sock.sendMessage(jid, {
+        audio: audioBuf,
+        mimetype: typeStr || 'audio/mpeg'
+      }, { quoted });
+    });
+  }
+
+  // 4. Fallback document delivery
+  const docBuf = audioBuf || (Buffer.isBuffer(media) ? media : null);
+  const docName = fileName || ('pinterest_' + Date.now());
+  return await disk.sendWithRateLimitRetry(async () => {
+    return await sock.sendMessage(jid, {
+      document: docBuf || media,
+      mimetype: typeStr || 'application/octet-stream',
+      fileName: docName,
+      caption
+    }, { quoted });
+  });
+}
+
 async function __miasNormalizeVideoBuffer(_0x184287) {
   if (!Buffer["isBuffer"](_0x184287) || _0x184287["length"] < 0x400) {
     return _0x184287;
@@ -16673,13 +16847,11 @@ cmd(["image", "img"], {
     for (let _0x30e84b = 0x0; _0x30e84b < _0x374aac["length"]; _0x30e84b += 0x1) {
       const _0x5aad00 = _0x374aac[_0x30e84b];
       try {
-        const _0x381e9d = await _0x259e45['sendMessage'](_0x33bf6e, {
-          'image': {
-            'url': _0x5aad00["file"]["path"]
-          },
-          'mimetype': _0x5aad00["file"]["contentType"]
-        }, {
-          'quoted': _0x53eb9b
+        const _0x381e9d = await deliverPinterestMediaHd13(_0x259e45, _0x33bf6e, _0x5aad00["file"]["path"], {
+          'quoted': _0x53eb9b,
+          'url': _0x5aad00["image"],
+          'contentType': _0x5aad00["file"]["contentType"],
+          'caption': _0x5aad00["caption"] || ''
         });
         if (!_0x381e9d?.["key"]?.['id']) {
           throw new Error('WhatsApp\x20did\x20not\x20confirm\x20the\x20image\x20send');
@@ -26875,16 +27047,12 @@ cmd(['pinterest', 'pinsearch', "pindl", "pin2"], {
       });
       const _0x405a52 = Buffer["from"](_0x344aaf["data"]);
       const _0x47e85a = _0x344aaf['headers']?.["content-type"] || '';
-      _0x47e85a["includes"]("video") || _0x145994['includes'](".mp4") ? await _0x4810a8["sendMessage"](_0x5b6f87["key"]["remoteJid"], {
-        'video': _0x405a52,
-        'caption': "📌 *Pinterest Video*"
-      }, {
-        'quoted': _0x5b6f87
-      }) : await _0x4810a8['sendMessage'](_0x5b6f87["key"]["remoteJid"], {
-        'image': _0x405a52,
-        'caption': "📌 *Pinterest*"
-      }, {
-        'quoted': _0x5b6f87
+      const _0xpinCap = _0x47e85a["includes"]("video") || _0x145994['includes'](".mp4") ? "📌 *Pinterest Video*" : "📌 *Pinterest*";
+      await deliverPinterestMediaHd13(_0x4810a8, _0x5b6f87["key"]["remoteJid"], _0x405a52, {
+        'caption': _0xpinCap,
+        'quoted': _0x5b6f87,
+        'url': _0x145994,
+        'contentType': _0x47e85a
       });
       await react(_0x4810a8, _0x5b6f87, '✅');
     } catch (_0x30b0d7) {
@@ -27001,16 +27169,11 @@ cmd(['pinterest', 'pinsearch', "pindl", "pin2"], {
       }
       const _0x1e49c5 = _0x578634['headers']?.["content-type"] || '';
       const _0x5bf805 = "📌 *Pinterest* (" + (_0x26180c + 0x1) + '/' + _0x147d33["length"] + ')';
-      _0x1e49c5['includes']("video") || _0x3a4ac6["includes"]('.mp4') ? await _0x4810a8['sendMessage'](_0x5b6f87["key"]['remoteJid'], {
-        'video': _0x47347b,
-        'caption': _0x5bf805
-      }, {
-        'quoted': _0x5b6f87
-      }) : await _0x4810a8["sendMessage"](_0x5b6f87["key"]["remoteJid"], {
-        'image': _0x47347b,
-        'caption': _0x5bf805
-      }, {
-        'quoted': _0x5b6f87
+      await deliverPinterestMediaHd13(_0x4810a8, _0x5b6f87["key"]['remoteJid'], _0x47347b, {
+        'caption': _0x5bf805,
+        'quoted': _0x5b6f87,
+        'url': _0x3a4ac6,
+        'contentType': _0x1e49c5
       });
       _0x26180c++;
       await new Promise(_0x47b696 => setTimeout(_0x47b696, 0x190));

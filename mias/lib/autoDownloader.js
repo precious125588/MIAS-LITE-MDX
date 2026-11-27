@@ -1872,11 +1872,29 @@ async function processAutoDownload(sock, msg, body, mode, isOwner) {
         quoted: msg,
       });
     } else if (dlType === "image") {
-      await sendImage(sock, jid, tmpPath, {
-        caption,
-        mimetype: downloaded.mimetype,
-        quoted: msg,
-      });
+      let imageBuffer = null;
+      if (platform === "pinterest") {
+        try {
+          const req = createRequire(import.meta.url);
+          const { enhanceImageHd } = req("../features/mediaEnhance.cjs");
+          const rawBuf = await fs.promises.readFile(tmpPath);
+          const enhanced = await enhanceImageHd(rawBuf);
+          if (enhanced && enhanced.length > 0) imageBuffer = enhanced;
+        } catch {}
+      }
+      if (imageBuffer) {
+        await sock.sendMessage(jid, {
+          image: imageBuffer,
+          caption,
+          mimetype: downloaded.mimetype || "image/jpeg",
+        }, { quoted: msg });
+      } else {
+        await sendImage(sock, jid, tmpPath, {
+          caption,
+          mimetype: downloaded.mimetype,
+          quoted: msg,
+        });
+      }
     } else {
       await sendDocument(sock, jid, tmpPath, {
         caption,

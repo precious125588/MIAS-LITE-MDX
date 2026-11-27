@@ -269,7 +269,7 @@ async function upscaleImage4k(buf) {
   try {
     fs.writeFileSync(tmpIn, buf);
     const filter = "scale='if(gte(iw,ih),3840,-2)':'if(gte(iw,ih),-2,3840)':flags=lanczos,unsharp=5:5:0.8:3:3:0.4";
-    await runFfmpeg(['-y', '-v', 'error', '-i', tmpIn, '-vf', filter, '-q:v', '2', tmpOut], 30000);
+    await runFfmpeg(['-y', '-v', 'error', '-i', tmpIn, '-vf', filter, '-update', '1', '-q:v', '2', tmpOut], 30000);
     if (fs.existsSync(tmpOut)) {
       const res = fs.readFileSync(tmpOut);
       if (res.length > 100) return res;

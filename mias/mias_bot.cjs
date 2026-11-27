@@ -1795,7 +1795,34 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     try {
       const r = await nx.downloader.pinterest({ url: args[0] });
       const m = await _media(r, axios);
-      if (m) { await _sendImg(sock, msg, m.buf, '📌 *Pinterest Download*'); await react(sock, msg, '✅'); }
+      if (m) {
+        const isVid = (m.ct && m.ct.includes('video')) || (args[0] && args[0].includes('.mp4'));
+        if (isVid) {
+          const ttd = require('./lib/ttDelivery.cjs');
+          const tmpF = path.join(require('os').tmpdir(), 'pin_' + Date.now() + '.mp4');
+          require('fs').writeFileSync(tmpF, m.buf);
+          let enc = null;
+          try {
+            enc = await ttd.reencodeHdForWhatsApp(tmpF, { boost: 1.2, sourceQualityBoost: 1.2, maxBytes: ttd.TT_INLINE_VIDEO_MAX_BYTES });
+          } catch {}
+          const finP = enc?.path || tmpF;
+          try {
+            await sock.sendMessage(msg.key.remoteJid, { video: { url: finP }, mimetype: 'video/mp4', caption: '📌 *Pinterest Video*' }, { quoted: msg });
+          } catch {
+            await sock.sendMessage(msg.key.remoteJid, { document: { url: finP }, mimetype: 'video/mp4', fileName: 'pinterest_' + Date.now() + '.mp4', caption: '📌 *Pinterest Video*' }, { quoted: msg });
+          }
+          try { if (enc?.cleanup) await enc.cleanup(); } catch {}
+          try { require('fs').unlinkSync(tmpF); } catch {}
+        } else {
+          let outB = m.buf;
+          try {
+            const { enhanceImageHd } = require('./features/mediaEnhance.cjs');
+            outB = await enhanceImageHd(m.buf);
+          } catch {}
+          await _sendImg(sock, msg, outB, '📌 *Pinterest Download*');
+        }
+        await react(sock, msg, '✅');
+      }
       else { await sendReply(sock, msg, _dlFmt(r, 'Pinterest')); await react(sock, msg, '✅'); }
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
@@ -1805,7 +1832,18 @@ module.exports = function registerNexrayCmds(cmd, CONFIG, sendReply, react, down
     await react(sock, msg, '📌');
     try {
       const r = await nx.downloader.pinterestSearch({ text: args.join(' ') });
-      await sendReply(sock, msg, _dlFmt(r, 'Pinterest Search')); await react(sock, msg, '✅');
+      const m = await _media(r, axios);
+      if (m) {
+        let outB = m.buf;
+        try {
+          const { enhanceImageHd } = require('./features/mediaEnhance.cjs');
+          outB = await enhanceImageHd(m.buf);
+        } catch {}
+        await _sendImg(sock, msg, outB, '📌 *Pinterest Search*');
+        await react(sock, msg, '✅');
+      } else {
+        await sendReply(sock, msg, _dlFmt(r, 'Pinterest Search')); await react(sock, msg, '✅');
+      }
     } catch (e) { await sendReply(sock, msg, `❌ Error: ${e.message}`); await react(sock, msg, '❌'); }
   });
 
