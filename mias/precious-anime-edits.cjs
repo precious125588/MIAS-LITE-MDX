@@ -141,6 +141,12 @@ const CATEGORIES = {
   fireforce:     { files: ['fire_force.txt'],                       label: 'Fire Force',
                    aliases: ['fireforce','firef'],
                    tags: ['fireforce','shinra','benimaru','shinrabanshoman'] },
+  chainsawman:   { files: ['chainsaw_man.txt'],                     label: 'Chainsaw Man',
+                   aliases: ['chainsawman','csm','chainsaw'],
+                   tags: ['chainsawman','csm','denji','makima','pochita','reze','aki','hayakawa','power','kobeni','kishibe','chainsawmanedit'] },
+  tokyorevengers:{ files: ['tokyo_revengers.txt'],                  label: 'Tokyo Revengers',
+                   aliases: ['tokyorevengers','tr','tokyorevenger'],
+                   tags: ['tokyorevengers','tokyorevenger','toman','mikey','manjirosano','draken','kenryuguji','takemichi','hanagaki','baji','keisukebaji','chifuyu','matsuno'] },
   cruise:        { files: ['cruise.txt'],                           label: 'Cruise',
                    aliases: ['cruise','cruzz','techcruzz'],
                    usernames: ['kingoftechcruzz','mr_vawulencee','kellyreacts02','mrdonduke','gigidroid001'],
@@ -151,7 +157,7 @@ const CATEGORIES = {
                    tags: ['discipline','motivation','mindset','grind','focus','mentality','resilience','hardwork','growth','sigma'] },
   freefire:      { files: ['freefire.txt'],                         label: 'Free Fire',
                    aliases: ['freefire','ff','freef'],
-                   usernames: ['nexus.120fps_','zoya.120fps','.nur._ff','o1zhik_19','e_s_t_ff','prince.aep5','tik_ff_n','demi_ae1','iamnasboyff','mrvawulencefff','chris_dline4','lyonnn3d_','otc4mena','arnaud.freefire.dancer','nexuss_44','primalhaloleader','aidaa.120fps'],
+                   usernames: ['nexus.120fps_','zoya.120fps','.nur._ff','o1zhik_19','e_s_t_ff','prince.aep5','tik_ff_n','demi_ae1','iamnasboyff','mrvawulencefff','chris_dline4','lyonnn3d_','otc4mena','arnaud.freefire.dancer','nexuss_44','primalhaloleader','aidaa.120fps','real_silva_ff','peersahabff'],
                    tags: ['freefire','ff','ffedit','garenafreefire','freefireedit','ffhighlights','120fps','freefiremena','free_fire','freefire120fps','freefire_lover','primalhalo','aidaa120fps'] },
   fyp:           { files: ['fyp.txt'],                              label: 'FYP',
                    aliases: ['fyp','foryou','foryoupage'],
@@ -393,6 +399,8 @@ const FRANCHISE_EXCLUSIVE_MARKERS = {
   spiderman: ['spiderman', 'marvel', 'peterparker', 'milesmorales'],
   invincible: ['invincible', 'omniman', 'markgrayson'],
   sonic: ['sonic', 'sonicthehedgehog', 'shadowthehedgehog'],
+  chainsawman: ['chainsawman', 'csm', 'denji', 'makima', 'pochita', 'reze'],
+  tokyorevengers: ['tokyorevengers', 'toman', 'manjirosano', 'draken', 'takemichi', 'keisukebaji'],
 };
 
 function matchesCat(item, cat) {
@@ -717,6 +725,9 @@ function shouldSkipReencode(catKey, item) {
 
 async function deliverItemFromDisk(sock, jid, msg, item, caption, catKey = null) {
   if (!CVD) {  return false; }
+  if (catKey === 'freefire' || (item && (item.category === 'freefire' || item.catKey === 'freefire' || item.cat === 'freefire'))) {
+    caption = String(caption || '').replace(/#[a-zA-Z0-9_]+/g, '').replace(/\s+/g, ' ').trim() || 'Free Fire edit';
+  }
   const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mias-anime-"));
   const file = path.join(dir, "edit.mp4");
   try {
@@ -1124,8 +1135,11 @@ module.exports = {
         if (!c) break;
         if (attempted.has(c.key)) continue;
         attempted.add(c.key);
-        const caption = String(c.item.caption || c.item.title || (cat.label + ' edit'))
+        let caption = String(c.item.caption || c.item.title || (cat.label + ' edit'))
           .replace(/\s+/g, ' ').trim().slice(0, 120) || (cat.label + ' edit');
+        if (catKey === 'freefire' || (cat && cat.key === 'freefire')) {
+          caption = caption.replace(/#[a-zA-Z0-9_]+/g, '').replace(/\s+/g, ' ').trim() || (cat.label + ' edit');
+        }
         let res = false;
         try { res = await deliverItemFromDisk(sock, jid, msg, c.item, caption, catKey); } catch { res = false; }
         const ok = res === true;

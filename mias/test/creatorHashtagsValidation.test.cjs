@@ -173,3 +173,26 @@ test('Archive items match their designated category and avoid crossovers', () =>
   }
   assert.ok(jjkMatches > 0, 'Should match real JJK items');
 });
+
+test('Chainsaw Man and Tokyo Revengers unique franchise matching', () => {
+  const categories = PAE.CATEGORIES;
+
+  const denjiEdit = { caption: 'Bark for me #denji #makima #chainsawman #csm' };
+  const mikeyEdit = { caption: 'Invincible Mikey #mikey #manjirosano #tokyorevengers #toman' };
+
+  assert.equal(PAE.matchesCat(denjiEdit, categories.chainsawman), true, 'Denji should match chainsawman');
+  assert.equal(PAE.matchesCat(mikeyEdit, categories.tokyorevengers), true, 'Mikey should match tokyorevengers');
+
+  // No crossover
+  assert.equal(PAE.matchesCat(denjiEdit, categories.tokyorevengers), false, 'Denji must not match tokyorevengers');
+  assert.equal(PAE.matchesCat(mikeyEdit, categories.chainsawman), false, 'Mikey must not match chainsawman');
+  assert.equal(PAE.matchesCat(denjiEdit, categories.naruto), false, 'Denji must not match naruto');
+  assert.equal(PAE.matchesCat(mikeyEdit, categories.jjk), false, 'Mikey must not match jjk');
+});
+
+test('Free Fire captions have hashtags stripped cleanly', () => {
+  const rawCaption = 'Chalre Chalre Waal✨ Lone Wolf #freefire #foryou #viral #trending';
+  const cleanCaption = rawCaption.replace(/#[a-zA-Z0-9_]+/g, '').replace(/\s+/g, ' ').trim();
+  assert.equal(cleanCaption.includes('#'), false, 'Cleaned caption must not have any hashtags');
+  assert.equal(cleanCaption, 'Chalre Chalre Waal✨ Lone Wolf');
+});

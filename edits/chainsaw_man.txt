@@ -1,0 +1,1 @@
+index	primary_category	all_categories	caption	hashtags	video_url
