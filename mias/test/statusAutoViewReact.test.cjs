@@ -218,3 +218,32 @@ console.log('Testing Auto View Status & Auto React Status logic...');
 console.log('\nAll Auto View Status and Auto React Status tests PASSED successfully!');
 
 })();
+
+// Test 7: cuz.parseStatusEmoji supports skate emoji 🛹 and sets statusEmoji & pool
+{
+  const parsed = cuz.parseStatusEmoji('🛹');
+  assert.strictEqual(parsed.valid, true, 'Parsing should be valid');
+  assert.deepStrictEqual(parsed.pool, ['🛹'], 'Pool should be [🛹]');
+
+  const parsedMulti = cuz.parseStatusEmoji('🛹, 🛹');
+  assert.strictEqual(parsedMulti.valid, true);
+  assert.deepStrictEqual(parsedMulti.pool, ['🛹']);
+  console.log('✔ Test 7 passed: 🛹 custom status emoji parsed correctly');
+}
+
+// Test 8: cuz.applyStatusCustomization saves statusEmoji setting properly
+{
+  const testSettings = {
+    viewStatus: true,
+    reactStatus: true,
+    statusEmoji: '🔥',
+    statusEmojiPool: ['🔥'],
+  };
+  const res = cuz.applyStatusCustomization(testSettings, 'statusEmoji', '🛹');
+  assert.strictEqual(res.valid, true);
+  assert.strictEqual(testSettings.statusEmoji, '🛹');
+  assert.deepStrictEqual(testSettings.statusEmojiPool, ['🛹']);
+  console.log('✔ Test 8 passed: applyStatusCustomization sets statusEmoji to 🛹');
+}
+
+console.log('All tests finished successfully.');

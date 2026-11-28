@@ -814,3 +814,165 @@ test('handleViewOnceCommand (.vv2): delivers to authorized owner DM when sender 
   assert.ok(ownerSent, 'Media must be delivered to the invoking owner DM');
   assert.deepEqual(ownerSent.content.image, fakeBytes);
 });
+
+test('.vv on normal (non view-once) image message: rejects with at most two lines and does not resend media', async () => {
+  const sock = createMockSocket();
+  const reactions = [];
+  const replies = [];
+  const deps = {
+    react: async (s, m, r) => reactions.push(r),
+    sendReply: async (s, m, t) => replies.push(t),
+    CONFIG: { PREFIX: '.' },
+  };
+
+  const msg = {
+    key: { remoteJid: '123@s.whatsapp.net', fromMe: false },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          quotedMessage: {
+            imageMessage: {
+              url: 'https://wa.net/normal-img',
+              mimetype: 'image/jpeg',
+              mediaKey: 'normalKey',
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+  assert.equal(res.ok, false);
+  assert.equal(res.reason, 'not_view_once');
+  assert.equal(sock.sent.length, 0, 'Must NOT resend normal image media');
+  assert.equal(reactions.includes('❌'), true);
+  assert.equal(replies.length, 1);
+  const lines = replies[0].trim().split('\n');
+  assert.ok(lines.length <= 2, `Text usage must not be more than two lines, got ${lines.length} lines`);
+  assert.match(replies[0], /Please reply to a view-once message/i);
+});
+
+test('.vv2 in 1-on-1 private chat with a contact: delivers revealed media to owner private DM, not contact chat', async () => {
+  const sock = createMockSocket();
+  sock.user = { id: '2348011112222:3@s.whatsapp.net' };
+  const fakeBytes = Buffer.from('vv2-revealed-media');
+  const reactions = [];
+  const replies = [];
+  const deps = {
+    react: async (s, m, r) => reactions.push(r),
+    sendReply: async (s, m, t) => replies.push(t),
+    downloadContentFromMessage: async () => (async function* () { yield fakeBytes; })(),
+    CONFIG: { PREFIX: '.', OWNER_NUMBER: '2348011112222' },
+  };
+
+  // Invoked inside a 1-on-1 DM with contact 2347099998888@s.whatsapp.net
+  const msg = {
+    key: {
+      remoteJid: '2347099998888@s.whatsapp.net',
+      fromMe: true, // typed by bot user from their own phone
+      id: 'MSG_1',
+    },
+    message: {
+      extendedTextMessage: {
+        text: '.vv2',
+        contextInfo: {
+          quotedMessage: {
+            viewOnceMessageV2: {
+              message: {
+                imageMessage: {
+                  url: 'https://wa.net/img',
+                  mediaKey: 'key_abc',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv2', sendToDm: true, silent: true }, deps);
+  assert.equal(res.ok, true);
+
+  // Must not send anything to the contact chat!
+  const contactSent = sock.sent.find(s => s.to === '2347099998888@s.whatsapp.net');
+  assert.equal(contactSent, undefined, 'Must not send media into contact DM');
+  assert.equal(reactions.length, 0, 'No reactions in silent mode');
+  assert.equal(replies.length, 0, 'No replies in silent mode');
+
+  // Must deliver to the owner's private DM
+  const ownerSent = sock.sent.find(s => s.to === '2348011112222@s.whatsapp.net');
+  assert.ok(ownerSent, 'Media must be delivered to owner private DM');
+  assert.deepEqual(ownerSent.content.image, fakeBytes);
+});
+
+test('stored arrival copy merges missing directPath/url into quoted message and enables successful download', async () => {
+  const sock = createMockSocket();
+  const reactions = [];
+  const replies = [];
+  const fakeBytes = Buffer.from('merged-stored-arrival-bytes');
+
+  // Mock download function checks that url and directPath are present
+  let receivedContent = null;
+  const deps = {
+    react: async (s, m, r) => reactions.push(r),
+    sendReply: async (s, m, t) => replies.push(t),
+    downloadContentFromMessage: async (content) => {
+      receivedContent = content;
+      return (async function* () { yield fakeBytes; })();
+    },
+    CONFIG: { PREFIX: '.' },
+  };
+
+  // Pre-seed stored arrival copy with full directPath and url
+  const { rememberViewOnceArrival } = require('../../lib/viewOnceCommand.cjs');
+  rememberViewOnceArrival({
+    key: { id: 'ARRIVAL_MERGE_TEST_ID', remoteJid: 'chat@s.whatsapp.net' },
+    message: {
+      viewOnceMessageV2: {
+        message: {
+          imageMessage: {
+            url: 'https://mmg.whatsapp.net/d/f/full-url',
+            directPath: '/v/t62.7118-24/full-direct-path',
+            mediaKey: 'fullMediaKey123',
+            mimetype: 'image/jpeg',
+            fileLength: 99999,
+          },
+        },
+      },
+    },
+  });
+
+  // Quoted message from WhatsApp where URL and directPath are stripped/missing
+  const msg = {
+    key: { remoteJid: 'chat@s.whatsapp.net', fromMe: false },
+    message: {
+      extendedTextMessage: {
+        text: '.vv',
+        contextInfo: {
+          stanzaId: 'ARRIVAL_MERGE_TEST_ID',
+          participant: 'someone@s.whatsapp.net',
+          quotedMessage: {
+            viewOnceMessageV2: {
+              message: {
+                imageMessage: {
+                  mimetype: 'image/jpeg',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const res = await handleViewOnceCommand(sock, msg, [], { cmdName: 'vv' }, deps);
+  assert.equal(res.ok, true);
+  assert.ok(receivedContent, 'Download received content');
+  assert.equal(receivedContent.directPath, '/v/t62.7118-24/full-direct-path');
+  assert.equal(receivedContent.url, 'https://mmg.whatsapp.net/d/f/full-url');
+  assert.equal(sock.sent.length, 1);
+  assert.deepEqual(sock.sent[0].content.image, fakeBytes);
+});
